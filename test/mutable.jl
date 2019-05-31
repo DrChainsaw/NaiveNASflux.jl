@@ -73,7 +73,7 @@ import InteractiveUtils:subtypes
         wsize = deleteat!(collect(size(weights(m.layer))), 3)
 
         # Nothing beats working in four dimensions...
-        # Stack 3D arrays in a 4:th dimension and then swap dim 3 and 4 
+        # Stack 3D arrays in a 4:th dimension and then swap dim 3 and 4
         Wexp = permutedims(cat(
         weights(m.layer)[:,:,1,:],
         zeros(Float32, wsize...),
@@ -99,9 +99,9 @@ import InteractiveUtils:subtypes
 
     @testset "LazyMutable factory dense" begin
 
-        struct DenseFactory <: AbstractMutableComp{Dense} end
+        struct DenseFactory end
         function NaiveNASflux.dispatch(m::LazyMutable, mut::DenseFactory, x)
-            m.mutable = MutableLayer{Dense}(Dense(nin(m), nout(m)))
+            m.mutable = MutableLayer(Dense(nin(m), nout(m)))
             return m.mutable(x)
         end
         m = LazyMutable(DenseFactory(), 2, 3)
@@ -109,7 +109,7 @@ import InteractiveUtils:subtypes
         @test typeof(m.mutable) == DenseFactory
         expected = m(Float32[2,3])
 
-        @test typeof(m.mutable) == MutableLayer{Dense}
+        @test typeof(m.mutable) == MutableLayer
         @test m(Float32[2,3]) == expected
 
         #Now mutate before create
@@ -121,7 +121,7 @@ import InteractiveUtils:subtypes
         @test typeof(m.mutable) == DenseFactory
         expected = m(Float32[0,1,2,3,4])
 
-        @test typeof(m.mutable) == MutableLayer{Dense}
+        @test typeof(m.mutable) == MutableLayer
         @test m(Float32[0,1,2,3,4]) == expected
     end
 
