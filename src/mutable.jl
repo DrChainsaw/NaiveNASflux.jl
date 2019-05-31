@@ -44,12 +44,12 @@ end
 function NaiveNASlib.mutate_outputs(m::MutableLayer{<:ParLayer}, outputs::AbstractArray{<:Integer,1})
     l = m.layer
     w = select(outputs, weights(l), outdim(l))
-    b = select(outputs, bias(l), outdim(l))
+    b = select(outputs, bias(l), 1)
     newlayer(m, w, b)
 end
 
-newlayer(m::MutableLayer{<:Dense}, w, b) = m.layer = Dense(param(w), param(b), m.layer.σ)
-
+newlayer(m::MutableLayer{<:Dense}, w, b) = m.layer = Dense(param(w), param(b), deepcopy(m.layer.σ))
+newlayer(m::MutableLayer{<:ParConv}, w, b) = m.layer = setproperties(m.layer, (weight=param(w), bias=param(b), σ=deepcopy(m.layer.σ)))
 
 
 mutable struct LazyMutable{T} <: AbstractMutableComp{T}
@@ -65,3 +65,20 @@ dispatch(m::LazyMutable{T}, mutable::AbstractMutableComp{T}, x) where T = mutabl
 
 NaiveNASlib.nin(m::LazyMutable) = length(m.inputs)
 NaiveNASlib.nout(m::LazyMutable) = length(m.outputs)
+
+function NaiveNASlib.mutate_inputs(m::LazyMutable, inputs::AbstractArray{<:Integer,1}...)
+    @assert length(inputs) == 1 "Only one input per layer!"
+    m.inputs = inputs[1]
+end
+
+function NaiveNASlib.mutate_outputs(m::LazyMutable, outputs::AbstractArray{<:Integer,1})
+    m.outputs = outputs
+end
+
+function NaiveNASlib.mutate_inputs(m::LazyMutable, nin::Integer...)
+    mutate_inputs(m, map(n -> collect(1:n), nin)...)
+end
+
+function NaiveNASlib.mutate_outputs(m::LazyMutable, nout::Integer)
+    mutate_outputs(m, 1:nout)
+end

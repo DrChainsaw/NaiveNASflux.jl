@@ -6,6 +6,7 @@ version = "0.1.0"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 NaiveNASlib = "bd45eb3e-47ce-54bd-9eaf-e86c5f900853"
+Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [extras]

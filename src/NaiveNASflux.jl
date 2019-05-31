@@ -2,6 +2,7 @@ module NaiveNASflux
 
 using NaiveNASlib
 using Flux
+using Setfield
 
 export mutable
 

@@ -8,7 +8,7 @@ outdim(l::ParDense) = 1
 indim(l::ParConv) = 3
 outdim(l::ParConv) = 4
 
-# Note: Contrary to other ML frameworks, bias seems to be always present in Flux
+# Note: Contrary to other ML frameworks, bias seems to always be present in Flux
 weights(l::Dense) = l.W.data
 bias(l::Dense) = l.b.data
 
