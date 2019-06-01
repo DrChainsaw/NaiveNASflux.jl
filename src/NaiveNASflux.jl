@@ -4,7 +4,7 @@ using NaiveNASlib
 using Flux
 using Setfield
 
-export mutable
+export mutable, MutableLayer, LazyMutable
 
 export nin, nout, indim, outdim
 

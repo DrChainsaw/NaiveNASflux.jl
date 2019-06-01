@@ -1,5 +1,5 @@
 import NaiveNASflux
-import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias
+import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, layer
 using Flux
 using NaiveNASlib
 import InteractiveUtils:subtypes
@@ -13,6 +13,16 @@ import InteractiveUtils:subtypes
             @test hasmethod(nout, (subtype,))
         end
     end
+
+    @testset "Select parameters" begin
+        mat = reshape(collect(1:3*4), 3, 4)
+
+        @test select(mat, 2 => [2,-1,-1,4]) == [4 0 0 10;5 0 0 11;6 0 0 12]
+        @test select(mat, 1 => [-1,1,3]) == [0 0 0 0;1 4 7 10;3 6 9 12]
+
+        @test select(mat, 1 => [2,-1,3,-1], 2 => [-1,1,-1,4]) == [0 2 0 11;0 0 0 0;0 3 0 12;0 0 0 0]
+    end
+
 
     @testset "MutableLayer dense" begin
 
@@ -97,12 +107,12 @@ import InteractiveUtils:subtypes
         assertlayer(m.layer, Wexp, bexp)
     end
 
-    @testset "LazyMutable factory dense" begin
+    @testset "LazyMutable dense factory" begin
 
         struct DenseFactory end
-        function NaiveNASflux.dispatch(m::LazyMutable, mut::DenseFactory, x)
+        function NaiveNASflux.dispatch!(m::LazyMutable, ::DenseFactory, x)
             m.mutable = MutableLayer(Dense(nin(m), nout(m)))
-            return m.mutable(x)
+            return m(x)
         end
         m = LazyMutable(DenseFactory(), 2, 3)
 
@@ -118,11 +128,33 @@ import InteractiveUtils:subtypes
         mutate_inputs(m, 5)
         mutate_outputs(m, 4)
 
-        @test typeof(m.mutable) == DenseFactory
+        #No eagerness allowed :)
+        @test m.mutable != MutableLayer
         expected = m(Float32[0,1,2,3,4])
 
         @test typeof(m.mutable) == MutableLayer
         @test m(Float32[0,1,2,3,4]) == expected
+    end
+
+    @testset "LazyMutable with MutableLayer" begin
+        m = MutableLayer(Dense(3,4))
+        mlazy = LazyMutable(m)
+
+        Wexp = weights(layer(m))
+        bexp = bias(layer(m))
+
+        mutate_inputs(mlazy, [1, 3])
+        assertlayer(layer(m), Wexp, bexp)
+
+        mutate_outputs(mlazy, [2, 4, -1])
+        assertlayer(layer(m), Wexp, bexp)
+
+        expected = mlazy(Float32[2,3])
+
+        @test nin(mlazy) == nin(m) == 2
+        @test nout(mlazy) == nout(m) == 3
+
+        @test expected == m(Float32[2,3])
     end
 
 end
