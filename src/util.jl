@@ -16,8 +16,10 @@ outdim(l) = outdim(layertype(l))
 indim(::ParDense) = 2
 outdim(::ParDense) = 1
 
-indim(::ParConv) = 3
-outdim(::ParConv) = 4
+indim(::ParConv) = 4
+outdim(::ParConv) = 3
+indim(::ParConvVanilla) = 3
+outdim(::ParConvVanilla) = 4
 
 # Note: Contrary to other ML frameworks, bias seems to always be present in Flux
 weights(l) = weights(layertype(l), l)

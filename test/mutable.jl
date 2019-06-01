@@ -1,5 +1,5 @@
 import NaiveNASflux
-import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, layer
+import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, layer, mutate
 using Flux
 using NaiveNASlib
 import InteractiveUtils:subtypes
@@ -61,12 +61,11 @@ import InteractiveUtils:subtypes
     end
 
     @testset "Conv MutableLayer" begin
-
         m = MutableLayer(Conv((2,3),(4=>5)))
 
         @test nin(m) == nin(m.layer) == 4
         @test nout(m) == nout(m.layer) == 5
-        input = reshape(collect(Float32, 1:4*12), 3, 4, 4, 1)
+        input = reshape(collect(Float32, 1:3*4*4), 3, 4, 4, 1)
         @test m(input) == m.layer(input)
 
         inds = [1,3]
@@ -104,6 +103,36 @@ import InteractiveUtils:subtypes
 
         bexp = Float32[0, bias(m.layer)[1], 0, bias(m.layer)[3], 0]
         mutate_outputs(m, inds)
+        assertlayer(m.layer, Wexp, bexp)
+    end
+
+    @testset "ConvTranspose MutableLayer" begin
+        m = MutableLayer(ConvTranspose((2,3),(4=>5)))
+
+        @test nin(m) == nin(m.layer) == 4
+        @test nout(m) == nout(m.layer) == 5
+        input = reshape(collect(Float32, 1:3*4*4), 3, 4, 4, 1)
+        @test m(input) == m.layer(input)
+
+        inputs = [1,3]
+        outputs = [1,2,4]
+        Wexp, bexp = weights(m.layer)[:,:,outputs,inputs], bias(m.layer)[outputs]
+        mutate(m, inputs=inputs, outputs=outputs)
+        assertlayer(m.layer, Wexp, bexp)
+    end
+
+    @testset "DepthwiseConv MutableLayer" begin
+        m = MutableLayer(DepthwiseConv((2,2),(3=>6)))
+
+        @test nin(m) == nin(m.layer) == 3
+        @test nout(m) == nout(m.layer) == 6
+        input = reshape(collect(Float32, 1:3*3*3), 3, 3, 3, 1)
+        @test m(input) == m.layer(input)
+
+        inputs = [1, 3]
+        outputs = [1, 2, 4, 5]
+        Wexp, bexp = weights(m.layer)[:,:,outputs,inputs], bias(m.layer)[outputs]
+        mutate(m, inputs=inputs, outputs=outputs)
         assertlayer(m.layer, Wexp, bexp)
     end
 

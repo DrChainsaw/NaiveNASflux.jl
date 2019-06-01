@@ -8,14 +8,18 @@ layertype(l::T) where T = @error "No layer type defined for $T"
 abstract type ParLayer <: Layer end
 struct ParDense <: ParLayer end
 struct ParRnn <:ParLayer end
-struct ParConv <: ParLayer end
+
+abstract type ParConv <: ParLayer end
+struct ParConvVanilla <: ParConv end
+struct ParConvTranspose  <: ParConv end
+struct ParDepthwiseConv <: ParConv  end
 
 layertype(l::Dense) = ParDense()
 layertype(l::Flux.Recur) = ParRnn()
 
-layertype(l::Conv) = ParConv()
-layertype(l::ConvTranspose) = ParConv()
-layertype(l::DepthwiseConv) = ParConv()
+layertype(l::Conv) = ParConvVanilla()
+layertype(l::ConvTranspose) = ParConvTranspose()
+layertype(l::DepthwiseConv) = ParDepthwiseConv()
 
 # Invariant layers with parameters, i.e nin == nout always and parameter selection must
 # be performed
@@ -23,10 +27,10 @@ abstract type ParInvLayer <: Layer end
 struct ParDiagonal <: ParInvLayer end
 struct ParNorm <: ParInvLayer end
 layertype(l::Flux.Diagonal) = ParDiagonal()
-layertype(l::LayerNorm) = ParInvLayer()
-layertype(l::BatchNorm) = ParInvLayer()
-layertype(l::InstanceNorm) = ParInvLayer()
-layertype(l::GroupNorm) = ParInvLayer()
+layertype(l::LayerNorm) = ParNorm()
+layertype(l::BatchNorm) = ParNorm()
+layertype(l::InstanceNorm) = ParNorm()
+layertype(l::GroupNorm) = ParNorm()
 
 # Transparent layers, i.e nin == nout always and there are no parameters
 struct TransparentLayer <: Layer end
