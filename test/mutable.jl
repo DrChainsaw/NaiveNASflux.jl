@@ -1,6 +1,7 @@
 import NaiveNASflux
 import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, layer, mutate
 using Flux
+import Flux: mapchildren
 using NaiveNASlib
 import InteractiveUtils:subtypes
 
@@ -22,7 +23,6 @@ import InteractiveUtils:subtypes
 
         @test select(mat, 1 => [2,-1,3,-1], 2 => [-1,1,-1,4]) == [0 2 0 11;0 0 0 0;0 3 0 12;0 0 0 0]
     end
-
 
     @testset "Dense MutableLayer" begin
 
@@ -157,28 +157,73 @@ import InteractiveUtils:subtypes
         assertlayer(m.layer, Wexp, bexp)
     end
 
-    @testset "LayerNorm MutableLayer" begin
-        m = MutableLayer(LayerNorm(3))
+    @testset "Normalization layers" begin
 
-        @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 3
-        weights(m.layer.diag)[1:end] = 1:3
-        bias(m.layer.diag)[1:end] = 1:3
+        @testset "LayerNorm MutableLayer" begin
+            m = MutableLayer(LayerNorm(3))
 
-        @test m(Float32[1,2,3]) == m.layer(Float32[1,2,3])
+            @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 3
+            weights(m.layer.diag)[1:end] = 1:3
+            bias(m.layer.diag)[1:end] = 1:3
 
-        inds = [1,3]
-        Wexp, bexp = weights(m.layer.diag)[inds], bias(m.layer.diag)[inds]
-        mutate_inputs(m, inds)
-        @test typeof(layer(m)) <: LayerNorm
-        assertlayer(m.layer.diag, Wexp, bexp)
-        
+            @test m(Float32[1,2,3]) == m.layer(Float32[1,2,3])
 
-        inds = [-1, 2, -1]
-        Wexp, bexp = Float32[0, weights(m.layer.diag)[2], 0], Float32[0, bias(m.layer.diag)[2], 0]
-        mutate_outputs(m, inds)
-        @test typeof(layer(m)) <: LayerNorm
-        assertlayer(m.layer.diag, Wexp, bexp)
+            inds = [1,3]
+            Wexp, bexp = weights(m.layer.diag)[inds], bias(m.layer.diag)[inds]
+            mutate_inputs(m, inds)
+            @test typeof(layer(m)) <: LayerNorm
+            assertlayer(m.layer.diag, Wexp, bexp)
+
+
+            inds = [-1, 2, -1]
+            Wexp, bexp = Float32[0, weights(m.layer.diag)[2], 0], Float32[0, bias(m.layer.diag)[2], 0]
+            mutate_outputs(m, inds)
+            @test typeof(layer(m)) <: LayerNorm
+            assertlayer(m.layer.diag, Wexp, bexp)
+        end
+
+        array(arr) = arr
+        array(arr::TrackedArray) = arr.data
+        setpar(::Any, x) = x
+        setpar(::TrackedArray, x) = param(x)
+
+        function assertnorm(l, meanexp, varexp)
+            @test l.β.data == meanexp
+            @test l.γ.data == varexp
+            @test l.μ == meanexp
+            @test l.σ² == varexp
+        end
+
+        function testnorm(l)
+            m = MutableLayer(l(5))
+            l_orig = layer(m)
+
+            @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 5
+            m.layer = mapchildren(par -> setpar(par, collect(Float32, 1:5)), layer(m))
+
+            inds = [1,3,4]
+            expall = Float32.(inds)
+            mutate_inputs(m, inds)
+            assertnorm(m.layer, inds, inds)
+
+            mutate_outputs(m, [-1, 2, -1])
+            assertnorm(m.layer, [0, 3, 0], [1, 3, 1])
+        end
+
+        @testset "BatchNorm MutableLayer" begin
+            testnorm(BatchNorm)
+        end
+
+        @testset "InstanceNorm MutableLayer" begin
+            testnorm(InstanceNorm)
+        end
+
+        @testset "GroupNorm MutableLayer" begin
+            testnorm(n -> GroupNorm(n, n))
+        end
+
     end
+
 
     @testset "LazyMutable Dense factory" begin
 

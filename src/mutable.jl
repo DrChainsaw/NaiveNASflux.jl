@@ -3,7 +3,9 @@ abstract type AbstractMutableComp end
 
 #Generic helper functions
 
-function select(pars::AbstractArray{T,N}, elements_per_dim...) where {T, N}
+select(pars::TrackedArray, elements_per_dim...; insval = 0) = param(select(pars.data, elements_per_dim..., insval=insval))
+
+function select(pars::AbstractArray{T,N}, elements_per_dim...; insval = 0) where {T, N}
     psize = collect(size(pars))
     assign = repeat(Any[Colon()], N)
     access = repeat(Any[Colon()], N)
@@ -19,7 +21,7 @@ function select(pars::AbstractArray{T,N}, elements_per_dim...) where {T, N}
         assign[dim] = newmap
         access[dim] = indskeep
     end
-    newpars = zeros(T, psize...)
+    newpars = zeros(T, psize...) .+ insval
     newpars[assign...] = pars[access...]
     return newpars
 end
@@ -72,10 +74,22 @@ function mutate(::ParDiagonal, m::MutableLayer, inds)
 end
 
 function mutate(::ParLayerNorm, m::MutableLayer, inds)
+    # LayerNorm is only a wrapped Diagonal. Just mutate the Diagonal and make a new LayerNorm of it
     proxy = MutableLayer(layer(m).diag)
     mutate(proxy, inputs=inds, outputs=inds)
     m.layer = LayerNorm(layer(proxy))
 end
+
+function mutate(::ParNorm, m::MutableLayer, inds)
+    ismean = false
+    parselect = function(x)
+        # Good? bad? I'm the guy who assumes mean and std type parameters will be visited in a certain order and uses a closure for that assumption
+        ismean = !ismean
+        return select(x, 1 => inds; insval = (ismean ? 0 : 1))
+    end
+    m.layer = Flux.mapchildren(parselect, m.layer)
+end
+
 
 newlayer(m::MutableLayer, w, b) = m.layer = newlayer(layertype(m), m, w, b)
 
