@@ -57,6 +57,7 @@ function mutate(::ParLayer, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m))
     newlayer(m, w, b)
 end
 
+
 function mutate(t::ParInvLayer, m::MutableLayer; inputs=missing, outputs=missing)
     @assert any(ismissing.((inputs, outputs))) || inputs == outputs "Try to mutate $inputs and $outputs for invariant layer $(m)!"
     ismissing(inputs) || return mutate(t, m, inputs)
@@ -68,6 +69,12 @@ function mutate(::ParDiagonal, m::MutableLayer, inds)
     w = select(weights(l), 1 => inds)
     b = select(bias(l), 1 => inds)
     newlayer(m, w, b)
+end
+
+function mutate(::ParLayerNorm, m::MutableLayer, inds)
+    proxy = MutableLayer(layer(m).diag)
+    mutate(proxy, inputs=inds, outputs=inds)
+    m.layer = LayerNorm(layer(proxy))
 end
 
 newlayer(m::MutableLayer, w, b) = m.layer = newlayer(layertype(m), m, w, b)

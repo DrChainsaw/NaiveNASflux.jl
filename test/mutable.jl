@@ -140,10 +140,11 @@ import InteractiveUtils:subtypes
         m = MutableLayer(Flux.Diagonal(4))
 
         @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 4
-        @test m(Float32[1,2,3,4]) == m.layer(Float32[1,2,3,4])
-
         weights(m.layer)[1:end] = 1:4
         bias(m.layer)[1:end] = 1:4
+
+        @test m(Float32[1,2,3,4]) == m.layer(Float32[1,2,3,4])
+
 
         inds = [1,3]
         Wexp, bexp = weights(m.layer)[inds], bias(m.layer)[inds]
@@ -154,6 +155,29 @@ import InteractiveUtils:subtypes
         Wexp, bexp = Float32[0, weights(m.layer)[2], 0], Float32[0, bias(m.layer)[2], 0]
         mutate_outputs(m, inds)
         assertlayer(m.layer, Wexp, bexp)
+    end
+
+    @testset "LayerNorm MutableLayer" begin
+        m = MutableLayer(LayerNorm(3))
+
+        @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 3
+        weights(m.layer.diag)[1:end] = 1:3
+        bias(m.layer.diag)[1:end] = 1:3
+
+        @test m(Float32[1,2,3]) == m.layer(Float32[1,2,3])
+
+        inds = [1,3]
+        Wexp, bexp = weights(m.layer.diag)[inds], bias(m.layer.diag)[inds]
+        mutate_inputs(m, inds)
+        @test typeof(layer(m)) <: LayerNorm
+        assertlayer(m.layer.diag, Wexp, bexp)
+        
+
+        inds = [-1, 2, -1]
+        Wexp, bexp = Float32[0, weights(m.layer.diag)[2], 0], Float32[0, bias(m.layer.diag)[2], 0]
+        mutate_outputs(m, inds)
+        @test typeof(layer(m)) <: LayerNorm
+        assertlayer(m.layer.diag, Wexp, bexp)
     end
 
     @testset "LazyMutable Dense factory" begin
