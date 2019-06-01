@@ -7,12 +7,21 @@ using Flux
         @test nin(Dense(3,4)) == 3
         @test nout(Dense(3,4)) == 4
 
-        for c in (Conv, ConvTranspose, DepthwiseConv)
-            @info "\ttest size for $c"
-            @test nin(c((1,2), 3=>6)) == 3
-            @test nout(c((1,2), 3=>6)) == 6
-        end
+        @test nin(Conv((1,2), 3=>6)) == 3
+        @test nout(Conv((1,2), 3=>6)) == 6
+
+        @test nin(ConvTranspose((1,2), 3=>6)) == 3
+        @test nout(ConvTranspose((1,2), 3=>6)) == 6
+
+        @test nin(DepthwiseConv((1,2), 3=>6)) == 3
+        @test nout(DepthwiseConv((1,2), 3=>6)) == 6
 
         @test nin(Flux.Diagonal(3)) == nout(Flux.Diagonal(3)) == 3
+
+        @test nin(LayerNorm(3)) == nout(LayerNorm(3)) == 3
+        @test nin(BatchNorm(3)) == nout(BatchNorm(3)) == 3
+        @test nin(InstanceNorm(3)) == nout(InstanceNorm(3)) == 3
+        @test nin(GroupNorm(3,1)) == nout(GroupNorm(3,1)) == 3
+
     end
 end

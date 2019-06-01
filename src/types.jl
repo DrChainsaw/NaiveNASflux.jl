@@ -25,9 +25,10 @@ layertype(l::DepthwiseConv) = ParDepthwiseConv()
 # be performed
 abstract type ParInvLayer <: Layer end
 struct ParDiagonal <: ParInvLayer end
+struct ParLayerNorm <: ParInvLayer end
 struct ParNorm <: ParInvLayer end
 layertype(l::Flux.Diagonal) = ParDiagonal()
-layertype(l::LayerNorm) = ParNorm()
+layertype(l::LayerNorm) = ParLayerNorm()
 layertype(l::BatchNorm) = ParNorm()
 layertype(l::InstanceNorm) = ParNorm()
 layertype(l::GroupNorm) = ParNorm()

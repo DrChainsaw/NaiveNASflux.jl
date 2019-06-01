@@ -9,6 +9,8 @@ NaiveNASlib.nout(::ParLayer, l) = size(weights(l), outdim(l))
 NaiveNASlib.nin(::ParInvLayer, l) = nout(l)
 
 NaiveNASlib.nout(::ParDiagonal, l) = length(weights(l))
+NaiveNASlib.nout(::ParInvLayer, l::LayerNorm) = nout(l.diag)
+NaiveNASlib.nout(::ParNorm, l) = length(l.β)
 
 indim(l) = indim(layertype(l))
 outdim(l) = outdim(layertype(l))
