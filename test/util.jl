@@ -9,5 +9,7 @@ using Flux
 
         @test nin(Conv((2,3), 4=>5)) == 4
         @test nout(Conv((2,3), 4=>5)) == 5
+
+        @test nin(Flux.Diagonal(3)) == nout(Flux.Diagonal(3)) == 3
     end
 end

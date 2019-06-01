@@ -43,16 +43,30 @@ NaiveNASlib.nout(m::MutableLayer) = nout(layer(m))
 
 function NaiveNASlib.mutate_inputs(m::MutableLayer, inputs::AbstractArray{<:Integer,1}...)
     @assert length(inputs) == 1 "Only one input per layer!"
-    mutate(m, inputs=inputs[1])
+    mutate(layertype(m), m, inputs=inputs[1])
 end
 
-NaiveNASlib.mutate_outputs(m::MutableLayer, outputs) = mutate(m, outputs=outputs)
 
-mutate(m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m)) = mutate(layertype(m), m, inputs, outputs)
-function mutate(::ParLayer, m::MutableLayer, inputs, outputs)
+NaiveNASlib.mutate_outputs(m::MutableLayer, outputs) = mutate(layertype(m), m, outputs=outputs)
+
+mutate(m::MutableLayer; inputs, outputs) = mutate(layertype(m), m, inputs=inputs, outputs=outputs)
+function mutate(::ParLayer, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m))
     l = layer(m)
     w = select(weights(l), outdim(l) => outputs, indim(l) => inputs)
     b = select(bias(l), 1 => outputs)
+    newlayer(m, w, b)
+end
+
+function mutate(t::ParInvLayer, m::MutableLayer; inputs=missing, outputs=missing)
+    @assert any(ismissing.((inputs, outputs))) || inputs == outputs "Try to mutate $inputs and $outputs for invariant layer $(m)!"
+    ismissing(inputs) || return mutate(t, m, inputs)
+    ismissing(outputs) || return mutate(t, m, outputs)
+end
+
+function mutate(::ParDiagonal, m::MutableLayer, inds)
+    l = layer(m)
+    w = select(weights(l), 1 => inds)
+    b = select(bias(l), 1 => inds)
     newlayer(m, w, b)
 end
 
@@ -60,6 +74,7 @@ newlayer(m::MutableLayer, w, b) = m.layer = newlayer(layertype(m), m, w, b)
 
 newlayer(::ParDense, m::MutableLayer, w, b) = Dense(param(w), param(b), deepcopy(layer(m).σ))
 newlayer(::ParConv, m::MutableLayer, w, b) = setproperties(layer(m), (weight=param(w), bias=param(b), σ=deepcopy(layer(m).σ)))
+newlayer(::ParDiagonal, m::MutableLayer, w, b) = Flux.Diagonal(param(w), param(b))
 
 
 """

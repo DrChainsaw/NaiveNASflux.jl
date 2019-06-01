@@ -19,8 +19,10 @@ layertype(l::DepthwiseConv) = ParConv()
 
 # Invariant layers with parameters, i.e nin == nout always and parameter selection must
 # be performed
-struct ParInvLayer <: Layer end
-layertype(l::Flux.Diagonal) = ParInvLayer()
+abstract type ParInvLayer <: Layer end
+struct ParDiagonal <: ParInvLayer end
+struct ParNorm <: ParInvLayer end
+layertype(l::Flux.Diagonal) = ParDiagonal()
 layertype(l::LayerNorm) = ParInvLayer()
 layertype(l::BatchNorm) = ParInvLayer()
 layertype(l::InstanceNorm) = ParInvLayer()

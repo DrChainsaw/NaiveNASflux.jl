@@ -24,7 +24,7 @@ import InteractiveUtils:subtypes
     end
 
 
-    @testset "MutableLayer dense" begin
+    @testset "Dense MutableLayer" begin
 
         m = MutableLayer(Dense(2,3))
 
@@ -60,7 +60,7 @@ import InteractiveUtils:subtypes
         assertlayer(m.layer, Wexp, bexp)
     end
 
-    @testset "MutableLayer Conv" begin
+    @testset "Conv MutableLayer" begin
 
         m = MutableLayer(Conv((2,3),(4=>5)))
 
@@ -107,7 +107,27 @@ import InteractiveUtils:subtypes
         assertlayer(m.layer, Wexp, bexp)
     end
 
-    @testset "LazyMutable dense factory" begin
+    @testset "Diagonal MutableLayer" begin
+        m = MutableLayer(Flux.Diagonal(4))
+
+        @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 4
+        @test m(Float32[1,2,3,4]) == m.layer(Float32[1,2,3,4])
+
+        weights(m.layer)[1:end] = 1:4
+        bias(m.layer)[1:end] = 1:4
+
+        inds = [1,3]
+        Wexp, bexp = weights(m.layer)[inds], bias(m.layer)[inds]
+        mutate_inputs(m, inds)
+        assertlayer(m.layer, Wexp, bexp)
+
+        inds = [-1, 2, -1]
+        Wexp, bexp = Float32[0, weights(m.layer)[2], 0], Float32[0, bias(m.layer)[2], 0]
+        mutate_outputs(m, inds)
+        assertlayer(m.layer, Wexp, bexp)
+    end
+
+    @testset "LazyMutable Dense factory" begin
 
         struct DenseFactory end
         function NaiveNASflux.dispatch!(m::LazyMutable, ::DenseFactory, x)
@@ -136,7 +156,7 @@ import InteractiveUtils:subtypes
         @test m(Float32[0,1,2,3,4]) == expected
     end
 
-    @testset "LazyMutable with MutableLayer" begin
+    @testset "LazyMutable with Dense MutableLayer" begin
         m = MutableLayer(Dense(3,4))
         mlazy = LazyMutable(m)
 
