@@ -26,12 +26,16 @@ layertype(l::DepthwiseConv) = ParDepthwiseConv()
 abstract type ParInvLayer <: Layer end
 struct ParDiagonal <: ParInvLayer end
 struct ParLayerNorm <: ParInvLayer end
-struct ParNorm <: ParInvLayer end
+abstract type  ParNorm <: ParInvLayer end
+struct ParBatchNorm <: ParNorm end
+struct ParInstanceNorm <: ParNorm end
+struct ParGroupNorm <: ParNorm end
+
 layertype(l::Flux.Diagonal) = ParDiagonal()
 layertype(l::LayerNorm) = ParLayerNorm()
-layertype(l::BatchNorm) = ParNorm()
-layertype(l::InstanceNorm) = ParNorm()
-layertype(l::GroupNorm) = ParNorm()
+layertype(l::BatchNorm) = ParBatchNorm()
+layertype(l::InstanceNorm) = ParInstanceNorm()
+layertype(l::GroupNorm) = ParGroupNorm()
 
 # Transparent layers, i.e nin == nout always and there are no parameters
 struct TransparentLayer <: Layer end

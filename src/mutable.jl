@@ -81,13 +81,39 @@ function mutate(::ParLayerNorm, m::MutableLayer, inds)
 end
 
 function mutate(::ParNorm, m::MutableLayer, inds)
+    # Good? bad? I'm the guy who assumes mean and std type parameters will be visited in a certain order and uses a closure for that assumption
     ismean = false
     parselect = function(x)
-        # Good? bad? I'm the guy who assumes mean and std type parameters will be visited in a certain order and uses a closure for that assumption
         ismean = !ismean
         return select(x, 1 => inds; insval = (ismean ? 0 : 1))
     end
     m.layer = Flux.mapchildren(parselect, m.layer)
+end
+
+function mutate(::ParGroupNorm, m::MutableLayer, inds)
+
+    l = m.layer
+    ngroups = l.G
+    nchannels = length(inds)
+    # Make a "best fit" to new group size, but don't allow 1 as group size
+    g_alts = filter(ga -> ga > 1, findall(r -> r == 0, nchannels .% (1:nchannels)))
+    ngroups = g_alts[argmin(abs.(g_alts .- ngroups))]
+
+    nchannels_per_group = div(nchannels, ngroups)
+    # Map indices to (new) groups
+    inds_groups = ceil.(Int, map(ind -> ind > 0 ? ind / nchannels_per_group : ind, inds))
+    # TODO: Select the most commonly occuring index in each column (except -1)
+    inds_groups = reshape(inds_groups, nchannels_per_group, ngroups)[1,:]
+
+    sizetoinds = Dict(nin(l) => inds, l.G => inds_groups)
+
+    ismean = false
+    parselect = function(x)
+        ismean = !ismean
+        return select(x, 1 => sizetoinds[length(x)]; insval = (ismean ? 0 : 1))
+    end
+    m.layer = Flux.mapchildren(parselect, m.layer)
+    m.layer.G = ngroups
 end
 
 

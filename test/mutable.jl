@@ -220,10 +220,23 @@ import InteractiveUtils:subtypes
 
         @testset "GroupNorm MutableLayer" begin
             testnorm(n -> GroupNorm(n, n))
+
+            #Test with groups of 2
+            m = MutableLayer(GroupNorm(6,3))
+            m.layer = mapchildren(par -> setpar(par, collect(Float32, 1:length(par))), layer(m))
+            mutate_inputs(m, [1,2,5,6])
+            @test layer(m).μ == [1, 3]
+            @test layer(m).σ² == [1, 3]
+
+            # Now when dimensions don't add up: size 8 becomes size 9
+            m = MutableLayer(GroupNorm(8,4))
+            mutate_inputs(m, [1,3,-1,-1,4,-1,7,-1,8])
+            # Current alg for selecting which group to pick in this case is poor, don't wanna test it :)
+            @test length(layer(m).μ) == 3
+            @test length(layer(m).σ²) == 3
+
         end
-
     end
-
 
     @testset "LazyMutable Dense factory" begin
 
@@ -274,5 +287,4 @@ import InteractiveUtils:subtypes
 
         @test expected == m(Float32[2,3])
     end
-
 end
