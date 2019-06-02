@@ -23,5 +23,12 @@ using Flux
         @test nin(InstanceNorm(3)) == nout(InstanceNorm(3)) == 3
         @test nin(GroupNorm(3,1)) == nout(GroupNorm(3,1)) == 3
 
+        @test nin(RNN(3,4)) == 3
+        @test nout(RNN(3,4)) == 4
+        @test nin(LSTM(3,4)) == 3
+        @test nout(LSTM(3,4)) == 4
+        @test nin(GRU(3,4)) == 3
+        @test nout(GRU(3,4)) == 4
+
     end
 end

@@ -7,16 +7,20 @@ layertype(l::T) where T = @error "No layer type defined for $T"
 # w.r.t what weights and biases means in terms of number of inputs and number of outputs
 abstract type ParLayer <: Layer end
 struct ParDense <: ParLayer end
-struct ParRnn <:ParLayer end
+layertype(l::Dense) = ParDense()
+
+abstract type ParRecurrent <:ParLayer end
+struct ParRnn <: ParRecurrent end
+struct ParLstm <: ParRecurrent end
+struct ParGru <: ParRecurrent end
+layertype(l::Flux.Recur{<:Flux.RNNCell}) = ParRnn()
+layertype(l::Flux.Recur{<:Flux.LSTMCell}) = ParLstm()
+layertype(l::Flux.Recur{<:Flux.GRUCell}) = ParGru()
 
 abstract type ParConv <: ParLayer end
 struct ParConvVanilla <: ParConv end
 struct ParConvTranspose  <: ParConv end
 struct ParDepthwiseConv <: ParConv  end
-
-layertype(l::Dense) = ParDense()
-layertype(l::Flux.Recur) = ParRnn()
-
 layertype(l::Conv) = ParConvVanilla()
 layertype(l::ConvTranspose) = ParConvTranspose()
 layertype(l::DepthwiseConv) = ParDepthwiseConv()

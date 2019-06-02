@@ -12,11 +12,21 @@ NaiveNASlib.nout(::ParDiagonal, l) = length(weights(l))
 NaiveNASlib.nout(::ParInvLayer, l::LayerNorm) = nout(l.diag)
 NaiveNASlib.nout(::ParNorm, l) = length(l.β)
 
+NaiveNASlib.nout(::ParRecurrent, l) = size(weights(l), outdim(l)) / outscale(l) 
+
+outscale(l) = outscale(layertype(l))
+outscale(::ParRnn) = 1
+outscale(::ParLstm) = 4
+outscale(::ParGru) = 3
+
 indim(l) = indim(layertype(l))
 outdim(l) = outdim(layertype(l))
 
 indim(::ParDense) = 2
 outdim(::ParDense) = 1
+
+indim(::ParRecurrent) = 2
+outdim(::ParRecurrent) = 1
 
 indim(::ParConv) = 4
 outdim(::ParConv) = 3
@@ -35,3 +45,8 @@ bias(::ParConv, l) = l.bias.data
 
 weights(::ParDiagonal, l) = l.α.data
 bias(::ParDiagonal, l) = l.β.data
+
+weights(::ParRecurrent, l) = l.cell.Wi
+bias(::ParRecurrent, l) = l.cell.b
+hiddenweights(::ParRecurrent, l) = l.cell.Wh
+hiddenstate(::ParRecurrent, l) = l.cell.h
