@@ -286,7 +286,10 @@ import InteractiveUtils:subtypes
             mutate_outputs(m, inds)
             assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
 
-            @test size(m(reshape(collect(Float32, 1:2*10), 2,10))) == (3, 10)
+            #Sanity check that the layer still seems to work after mutation
+            output = m(reshape(collect(Float32, 1:2*10), 2,10))
+            @test size(output) == (3, 10)
+            @test isnan.(output) == falses(size(output))
         end
 
         @testset "LSTM MutableLayer" begin
@@ -307,17 +310,54 @@ import InteractiveUtils:subtypes
 
             inds = [1,-1, 2]
             wi = weights(layer(m))
-            scalerange = (0:outscale(layer(m))-1) .* outscale(layer(m))
+            scalerange = (0:outscale(layer(m))-1) .* nout(layer(m))
             Wiexp = permutedims(mapfoldl(offs -> hcat(wi[1+offs, :], zeros(Float32, 2), wi[2+offs, :]), hcat, scalerange))
             wh = hiddenweights(layer(m))
             Whexp = mapfoldl(offs -> [wh[1+offs, 1] 0 wh[1+offs, 2]; zeros(Float32, 1, 3); wh[2+offs, 1] 0 wh[2+offs, 2]], vcat, scalerange)
-            bexp = mapfoldl(offs -> Float32[bias(layer(m))[1+offs], 0, bias(layer(m))[2+offs]], vcat, scalerange) 
+            bexp = mapfoldl(offs -> Float32[bias(layer(m))[1+offs], 0, bias(layer(m))[2+offs]], vcat, scalerange)
             hexp = map(hs -> Float32[hs[1], 0, hs[2]], hiddenstate(layer(m)))
             sexp = map(hs -> Float32[hs[1], 0, hs[2]], state(layer(m)))
             mutate_outputs(m, inds)
             assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
 
-            @test size(m(reshape(collect(Float32, 1:2*10), 2,10))) == (3, 10)
+            #Sanity check that the layer still seems to work after mutation
+            output = m(reshape(collect(Float32, 1:2*10), 2,10))
+            @test size(output) == (3, 10)
+            @test isnan.(output) == falses(size(output))
+        end
+
+        @testset "GRU MutableLayer" begin
+            m = MutableLayer(GRU(3, 4))
+            setparsrnn(layer(m))
+
+            @test nin(m) == nin(m.layer) == 3
+            @test nout(m) == nout(m.layer) == 4
+
+            inds = [1, 3]
+            Wiexp = weights(layer(m))[:, inds]
+            Whexp = copy(hiddenweights(layer(m)))
+            bexp = copy(bias(layer(m)))
+            hexp = copy(hiddenstate(layer(m)))
+            sexp = copy(state(layer(m)))
+            mutate_inputs(m, inds)
+            assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
+
+            inds = [1,-1, 2]
+            wi = weights(layer(m))
+            scalerange = (0:outscale(layer(m))-1) .* nout(layer(m))
+            Wiexp = permutedims(mapfoldl(offs -> hcat(wi[1+offs, :], zeros(Float32, 2), wi[2+offs, :]), hcat, scalerange))
+            wh = hiddenweights(layer(m))
+            Whexp = mapfoldl(offs -> [wh[1+offs, 1] 0 wh[1+offs, 2]; zeros(Float32, 1, 3); wh[2+offs, 1] 0 wh[2+offs, 2]], vcat, scalerange)
+            bexp = mapfoldl(offs -> Float32[bias(layer(m))[1+offs], 0, bias(layer(m))[2+offs]], vcat, scalerange)
+            hexp = Float32[hiddenstate(layer(m))[1], 0, hiddenstate(layer(m))[2]]
+            sexp = Float32[state(layer(m))[1], 0, state(layer(m))[2]]
+            mutate_outputs(m, inds)
+            assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
+
+            #Sanity check that the layer still seems to work after mutation
+            output = m(reshape(collect(Float32, 1:2*10), 2,10))
+            @test size(output) == (3, 10)
+            @test isnan.(output) == falses(size(output))
         end
     end
     @testset "LazyMutable" begin
