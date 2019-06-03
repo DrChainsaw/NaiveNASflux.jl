@@ -219,14 +219,14 @@ function NaiveNASlib.mutate_inputs(m::LazyMutable, inputs::AbstractArray{<:Integ
     m.inputs == inputs[1] && return
 
     m.mutable = ResetInAndOut(trigger_mutation(m.mutable))
-    m.inputs = inputs[1]
+    m.inputs = copy(inputs[1])
 end
 
 function NaiveNASlib.mutate_outputs(m::LazyMutable, outputs::AbstractArray{<:Integer,1})
     outputs == m.outputs && return
 
     m.mutable = ResetInAndOut(trigger_mutation(m.mutable))
-    m.outputs = outputs
+    m.outputs = copy(outputs)
 end
 
 NaiveNASlib.mutate_inputs(m::LazyMutable, nin::Integer...) = mutate_inputs(m, map(n -> collect(1:n), nin)...)
