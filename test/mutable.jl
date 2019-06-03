@@ -1,5 +1,5 @@
 import NaiveNASflux
-import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, layer, mutate
+import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, layer, mutate, hiddenweights, hiddenstate, state, outscale
 using Flux
 import Flux: mapchildren
 using NaiveNASlib
@@ -59,81 +59,83 @@ import InteractiveUtils:subtypes
         mutate_outputs(m, inds)
         assertlayer(m.layer, Wexp, bexp)
     end
+    @testset "Convolutional layers" begin
 
-    @testset "Conv MutableLayer" begin
-        m = MutableLayer(Conv((2,3),(4=>5)))
+        @testset "Conv MutableLayer" begin
+            m = MutableLayer(Conv((2,3),(4=>5)))
 
-        @test nin(m) == nin(m.layer) == 4
-        @test nout(m) == nout(m.layer) == 5
-        input = reshape(collect(Float32, 1:3*4*4), 3, 4, 4, 1)
-        @test m(input) == m.layer(input)
+            @test nin(m) == nin(m.layer) == 4
+            @test nout(m) == nout(m.layer) == 5
+            input = reshape(collect(Float32, 1:3*4*4), 3, 4, 4, 1)
+            @test m(input) == m.layer(input)
 
-        inds = [1,3]
-        Wexp, bexp = weights(m.layer)[:,:,inds,:], bias(m.layer)
-        mutate_inputs(m, inds)
-        assertlayer(m.layer, Wexp, bexp)
+            inds = [1,3]
+            Wexp, bexp = weights(m.layer)[:,:,inds,:], bias(m.layer)
+            mutate_inputs(m, inds)
+            assertlayer(m.layer, Wexp, bexp)
 
-        inds = [1,2,4]
-        Wexp, bexp = weights(m.layer)[:,:,:,inds], bias(m.layer)[inds]
-        mutate_outputs(m, inds)
-        assertlayer(m.layer, Wexp, bexp)
+            inds = [1,2,4]
+            Wexp, bexp = weights(m.layer)[:,:,:,inds], bias(m.layer)[inds]
+            mutate_outputs(m, inds)
+            assertlayer(m.layer, Wexp, bexp)
 
-        inds = [1,-1, 2]
-        wsize = deleteat!(collect(size(weights(m.layer))), 3)
+            inds = [1,-1, 2]
+            wsize = deleteat!(collect(size(weights(m.layer))), 3)
 
-        # Nothing beats working in four dimensions...
-        # Stack 3D arrays in a 4:th dimension and then swap dim 3 and 4
-        Wexp = permutedims(cat(
-        weights(m.layer)[:,:,1,:],
-        zeros(Float32, wsize...),
-        weights(m.layer)[:,:,2,:], dims=4), [1,2,4,3])
+            # Nothing beats working in four dimensions...
+            # Stack 3D arrays in a 4:th dimension and then swap dim 3 and 4
+            Wexp = permutedims(cat(
+            weights(m.layer)[:,:,1,:],
+            zeros(Float32, wsize...),
+            weights(m.layer)[:,:,2,:], dims=4), [1,2,4,3])
 
-        mutate_inputs(m, inds)
-        assertlayer(m.layer, Wexp, bexp)
+            mutate_inputs(m, inds)
+            assertlayer(m.layer, Wexp, bexp)
 
-        inds = [-1, 1, -1, 3, -1]
-        wsize = deleteat!(collect(size(weights(m.layer))), 4)
+            inds = [-1, 1, -1, 3, -1]
+            wsize = deleteat!(collect(size(weights(m.layer))), 4)
 
-        Wexp = cat(
-        zeros(Float32, wsize...),
-        weights(m.layer)[:,:,:,1],
-        zeros(Float32, wsize...),
-        weights(m.layer)[:,:,:,3],
-        zeros(Float32,wsize...), dims=4)
+            Wexp = cat(
+            zeros(Float32, wsize...),
+            weights(m.layer)[:,:,:,1],
+            zeros(Float32, wsize...),
+            weights(m.layer)[:,:,:,3],
+            zeros(Float32,wsize...), dims=4)
 
-        bexp = Float32[0, bias(m.layer)[1], 0, bias(m.layer)[3], 0]
-        mutate_outputs(m, inds)
-        assertlayer(m.layer, Wexp, bexp)
-    end
+            bexp = Float32[0, bias(m.layer)[1], 0, bias(m.layer)[3], 0]
+            mutate_outputs(m, inds)
+            assertlayer(m.layer, Wexp, bexp)
+        end
 
-    @testset "ConvTranspose MutableLayer" begin
-        m = MutableLayer(ConvTranspose((2,3),(4=>5)))
+        @testset "ConvTranspose MutableLayer" begin
+            m = MutableLayer(ConvTranspose((2,3),(4=>5)))
 
-        @test nin(m) == nin(m.layer) == 4
-        @test nout(m) == nout(m.layer) == 5
-        input = reshape(collect(Float32, 1:3*4*4), 3, 4, 4, 1)
-        @test m(input) == m.layer(input)
+            @test nin(m) == nin(m.layer) == 4
+            @test nout(m) == nout(m.layer) == 5
+            input = reshape(collect(Float32, 1:3*4*4), 3, 4, 4, 1)
+            @test m(input) == m.layer(input)
 
-        inputs = [1,3]
-        outputs = [1,2,4]
-        Wexp, bexp = weights(m.layer)[:,:,outputs,inputs], bias(m.layer)[outputs]
-        mutate(m, inputs=inputs, outputs=outputs)
-        assertlayer(m.layer, Wexp, bexp)
-    end
+            inputs = [1,3]
+            outputs = [1,2,4]
+            Wexp, bexp = weights(m.layer)[:,:,outputs,inputs], bias(m.layer)[outputs]
+            mutate(m, inputs=inputs, outputs=outputs)
+            assertlayer(m.layer, Wexp, bexp)
+        end
 
-    @testset "DepthwiseConv MutableLayer" begin
-        m = MutableLayer(DepthwiseConv((2,2),(3=>6)))
+        @testset "DepthwiseConv MutableLayer" begin
+            m = MutableLayer(DepthwiseConv((2,2),(3=>6)))
 
-        @test nin(m) == nin(m.layer) == 3
-        @test nout(m) == nout(m.layer) == 6
-        input = reshape(collect(Float32, 1:3*3*3), 3, 3, 3, 1)
-        @test m(input) == m.layer(input)
+            @test nin(m) == nin(m.layer) == 3
+            @test nout(m) == nout(m.layer) == 6
+            input = reshape(collect(Float32, 1:3*3*3), 3, 3, 3, 1)
+            @test m(input) == m.layer(input)
 
-        inputs = [1, 3]
-        outputs = [1, 2, 4, 5]
-        Wexp, bexp = weights(m.layer)[:,:,outputs,inputs], bias(m.layer)[outputs]
-        mutate(m, inputs=inputs, outputs=outputs)
-        assertlayer(m.layer, Wexp, bexp)
+            inputs = [1, 3]
+            outputs = [1, 2, 4, 5]
+            Wexp, bexp = weights(m.layer)[:,:,outputs,inputs], bias(m.layer)[outputs]
+            mutate(m, inputs=inputs, outputs=outputs)
+            assertlayer(m.layer, Wexp, bexp)
+        end
     end
 
     @testset "Diagonal MutableLayer" begin
@@ -144,7 +146,6 @@ import InteractiveUtils:subtypes
         bias(m.layer)[1:end] = 1:4
 
         @test m(Float32[1,2,3,4]) == m.layer(Float32[1,2,3,4])
-
 
         inds = [1,3]
         Wexp, bexp = weights(m.layer)[inds], bias(m.layer)[inds]
@@ -238,53 +239,136 @@ import InteractiveUtils:subtypes
         end
     end
 
-    @testset "LazyMutable Dense factory" begin
+    @testset "Recurrent layers" begin
 
-        struct DenseFactory end
-        function NaiveNASflux.dispatch!(m::LazyMutable, ::DenseFactory, x)
-            m.mutable = MutableLayer(Dense(nin(m), nout(m)))
-            return m(x)
+        function assertrecurrent(l, Wiexp, Whexp, bexp, hexp, sexp)
+            assertlayer(l, Wiexp, bexp)
+            @test hiddenweights(l) == Whexp
+            @test hiddenstate(l) == hexp
+            @test state(l) == sexp
         end
-        m = LazyMutable(DenseFactory(), 2, 3)
 
-        @test typeof(m.mutable) == DenseFactory
-        expected = m(Float32[2,3])
+        function setparsrnn(l)
+            bias(l)[1:end] = collect(Float32, 1:nout(l)*outscale(l))
+            hiddenstate(l)[1:end] = collect(Float32, 1:nout(l))
+            state(l)[1:end] = collect(Float32, 1:nout(l))
+        end
 
-        @test typeof(m.mutable) == MutableLayer
-        @test m(Float32[2,3]) == expected
+        function setparslstm(l)
+            bias(l)[1:end] = collect(Float32, 1:nout(l)*outscale(l))
+            foreach(h -> h[1:end] = collect(Float32, 1:nout(l)), hiddenstate(l))
+            foreach(h -> h[1:end] = collect(Float32, 1:nout(l)), state(l))
+        end
 
-        #Now mutate before create
-        m = LazyMutable(DenseFactory(), 2, 3)
+        @testset "RNN MutableLayer" begin
+            m = MutableLayer(RNN(3, 4))
+            setparsrnn(layer(m))
 
-        mutate_inputs(m, 5)
-        mutate_outputs(m, 4)
+            @test nin(m) == nin(m.layer) == 3
+            @test nout(m) == nout(m.layer) == 4
 
-        #No eagerness allowed :)
-        @test m.mutable != MutableLayer
-        expected = m(Float32[0,1,2,3,4])
+            inds = [1, 3]
+            Wiexp = weights(layer(m))[:, inds]
+            Whexp = copy(hiddenweights(layer(m)))
+            bexp = copy(bias(layer(m)))
+            hexp = copy(hiddenstate(layer(m)))
+            sexp = copy(state(layer(m)))
+            mutate_inputs(m, inds)
+            assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
 
-        @test typeof(m.mutable) == MutableLayer
-        @test m(Float32[0,1,2,3,4]) == expected
+            inds = [1,-1, 2]
+            Wiexp = permutedims(hcat(weights(layer(m))[1, :], zeros(Float32, 2), weights(layer(m))[2, :]))
+            wh = hiddenweights(layer(m))
+            Whexp = [wh[1, 1] 0 wh[1, 2]; zeros(Float32, 1, 3); wh[2, 1] 0 wh[2, 2]]
+            bexp = Float32[bias(layer(m))[1], 0, bias(layer(m))[2]]
+            hexp = Float32[hiddenstate(layer(m))[1], 0, hiddenstate(layer(m))[2]]
+            sexp = Float32[state(layer(m))[1], 0, state(layer(m))[2]]
+            mutate_outputs(m, inds)
+            assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
+
+            @test size(m(reshape(collect(Float32, 1:2*10), 2,10))) == (3, 10)
+        end
+
+        @testset "LSTM MutableLayer" begin
+            m = MutableLayer(LSTM(3, 4))
+            setparslstm(layer(m))
+
+            @test nin(m) == nin(m.layer) == 3
+            @test nout(m) == nout(m.layer) == 4
+
+            inds = [1, 3]
+            Wiexp = weights(layer(m))[:, inds]
+            Whexp = copy(hiddenweights(layer(m)))
+            bexp = copy(bias(layer(m)))
+            hexp = copy(hiddenstate(layer(m)))
+            sexp = copy(state(layer(m)))
+            mutate_inputs(m, inds)
+            assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
+
+            inds = [1,-1, 2]
+            wi = weights(layer(m))
+            scalerange = (0:outscale(layer(m))-1) .* outscale(layer(m))
+            Wiexp = permutedims(mapfoldl(offs -> hcat(wi[1+offs, :], zeros(Float32, 2), wi[2+offs, :]), hcat, scalerange))
+            wh = hiddenweights(layer(m))
+            Whexp = mapfoldl(offs -> [wh[1+offs, 1] 0 wh[1+offs, 2]; zeros(Float32, 1, 3); wh[2+offs, 1] 0 wh[2+offs, 2]], vcat, scalerange)
+            bexp = mapfoldl(offs -> Float32[bias(layer(m))[1+offs], 0, bias(layer(m))[2+offs]], vcat, scalerange) 
+            hexp = map(hs -> Float32[hs[1], 0, hs[2]], hiddenstate(layer(m)))
+            sexp = map(hs -> Float32[hs[1], 0, hs[2]], state(layer(m)))
+            mutate_outputs(m, inds)
+            assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
+
+            @test size(m(reshape(collect(Float32, 1:2*10), 2,10))) == (3, 10)
+        end
     end
+    @testset "LazyMutable" begin
+        @testset "LazyMutable Dense factory" begin
 
-    @testset "LazyMutable with Dense MutableLayer" begin
-        m = MutableLayer(Dense(3,4))
-        mlazy = LazyMutable(m)
+            struct DenseFactory end
+            function NaiveNASflux.dispatch!(m::LazyMutable, ::DenseFactory, x)
+                m.mutable = MutableLayer(Dense(nin(m), nout(m)))
+                return m(x)
+            end
+            m = LazyMutable(DenseFactory(), 2, 3)
 
-        Wexp = weights(layer(m))
-        bexp = bias(layer(m))
+            @test typeof(m.mutable) == DenseFactory
+            expected = m(Float32[2,3])
 
-        mutate_inputs(mlazy, [1, 3])
-        assertlayer(layer(m), Wexp, bexp)
+            @test typeof(m.mutable) == MutableLayer
+            @test m(Float32[2,3]) == expected
 
-        mutate_outputs(mlazy, [2, 4, -1])
-        assertlayer(layer(m), Wexp, bexp)
+            #Now mutate before create
+            m = LazyMutable(DenseFactory(), 2, 3)
 
-        expected = mlazy(Float32[2,3])
+            mutate_inputs(m, 5)
+            mutate_outputs(m, 4)
 
-        @test nin(mlazy) == nin(m) == 2
-        @test nout(mlazy) == nout(m) == 3
+            #No eagerness allowed :)
+            @test m.mutable != MutableLayer
+            expected = m(Float32[0,1,2,3,4])
 
-        @test expected == m(Float32[2,3])
+            @test typeof(m.mutable) == MutableLayer
+            @test m(Float32[0,1,2,3,4]) == expected
+        end
+
+        @testset "LazyMutable with Dense MutableLayer" begin
+            m = MutableLayer(Dense(3,4))
+            mlazy = LazyMutable(m)
+
+            Wexp = weights(layer(m))
+            bexp = bias(layer(m))
+
+            mutate_inputs(mlazy, [1, 3])
+            assertlayer(layer(m), Wexp, bexp)
+
+            mutate_outputs(mlazy, [2, 4, -1])
+            assertlayer(layer(m), Wexp, bexp)
+
+            expected = mlazy(Float32[2,3])
+
+            @test nin(mlazy) == nin(m) == 2
+            @test nout(mlazy) == nout(m) == 3
+
+            @test expected == m(Float32[2,3])
+        end
     end
 end

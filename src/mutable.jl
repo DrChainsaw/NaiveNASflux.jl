@@ -59,6 +59,42 @@ function mutate(::ParLayer, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m))
     newlayer(m, w, b)
 end
 
+function mutate(t::ParRecurrent, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m))
+    l = layer(m)
+    outputs_scaled = mapfoldl(vcat, 1:outscale(l)) do i
+        offs = (i-1) * nout(l)
+        return map(x -> x > 0 ? x + offs : x, outputs)
+    end
+    
+    wi = select(weights(l), outdim(l) => outputs_scaled, indim(l) => inputs)
+    wh = select(hiddenweights(l), 1 => outputs_scaled, 2 => outputs)
+    b = select(bias(l), 1 => outputs_scaled)
+    mutate_recurrent_state(t, m, outputs, wi, wh, b)
+end
+
+function mutate_recurrent_state(::ParRecurrent, m::MutableLayer, outputs, wi, wh, b)
+    l = layer(m)
+    h = select(hiddenstate(l), 1 => outputs)
+    s = select(state(l), 1 => outputs)
+
+    cellnew = setproperties(layer(m).cell, (Wi=param(wi), Wh=param(wh), b = param(b), h = param(h)))
+    lnew = setproperties(layer(m), (cell=cellnew, state = param(s)))
+    m.layer = lnew
+end
+
+function mutate_recurrent_state(::ParLstm, m::MutableLayer, outputs, wi, wh, b)
+    l = layer(m)
+    hcurr, scurr = hiddenstate(l), state(l)
+    hc = select.(hcurr, repeat([1 => outputs], length(hcurr)))
+    s = select.(scurr, repeat([1 => outputs], length(scurr)))
+
+    cellnew = setproperties(layer(m).cell, (Wi=param(wi), Wh=param(wh), b = param(b), h = param(hc[1]), c = param(hc[2])))
+    lnew = setproperties(layer(m), (cell=cellnew, state = tuple(param.(s)...)))
+    m.layer = lnew
+
+    return (h = hc[1], c = hc[2]), tuple(param.(s))
+end
+
 
 function mutate(t::ParInvLayer, m::MutableLayer; inputs=missing, outputs=missing)
     @assert any(ismissing.((inputs, outputs))) || inputs == outputs "Try to mutate $inputs and $outputs for invariant layer $(m)!"
