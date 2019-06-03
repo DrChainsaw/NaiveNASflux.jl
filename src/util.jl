@@ -3,57 +3,57 @@
 NaiveNASlib.nin(l) = nin(layertype(l), l)
 NaiveNASlib.nout(l) = nout(layertype(l), l)
 
-NaiveNASlib.nin(::ParLayer, l) = size(weights(l), indim(l))
-NaiveNASlib.nout(::ParLayer, l) = size(weights(l), outdim(l))
+NaiveNASlib.nin(::FluxParLayer, l) = size(weights(l), indim(l))
+NaiveNASlib.nout(::FluxParLayer, l) = size(weights(l), outdim(l))
 
-NaiveNASlib.nin(::ParInvLayer, l) = nout(l)
+NaiveNASlib.nin(::FluxParInvLayer, l) = nout(l)
 
-NaiveNASlib.nout(::ParDiagonal, l) = length(weights(l))
-NaiveNASlib.nout(::ParInvLayer, l::LayerNorm) = nout(l.diag)
-NaiveNASlib.nout(::ParNorm, l) = length(l.β)
+NaiveNASlib.nout(::FluxDiagonal, l) = length(weights(l))
+NaiveNASlib.nout(::FluxParInvLayer, l::LayerNorm) = nout(l.diag)
+NaiveNASlib.nout(::FluxParNorm, l) = length(l.β)
 
-NaiveNASlib.nout(::ParRecurrent, l) = div(size(weights(l), outdim(l)), outscale(l))
+NaiveNASlib.nout(::FluxRecurrent, l) = div(size(weights(l), outdim(l)), outscale(l))
 
 outscale(l) = outscale(layertype(l))
-outscale(::ParRnn) = 1
-outscale(::ParLstm) = 4
-outscale(::ParGru) = 3
+outscale(::FluxRnn) = 1
+outscale(::FluxLstm) = 4
+outscale(::FluxGru) = 3
 
 indim(l) = indim(layertype(l))
 outdim(l) = outdim(layertype(l))
 
-indim(::ParDense) = 2
-outdim(::ParDense) = 1
+indim(::FluxDense) = 2
+outdim(::FluxDense) = 1
 
-indim(::ParRecurrent) = 2
-outdim(::ParRecurrent) = 1
+indim(::FluxRecurrent) = 2
+outdim(::FluxRecurrent) = 1
 
-indim(::ParConv) = 4
-outdim(::ParConv) = 3
-indim(::ParConvVanilla) = 3
-outdim(::ParConvVanilla) = 4
+indim(::FluxConvolutional) = 4
+outdim(::FluxConvolutional) = 3
+indim(::FluxConv) = 3
+outdim(::FluxConv) = 4
 
 # Note: Contrary to other ML frameworks, bias seems to always be present in Flux
 weights(l) = weights(layertype(l), l)
 bias(l) = bias(layertype(l), l)
 
-weights(::ParDense, l) = l.W.data
-bias(::ParDense, l) = l.b.data
+weights(::FluxDense, l) = l.W.data
+bias(::FluxDense, l) = l.b.data
 
-weights(::ParConv, l) = l.weight.data
-bias(::ParConv, l) = l.bias.data
+weights(::FluxConvolutional, l) = l.weight.data
+bias(::FluxConvolutional, l) = l.bias.data
 
-weights(::ParDiagonal, l) = l.α.data
-bias(::ParDiagonal, l) = l.β.data
+weights(::FluxDiagonal, l) = l.α.data
+bias(::FluxDiagonal, l) = l.β.data
 
-weights(::ParRecurrent, l) = l.cell.Wi.data
-bias(::ParRecurrent, l) = l.cell.b.data
+weights(::FluxRecurrent, l) = l.cell.Wi.data
+bias(::FluxRecurrent, l) = l.cell.b.data
 
 hiddenweights(l) = hiddenweights(layertype(l), l)
-hiddenweights(::ParRecurrent, l) = l.cell.Wh.data
+hiddenweights(::FluxRecurrent, l) = l.cell.Wh.data
 hiddenstate(l) = hiddenstate(layertype(l), l)
-hiddenstate(::ParRecurrent, l) = Flux.hidden(l.cell).data
-hiddenstate(::ParLstm, l) = [h.data for h in Flux.hidden(l.cell)]
+hiddenstate(::FluxRecurrent, l) = Flux.hidden(l.cell).data
+hiddenstate(::FluxLstm, l) = [h.data for h in Flux.hidden(l.cell)]
 state(l) = state(layertype(l), l)
-state(::ParRecurrent, l) = l.state.data
-state(::ParLstm, l) = [h.data for h in l.state]
+state(::FluxRecurrent, l) = l.state.data
+state(::FluxLstm, l) = [h.data for h in l.state]

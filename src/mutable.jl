@@ -52,27 +52,27 @@ end
 NaiveNASlib.mutate_outputs(m::MutableLayer, outputs) = mutate(layertype(m), m, outputs=outputs)
 
 mutate(m::MutableLayer; inputs, outputs) = mutate(layertype(m), m, inputs=inputs, outputs=outputs)
-function mutate(::ParLayer, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m))
+function mutate(::FluxParLayer, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m))
     l = layer(m)
     w = select(weights(l), outdim(l) => outputs, indim(l) => inputs)
     b = select(bias(l), 1 => outputs)
     newlayer(m, w, b)
 end
 
-function mutate(t::ParRecurrent, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m))
+function mutate(t::FluxRecurrent, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m))
     l = layer(m)
     outputs_scaled = mapfoldl(vcat, 1:outscale(l)) do i
         offs = (i-1) * nout(l)
         return map(x -> x > 0 ? x + offs : x, outputs)
     end
-    
+
     wi = select(weights(l), outdim(l) => outputs_scaled, indim(l) => inputs)
     wh = select(hiddenweights(l), 1 => outputs_scaled, 2 => outputs)
     b = select(bias(l), 1 => outputs_scaled)
     mutate_recurrent_state(t, m, outputs, wi, wh, b)
 end
 
-function mutate_recurrent_state(::ParRecurrent, m::MutableLayer, outputs, wi, wh, b)
+function mutate_recurrent_state(::FluxRecurrent, m::MutableLayer, outputs, wi, wh, b)
     l = layer(m)
     h = select(hiddenstate(l), 1 => outputs)
     s = select(state(l), 1 => outputs)
@@ -82,7 +82,7 @@ function mutate_recurrent_state(::ParRecurrent, m::MutableLayer, outputs, wi, wh
     m.layer = lnew
 end
 
-function mutate_recurrent_state(::ParLstm, m::MutableLayer, outputs, wi, wh, b)
+function mutate_recurrent_state(::FluxLstm, m::MutableLayer, outputs, wi, wh, b)
     l = layer(m)
     hcurr, scurr = hiddenstate(l), state(l)
     hc = select.(hcurr, repeat([1 => outputs], length(hcurr)))
@@ -96,27 +96,27 @@ function mutate_recurrent_state(::ParLstm, m::MutableLayer, outputs, wi, wh, b)
 end
 
 
-function mutate(t::ParInvLayer, m::MutableLayer; inputs=missing, outputs=missing)
+function mutate(t::FluxParInvLayer, m::MutableLayer; inputs=missing, outputs=missing)
     @assert any(ismissing.((inputs, outputs))) || inputs == outputs "Try to mutate $inputs and $outputs for invariant layer $(m)!"
     ismissing(inputs) || return mutate(t, m, inputs)
     ismissing(outputs) || return mutate(t, m, outputs)
 end
 
-function mutate(::ParDiagonal, m::MutableLayer, inds)
+function mutate(::FluxDiagonal, m::MutableLayer, inds)
     l = layer(m)
     w = select(weights(l), 1 => inds)
     b = select(bias(l), 1 => inds)
     newlayer(m, w, b)
 end
 
-function mutate(::ParLayerNorm, m::MutableLayer, inds)
+function mutate(::FluxLayerNorm, m::MutableLayer, inds)
     # LayerNorm is only a wrapped Diagonal. Just mutate the Diagonal and make a new LayerNorm of it
     proxy = MutableLayer(layer(m).diag)
     mutate(proxy, inputs=inds, outputs=inds)
     m.layer = LayerNorm(layer(proxy))
 end
 
-function mutate(::ParNorm, m::MutableLayer, inds)
+function mutate(::FluxParNorm, m::MutableLayer, inds)
     # Good? bad? I'm the guy who assumes mean and std type parameters will be visited in a certain order and uses a closure for that assumption
     ismean = false
     parselect = function(x)
@@ -126,7 +126,7 @@ function mutate(::ParNorm, m::MutableLayer, inds)
     m.layer = Flux.mapchildren(parselect, m.layer)
 end
 
-function mutate(::ParGroupNorm, m::MutableLayer, inds)
+function mutate(::FluxGroupNorm, m::MutableLayer, inds)
 
     l = m.layer
     ngroups = l.G
@@ -155,9 +155,9 @@ end
 
 newlayer(m::MutableLayer, w, b) = m.layer = newlayer(layertype(m), m, w, b)
 
-newlayer(::ParDense, m::MutableLayer, w, b) = Dense(param(w), param(b), deepcopy(layer(m).σ))
-newlayer(::ParConv, m::MutableLayer, w, b) = setproperties(layer(m), (weight=param(w), bias=param(b), σ=deepcopy(layer(m).σ)))
-newlayer(::ParDiagonal, m::MutableLayer, w, b) = Flux.Diagonal(param(w), param(b))
+newlayer(::FluxDense, m::MutableLayer, w, b) = Dense(param(w), param(b), deepcopy(layer(m).σ))
+newlayer(::FluxConvolutional, m::MutableLayer, w, b) = setproperties(layer(m), (weight=param(w), bias=param(b), σ=deepcopy(layer(m).σ)))
+newlayer(::FluxDiagonal, m::MutableLayer, w, b) = Flux.Diagonal(param(w), param(b))
 
 
 """
