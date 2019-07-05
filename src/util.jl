@@ -3,6 +3,9 @@
 NaiveNASlib.nin(l) = nin(layertype(l), l)
 NaiveNASlib.nout(l) = nout(layertype(l), l)
 
+NaiveNASlib.nin(t::FluxLayer, l) = throw(ArgumentError("Not implemented for $t"))
+NaiveNASlib.nout(t::FluxLayer, l) = throw(ArgumentError("Not implemented for $t"))
+
 NaiveNASlib.nin(::FluxParLayer, l) = size(weights(l), indim(l))
 NaiveNASlib.nout(::FluxParLayer, l) = size(weights(l), outdim(l))
 
@@ -21,15 +24,27 @@ outscale(::FluxGru) = 3
 
 indim(l) = indim(layertype(l))
 outdim(l) = outdim(layertype(l))
+actdim(l) = actdim(layertype(l))
+
+indim(t::FluxLayer) = throw(ArgumentError("Not implemented for $t"))
+outdim(t::FluxLayer) = throw(ArgumentError("Not implemented for $t"))
+actdim(t::FluxLayer) = throw(ArgumentError("Not implemented for $t"))
 
 indim(::FluxDense) = 2
 outdim(::FluxDense) = 1
+actdim(::FluxDense) = 1
+
+indim(::FluxDiagonal) = 1
+outdim(::FluxDiagonal) = 1
+actdim(::FluxDiagonal) = 1
 
 indim(::FluxRecurrent) = 2
 outdim(::FluxRecurrent) = 1
+actdim(::FluxRecurrent) = 1
 
 indim(::FluxConvolutional) = 4
 outdim(::FluxConvolutional) = 3
+actdim(::FluxConvolutional) = 3
 indim(::FluxConv) = 3
 outdim(::FluxConv) = 4
 

@@ -2,6 +2,9 @@ import NaiveNASflux
 using Flux
 
 @testset "Utils" begin
+
+    struct BogusLayer <: NaiveNASflux.FluxLayer end
+
     @testset "Sizes" begin
 
         @test nin(Dense(3,4)) == 3
@@ -30,5 +33,27 @@ using Flux
         @test nin(GRU(3,4)) == 3
         @test nout(GRU(3,4)) == 4
 
+        @test_throws ArgumentError nin(BogusLayer(), "dummy")
+        @test_throws ArgumentError nout(BogusLayer(), "dummy")
+    end
+
+    @testset "Dims" begin
+        @test actdim(Dense(3,4)) == 1
+
+        @test actdim(Conv((1,2), 3=>6)) == 3
+
+        @test actdim(ConvTranspose((1,2), 3=>6)) == 3
+
+        @test actdim(DepthwiseConv((1,2), 3=>6)) == 3
+
+        @test actdim(Flux.Diagonal(1)) == indim(Flux.Diagonal(2)) == outdim(Flux.Diagonal(3)) == 1
+
+        @test actdim(RNN(3,4)) == 1
+        @test actdim(LSTM(3,4)) == 1
+        @test actdim(GRU(3,4)) == 1
+
+        @test_throws ArgumentError actdim(BogusLayer())
+        @test_throws ArgumentError indim(BogusLayer())
+        @test_throws ArgumentError outdim(BogusLayer())
     end
 end

@@ -6,9 +6,9 @@ using Setfield
 
 export layertype
 
-export mutable, MutableLayer, LazyMutable, NoParams
+export mutable, concat, MutableLayer, LazyMutable, NoParams
 
-export nin, nout, indim, outdim
+export nin,nout,indim, outdim, actdim, layer
 
 include("types.jl")
 include("util.jl")

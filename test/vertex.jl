@@ -1,5 +1,5 @@
 using NaiveNASflux
-import NaiveNASflux: weights, bias, layer
+import NaiveNASflux: weights, bias
 using NaiveNASlib
 using Flux
 
@@ -7,7 +7,6 @@ using Flux
 
     NaiveNASflux.layer(v::AbstractVertex) = layer(base(v))
     NaiveNASflux.layer(v::CompVertex) = layer(v.computation)
-    NaiveNASflux.layer(m::LazyMutable) = layer(m.mutable)
 
     @testset "Dense to Dense" begin
         inpt = inputvertex("in", 4)
@@ -70,6 +69,58 @@ using Flux
         @test nin(bv) == [nout(cv)] == [3]
     end
 
+    @testset "Concatenate activations" begin
+
+        function testgraph(layerfun, nin1, nin2)
+            vfun = (v, s) -> mutable(layerfun(nout(v), s), v)
+            return testgraph_vfun(vfun, nin1, nin2)
+        end
+
+        function testgraph_vfun(vertexfun, nin1::Integer, nin2::Integer)
+            in1 = inputvertex("in1", nin1)
+            in2 = inputvertex("in2", nin2)
+            return testgraph_vfun(vertexfun, in1, in2)
+        end
+
+        function testgraph_vfun(vertexfun, in1, in2)
+            l1 = vertexfun(in1, 3)
+            l2 = vertexfun(in2, 7)
+
+            joined = concat(l1, l2)
+            l3 = vertexfun(joined, 9)
+
+            @test nout(joined) == nout(l1) + nout(l2) == 10
+            return CompGraph([in1, in2], l3)
+        end
+
+        @testset "Concatenate Dense" begin
+            nin1 = 2
+            nin2 = 5
+            @test size(testgraph(Dense, nin1, nin2)(ones(nin1), ones(nin2))) == (9,)
+        end
+
+        @testset "Concatenate RNN, GRU and LSTM" begin
+            nin1 = 2
+            nin2 = 5
+            indata1 = reshape(collect(Float32, 1:nin1*4), nin1, 4)
+            indata2 = reshape(collect(Float32, 1:nin2*4), nin2, 4)
+            for rnntype in [RNN, GRU, LSTM]
+                @test size(testgraph(rnntype, nin1, nin2)(indata1, indata2)) == (9,4)
+            end
+        end
+
+        @testset "Concatenate Conv and ConvTranspose" begin
+            nin1 = 2
+            nin2 = 5
+            indata1 = reshape(collect(Float32, 1:nin1*4*4), 4, 4, nin1, 1)
+            indata2 = reshape(collect(Float32, 1:nin2*4*4), 4, 4, nin2, 1)
+            for convtype in [Conv, ConvTranspose]
+                convfun = (nin,nout) -> convtype((3,3), nin=>nout, pad = (1,1))
+                @test size(testgraph(convfun, nin1, nin2)(indata1, indata2)) == (4,4,9,1)
+            end
+        end
+
+
     @testset "Tricky structures" begin
 
         mutable struct Probe
@@ -129,7 +180,7 @@ using Flux
             pv1b, p1b = probe(conv1b)
             bn1b = batchnorm(pv1b)
             mv = StackingVertex(CompVertex((x,y) -> cat(x,y,dims=3), bn1a, bn1b))
-            add = InvariantVertex(CompVertex(+, mv, bn1))
+            add = mv + bn1
             mp = maxpool(add)
             out = conv3x3(mp, 3)
 
@@ -158,7 +209,7 @@ using Flux
             inpt = inputvertex("in", 4)
             rnn = rnnvertex(inpt, 5)
             pv, p = probe(rnn)
-            lasttimestep = InvariantVertex(CompVertex(x -> x[:,end], pv))
+            lasttimestep = invariantvertex(x -> x[:,end], pv)
             dnn = densevertex(lasttimestep, 3)
 
             graph = CompGraph([inpt], [dnn])

@@ -208,6 +208,8 @@ end
 LazyMutable(m::AbstractMutableComp) = LazyMutable(m, nin(m), nout(m))
 LazyMutable(m, nin::Integer, nout::Integer) = LazyMutable(m, 1:nin, 1:nout)
 
+layer(m::LazyMutable) = layer(m.mutable)
+
 (m::LazyMutable)(x) = dispatch!(m, m.mutable, x)
 dispatch!(m::LazyMutable, mutable::AbstractMutableComp, x) = mutable(x)
 

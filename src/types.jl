@@ -1,7 +1,7 @@
 
 abstract type FluxLayer end
 
-layertype(l::T) where T = @error "No FluxLayer type defined for $T"
+layertype(l::T) where T = error("No FluxLayer type defined for $T")
 
 # Types for layers with parameters (e.g. weights and biases) and with similar handling
 # w.r.t what shape of parameters means in terms of number of inputs and number of outputs
@@ -25,9 +25,11 @@ layertype(l::Conv) = FluxConv()
 layertype(l::ConvTranspose) = FluxConvTranspose()
 layertype(l::DepthwiseConv) = FluxDepthwiseConv()
 
+
+abstract type FluxTransparentLayer <: FluxLayer end
 # Invariant layers with parameters, i.e nin == nout always and parameter selection must
 # be performed
-abstract type FluxParInvLayer <: FluxLayer end
+abstract type FluxParInvLayer <: FluxTransparentLayer end
 struct FluxDiagonal <: FluxParInvLayer end
 struct FluxLayerNorm <: FluxParInvLayer end
 abstract type FluxParNorm <: FluxParInvLayer end
@@ -42,11 +44,11 @@ layertype(l::InstanceNorm) = FluxInstanceNorm()
 layertype(l::GroupNorm) = FluxGroupNorm()
 
 # Transparent layers, i.e nin == nout always and there are no parameters
-struct FluxTransparentLayer <: FluxLayer end
-layertype(l::MaxPool) = FluxTransparentLayer()
-layertype(l::MeanPool) = FluxTransparentLayer()
-layertype(l::Dropout) = FluxTransparentLayer()
-layertype(l::AlphaDropout) = FluxTransparentLayer()
+struct FluxNoParLayer <: FluxTransparentLayer end
+layertype(l::MaxPool) = FluxNoParLayer()
+layertype(l::MeanPool) = FluxNoParLayer()
+layertype(l::Dropout) = FluxNoParLayer()
+layertype(l::AlphaDropout) = FluxNoParLayer()
 
 # Compositions? Might not have any common methods...
 # MaxOut, Chain?
