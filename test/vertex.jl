@@ -120,6 +120,38 @@ using Flux
             end
         end
 
+        @testset "Concatenate Pooled Conv" begin
+            nin1 = 2
+            nin2 = 5
+            indata1 = reshape(collect(Float32, 1:nin1*4*4), 4, 4, nin1, 1)
+            indata2 = reshape(collect(Float32, 1:nin2*4*4), 4, 4, nin2, 1)
+            function vfun(v, s)
+                cv = mutable(Conv((3,3), nout(v)=>s, pad = (1,1)), v)
+                return mutable(MaxPool((3,3), pad=(1,1), stride=(1,1)), cv)
+            end
+            @test size(testgraph_vfun(vfun, nin1, nin2)(indata1, indata2)) == (4,4,9,1)
+        end
+
+        @testset "Concatenate InputShapeVertex" begin
+            nin1 = 6
+            nin2 = 4
+            in1 = inputvertex("in1", nin1, FluxDense())
+            in2 = inputvertex("in2", nin2, FluxDense())
+            @test size(testgraph_vfun((v,s) -> v, in1, in2)(ones(nin1), ones(nin2))) == (10,)
+        end
+
+        @testset "Concatenate BatchNorm only" begin
+            nin1 = 3
+            nin2 = 7
+            indata1 = reshape(collect(Float32, 1:nin1*4*4), 4, 4, nin1, 1)
+            indata2 = reshape(collect(Float32, 1:nin2*4*4), 4, 4, nin2, 1)
+            in1 = inputvertex("in1", nin1, FluxConv())
+            in2 = inputvertex("in2", nin2, FluxConv())
+            vfun(v,s) = mutable(BatchNorm(nout(v)), v)
+
+            @test size(testgraph_vfun(vfun, in1, in2)(indata1, indata2)) == (4,4,10,1)
+        end
+    end
 
     @testset "Tricky structures" begin
 
