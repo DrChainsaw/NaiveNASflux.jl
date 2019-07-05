@@ -25,26 +25,32 @@ outscale(::FluxGru) = 3
 indim(l) = indim(layertype(l))
 outdim(l) = outdim(layertype(l))
 actdim(l) = actdim(layertype(l))
+actrank(l) = actrank(layertype(l))
 
 indim(t::FluxLayer) = throw(ArgumentError("Not implemented for $t"))
 outdim(t::FluxLayer) = throw(ArgumentError("Not implemented for $t"))
 actdim(t::FluxLayer) = throw(ArgumentError("Not implemented for $t"))
+actrank(t::FluxLayer) = throw(ArgumentError("Not implemented for $t"))
 
 indim(::FluxDense) = 2
 outdim(::FluxDense) = 1
 actdim(::FluxDense) = 1
+actrank(::FluxDense) = 1
 
 indim(::FluxDiagonal) = 1
 outdim(::FluxDiagonal) = 1
 actdim(::FluxDiagonal) = 1
+actrank(::FluxDiagonal) = 1
 
 indim(::FluxRecurrent) = 2
 outdim(::FluxRecurrent) = 1
 actdim(::FluxRecurrent) = 1
+actrank(::FluxRecurrent) = 2
 
 indim(::FluxConvolutional) = 4
 outdim(::FluxConvolutional) = 3
 actdim(::FluxConvolutional) = 3
+actrank(::FluxConvolutional) = 3
 indim(::FluxConv) = 3
 outdim(::FluxConv) = 4
 

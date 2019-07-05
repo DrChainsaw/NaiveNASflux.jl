@@ -50,11 +50,17 @@ Return a mutable vertex which concatenates input.
 
 Inputs must have compatible activation shapes or an exception will be thrown.
 """
-concat(v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitdecoration=identity) = concat(Val.(tuple(Iterators.flatten(actdim.(vs))...)), mutation, traitdecoration, v, vs...)
+function concat(v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitdecoration=identity)
+    dims = tuple(Iterators.flatten(actdim.([v, vs...]))...)
+    ranks = tuple(Iterators.flatten(actrank.([v, vs...]))...)
+    concat(Val.(dims), Val.(ranks), mutation, traitdecoration, v, vs...)
+end
 
-concat(t, mutation, traitdecoration, v::AbstractVertex, vs::AbstractVertex...) = throw(ArgumentError("Can not concatenate activations with different shapes! Got: $t")) # I guess it might be doable, but CBA to try it out
+concat(actdims, actranks, mutation, traitdecoration, v::AbstractVertex, vs::AbstractVertex...) = throw(DimensionMismatch("Can not concatenate activations with different shapes! Got: $actdims and $actranks")) # I guess it might be doable, but CBA to try it out
 
-concat(::Tuple{Val{N}}, mutation, traitdecoration, v::AbstractVertex, vs::AbstractVertex...) where N = conc(v, vs..., dims=N, mutation=mutation, traitdecoration=traitdecoration)
+# NTuples only match if all actdims (N) and actranks (M) are identical
+# Can't ... stop ... dispatching ... on ... stuff ...
+concat(::NTuple{T, Val{N}}, ::NTuple{T, Val{M}}, mutation, traitdecoration, v::AbstractVertex, vs::AbstractVertex...) where {T,N,M} = conc(v, vs..., dims=N, mutation=mutation, traitdecoration=traitdecoration)
 
 
 layer(v::AbstractVertex) = layer(base(v))
@@ -64,3 +70,4 @@ layertype(v::AbstractVertex) = layertype(base(v))
 layertype(v::CompVertex) = layertype(v.computation)
 
 actdim(v::AbstractVertex) = actdim.(layer.(NaiveNASlib.findterminating(v, inputs)))
+actrank(v::AbstractVertex) = actrank.(layer.(NaiveNASlib.findterminating(v, inputs)))

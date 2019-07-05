@@ -151,6 +151,15 @@ using Flux
 
             @test size(testgraph_vfun(vfun, in1, in2)(indata1, indata2)) == (4,4,10,1)
         end
+
+        @testset "Concatentate dimension mismatch fail" begin
+            d1 = mutable(Dense(2,3), inputvertex("in1", 2))
+            c1 = mutable(Conv((3,3), 4=>5), inputvertex("in2", 4))
+            r1 = mutable(RNN(6,7), inputvertex("in3", 6))
+            @test_throws DimensionMismatch concat(d1, c1)
+            @test_throws DimensionMismatch concat(r1, c1)
+            @test_throws DimensionMismatch concat(d1, r1)
+        end
     end
 
     @testset "Tricky structures" begin
