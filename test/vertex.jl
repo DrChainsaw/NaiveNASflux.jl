@@ -9,10 +9,8 @@ using Flux
     NaiveNASflux.layer(v::CompVertex) = layer(v.computation)
     NaiveNASflux.layer(m::LazyMutable) = layer(m.mutable)
 
-    inputvertex(size, id=1) = InputSizeVertex(InputVertex(id), size)
-
     @testset "Dense to Dense" begin
-        inpt = inputvertex(4)
+        inpt = inputvertex("in", 4)
         dl1 = Dense(4, 5)
         dl2 = Dense(5, 3)
         bias(dl1)[1:end] = 1:5
@@ -47,7 +45,7 @@ using Flux
     end
 
     @testset "Invariant parametric layer" begin
-        inpt = inputvertex(3)
+        inpt = inputvertex("in", 3)
         cv = mutable(Conv((1,1), nout(inpt) => 4), inpt)
         bv = mutable(BatchNorm(nout(cv)), cv)
 
@@ -60,7 +58,7 @@ using Flux
     end
 
     @testset "Invariant non-parametric layer" begin
-        inpt = inputvertex(3)
+        inpt = inputvertex("in", 3)
         cv = mutable(Conv((1,1), nout(inpt) => 4), inpt)
         bv = mutable(MeanPool((2,2)), cv)
 
@@ -84,7 +82,7 @@ using Flux
 
         function probe(in)
             p = Probe(nothing)
-            return InvariantVertex(CompVertex(p, in)), p
+            return invariantvertex(NoParams(p), in), p
         end
 
         conv3x3(inpt::AbstractVertex, nch::Integer) = mutable(Conv((3,3), nout(inpt)=>nch, pad=(1,1)), inpt)
@@ -92,14 +90,14 @@ using Flux
         maxpool(inpt) = mutable(MaxPool((2,2)), inpt)
 
         @testset "Residual Conv block" begin
-            inpt = inputvertex(3)
+            inpt = inputvertex("in", 3)
             conv1 = conv3x3(inpt, 5)
             pv1, p1 = probe(conv1)
             bn1 = batchnorm(pv1)
             conv2 = conv3x3(bn1, 5)
             pv2, p2 = probe(conv2)
             bn2 = batchnorm(pv2)
-            add = InvariantVertex(CompVertex(+, bn2, bn1))
+            add = bn2 + bn1
             mp = maxpool(add)
             out = conv3x3(mp, 3)
 
@@ -112,7 +110,7 @@ using Flux
             @test size(p2.activation) == (4, 4, 5, 1)
 
             Δnin(out, [-1, 2, 3, -1])
-            apply_mutation.(flatten(out))
+            apply_mutation(graph)
 
             @test size(graph(indata)) == (2, 2, 3, 1)
             @test size(p1.activation) == (4, 4, 4, 1)
@@ -120,7 +118,7 @@ using Flux
         end
 
         @testset "Residual fork Conv block" begin
-            inpt = inputvertex(3)
+            inpt = inputvertex("in", 3)
             conv1 = conv3x3(inpt, 5)
             pv1, p1 = probe(conv1)
             bn1 = batchnorm(pv1)
@@ -145,7 +143,7 @@ using Flux
             @test size(p1b.activation) == (4, 4, 2, 1)
 
             Δnin(out, [-1, 2, -1, 4])
-            apply_mutation.(flatten(out))
+            apply_mutation(graph)
 
             @test size(graph(indata)) == (2, 2, 3, 1)
             @test size(p1.activation) == (4, 4, 4, 1)
@@ -157,7 +155,7 @@ using Flux
         densevertex(inpt, outsize) = mutable(Dense(nout(inpt), outsize), inpt)
 
         @testset "RNN with last time step to Dense" begin
-            inpt = inputvertex(4)
+            inpt = inputvertex("in", 4)
             rnn = rnnvertex(inpt, 5)
             pv, p = probe(rnn)
             lasttimestep = InvariantVertex(CompVertex(x -> x[:,end], pv))
@@ -171,18 +169,16 @@ using Flux
 
 
             Δnin(dnn, [1, 2, 3, -1])
-            apply_mutation.(flatten(dnn))
+            apply_mutation(graph)
 
             @test size(graph(indata)) == (3,)
             @test size(p.activation) == (4, 10)
 
             Δnout(rnn, [-1, 1, 3])
-            apply_mutation.(flatten(dnn))
+            apply_mutation(graph)
 
             @test size(graph(indata)) == (3,)
             @test size(p.activation) == (3, 10)
-
-
         end
 
     end

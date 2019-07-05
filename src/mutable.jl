@@ -268,3 +268,20 @@ function dispatch!(lm::LazyMutable, m::ResetInAndOut, x)
     lm.outputs = 1:nout(lm)
     return output
 end
+
+
+"""
+    NoParams
+
+Ignores size mutation.
+
+Useful for layers which don't have parameters.
+"""
+struct NoParams
+    layer
+end
+
+(i::NoParams)(x) = layer(i)(x)
+layer(i::NoParams) = i.layer
+function NaiveNASlib.mutate_inputs(::NoParams, inputs) end
+function NaiveNASlib.mutate_outputs(::NoParams, outputs) end

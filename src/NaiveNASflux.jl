@@ -6,7 +6,7 @@ using Setfield
 
 export layertype
 
-export mutable, MutableLayer, LazyMutable
+export mutable, MutableLayer, LazyMutable, NoParams
 
 export nin, nout, indim, outdim
 
