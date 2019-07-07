@@ -51,7 +51,7 @@ mutable(::FluxParLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) = a
 mutable(::FluxParInvLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) =
 invariantvertex(layerfun(MutableLayer(l)), in, mutation=mutation, traitdecoration=traitfun)
 
-mutable(::FluxNoParLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) = invariantvertex(layerfun(NoParams(l)), in, traitdecoration=traitfun)
+mutable(::FluxNoParLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) = invariantvertex(layerfun(NoParams(l)), in, mutation=mutation, traitdecoration=traitfun)
 
 """
    concat(v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitdecoration=identity)
