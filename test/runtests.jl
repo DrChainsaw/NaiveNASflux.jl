@@ -10,8 +10,15 @@ end
 
 @testset "NaiveNASflux.jl" begin
 
+    @info "Testing util"
     include("util.jl")
+
+    @info "Testing mutable"
     include("mutable.jl")
+
+    @info "Testing vertex"
     include("vertex.jl")
 
+    @info "Testing examples"
+    include("examples.jl")
 end

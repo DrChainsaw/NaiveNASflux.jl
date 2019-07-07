@@ -5,7 +5,7 @@
 Input type vertex which also has information about what type of layer the input is shaped for.
 """
 struct InputShapeVertex <: AbstractVertex
-    v::AbstractVertex
+    base::AbstractVertex
     t::FluxLayer
 end
 """
@@ -16,15 +16,25 @@ Return an immutable input type vertex with the given `name` and `size` and a `ty
 NaiveNASlib.inputvertex(name, size, type::FluxLayer) = InputShapeVertex(inputvertex(name, size), type)
 layertype(v::InputShapeVertex) = v.t
 layer(v::InputShapeVertex) = LayerTypeWrapper(v.t)
-NaiveNASlib.nout(v::InputShapeVertex) = nout(v.v)
-NaiveNASlib.nin(v::InputShapeVertex) = nin(v.v)
-NaiveNASlib.outputs(v::InputShapeVertex) = outputs(v.v)
+NaiveNASlib.base(v::InputShapeVertex) = v.base
+NaiveNASlib.nout(v::InputShapeVertex) = nout(base(v))
+NaiveNASlib.nin(v::InputShapeVertex) = nin(base(v))
+NaiveNASlib.outputs(v::InputShapeVertex) = outputs(base(v))
+NaiveNASlib.inputs(v::InputShapeVertex) = []
+NaiveNASlib.clone(v::InputShapeVertex, ins::AbstractVertex...) = clone(base(v), ins...)
 
 # Only to prevent stack overflow above
 struct LayerTypeWrapper
     t::FluxLayer
 end
 layertype(l::LayerTypeWrapper) = l.t
+
+Flux.@treelike CompGraph
+Flux.children(a::AbstractVector{<:AbstractVertex}) = tuple(a...)
+# Avoid outputs due to flux issue #803
+Flux.children(v::AbstractVertex) = tuple(base(v), inputs(v))
+Flux.@treelike InputVertex
+Flux.@treelike CompVertex
 
 
 """
@@ -34,14 +44,14 @@ Return a mutable vertex wrapping the layer `l` with input vertex `in`.
 
 Extra arguments `mutation` and `traitfun` can be used to change mutation type and to add extra info about the vertex.
 """
-mutable(l, in::AbstractVertex, mutation=IoChange, traitfun=identity) = mutable(layertype(l), l, in, mutation, traitfun)
+mutable(l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=identity) = mutable(layertype(l), l, in, layerfun, mutation, traitfun)
 
-mutable(::FluxParLayer, l, in::AbstractVertex, mutation, traitfun) = absorbvertex(LazyMutable(MutableLayer(l)), nout(l), in, mutation=mutation, traitdecoration = traitfun)
+mutable(::FluxParLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) = absorbvertex(layerfun(MutableLayer(l)), nout(l), in, mutation=mutation, traitdecoration = traitfun)
 
-mutable(::FluxParInvLayer, l, in::AbstractVertex, mutation, traitfun) =
-invariantvertex(LazyMutable(MutableLayer(l)), in, mutation=mutation, traitdecoration=traitfun)
+mutable(::FluxParInvLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) =
+invariantvertex(layerfun(MutableLayer(l)), in, mutation=mutation, traitdecoration=traitfun)
 
-mutable(::FluxNoParLayer, l, in::AbstractVertex, mutation, traitfun) = invariantvertex(NoParams(l), in, mutation=mutation, traitdecoration=traitfun)
+mutable(::FluxNoParLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) = invariantvertex(layerfun(NoParams(l)), in, traitdecoration=traitfun)
 
 """
    concat(v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitdecoration=identity)

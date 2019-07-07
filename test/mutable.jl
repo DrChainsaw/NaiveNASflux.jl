@@ -7,14 +7,6 @@ import InteractiveUtils:subtypes
 
 @testset "Mutable computation" begin
 
-    @testset "Method contracts" begin
-        for subtype in subtypes(AbstractMutableComp)
-            @info "\ttest method contracts for AbstractMutableComp $subtype"
-            @test hasmethod(nin, (subtype,))
-            @test hasmethod(nout, (subtype,))
-        end
-    end
-
     @testset "Select parameters" begin
         mat = reshape(collect(1:3*4), 3, 4)
 
@@ -360,6 +352,14 @@ import InteractiveUtils:subtypes
             @test isnan.(output) == falses(size(output))
         end
     end
+
+    @testset "Clone MutableLayer" begin
+            m = MutableLayer(Dense(2,3))
+            cloned = clone(m)
+            @test layer(cloned) !== layer(m)
+            @test cloned([1, 2]) == m([1, 2])
+    end
+
     @testset "LazyMutable" begin
         @testset "LazyMutable Dense factory" begin
 
@@ -409,6 +409,13 @@ import InteractiveUtils:subtypes
             @test nout(mlazy) == nout(m) == 3
 
             @test expected == m(Float32[2,3])
+        end
+
+        @testset "Clone" begin
+            mlazy = LazyMutable(MutableLayer(Dense(2,3)))
+            cloned = clone(mlazy)
+            @test layer(cloned) !== layer(mlazy)
+            @test cloned([1, 2]) == mlazy([1, 2])
         end
     end
 end

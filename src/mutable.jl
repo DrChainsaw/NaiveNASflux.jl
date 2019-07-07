@@ -1,6 +1,25 @@
 
 abstract type AbstractMutableComp end
 
+Base.Broadcast.broadcastable(m::AbstractMutableComp) = Ref(m)
+
+# Generic forwarding methods. Just implement layer(t::Type) to enable
+
+# Not possible in julia <= 1.1. See #14919
+# (m::AbstractMutableComp)(x...) = layer(m)(x...)
+layertype(m::AbstractMutableComp) = layertype(layer(m))
+
+NaiveNASlib.nin(m::AbstractMutableComp) = nin(layer(m))
+NaiveNASlib.nout(m::AbstractMutableComp) = nout(layer(m))
+
+# Works in most cases...
+NaiveNASlib.clone(m::AbstractMutableComp) = mapfoldl(clone, typeof(m), getfield.(m, fieldnames(typeof(m))))
+
+NaiveNASlib.clone(l) = deepcopy(l)
+
+NaiveNASlib.mutate_inputs(m::AbstractMutableComp, inputs::AbstractArray{<:Integer,1}...) = mutate_inputs(layer(m), inputs...)
+NaiveNASlib.mutate_outputs(m::AbstractMutableComp, outputs) = mutate_outputs(layer(m), outputs)
+
 #Generic helper functions
 
 select(pars::TrackedArray, elements_per_dim...; insval = 0) = param(select(pars.data, elements_per_dim..., insval=insval))
@@ -42,6 +61,10 @@ layertype(m::MutableLayer) = layertype(layer(m))
 
 NaiveNASlib.nin(m::MutableLayer) = nin(layer(m))
 NaiveNASlib.nout(m::MutableLayer) = nout(layer(m))
+
+NaiveNASlib.clone(m::MutableLayer) = MutableLayer(deepcopy(m.layer))
+
+Flux.@treelike MutableLayer
 
 function NaiveNASlib.mutate_inputs(m::MutableLayer, inputs::AbstractArray{<:Integer,1}...)
     @assert length(inputs) == 1 "Only one input per layer!"
@@ -216,6 +239,10 @@ dispatch!(m::LazyMutable, mutable::AbstractMutableComp, x) = mutable(x)
 NaiveNASlib.nin(m::LazyMutable) = length(m.inputs)
 NaiveNASlib.nout(m::LazyMutable) = length(m.outputs)
 
+NaiveNASlib.clone(m::LazyMutable) = LazyMutable(clone(m.mutable), copy(m.inputs), copy(m.outputs))
+
+Flux.@treelike LazyMutable
+
 function NaiveNASlib.mutate_inputs(m::LazyMutable, inputs::AbstractArray{<:Integer,1}...)
     @assert length(inputs) == 1 "Only one input per layer!"
     m.inputs == inputs[1] && return
@@ -287,3 +314,4 @@ end
 layer(i::NoParams) = i.layer
 function NaiveNASlib.mutate_inputs(::NoParams, inputs) end
 function NaiveNASlib.mutate_outputs(::NoParams, outputs) end
+LazyMutable(m::NoParams) = m
