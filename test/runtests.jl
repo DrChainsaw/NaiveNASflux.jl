@@ -19,6 +19,9 @@ end
     @info "Testing vertex"
     include("vertex.jl")
 
+    @info "Testing neuron value metrics"
+    include("pruning.jl")
+
     @info "Testing examples"
     include("examples.jl")
 end

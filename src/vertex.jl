@@ -30,7 +30,7 @@ end
 layertype(l::LayerTypeWrapper) = l.t
 
 Flux.@treelike CompGraph
-Flux.children(a::AbstractVector{<:AbstractVertex}) = tuple(a...)
+Flux.children(a::AbstractVector{<:AbstractVertex}) = Tuple(a)
 # Avoid outputs due to flux issue #803
 Flux.children(v::AbstractVertex) = tuple(base(v), inputs(v))
 Flux.@treelike InputVertex

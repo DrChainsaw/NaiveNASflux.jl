@@ -17,8 +17,8 @@ NaiveNASlib.clone(m::AbstractMutableComp) = typeof(m)(map(clone, getfield.(m, fi
 
 NaiveNASlib.clone(l) = deepcopy(l)
 
-NaiveNASlib.mutate_inputs(m::AbstractMutableComp, inputs::AbstractArray{<:Integer,1}...) = mutate_inputs(layer(m), inputs...)
-NaiveNASlib.mutate_outputs(m::AbstractMutableComp, outputs) = mutate_outputs(layer(m), outputs)
+NaiveNASlib.mutate_inputs(m::AbstractMutableComp, inputs::AbstractArray{<:Integer,1}...) = mutate_inputs(wrapped(m), inputs...)
+NaiveNASlib.mutate_outputs(m::AbstractMutableComp, outputs) = mutate_outputs(wrapped(m), outputs)
 
 #Generic helper functions
 
@@ -56,7 +56,8 @@ mutable struct MutableLayer <: AbstractMutableComp
     layer
 end
 (m::MutableLayer)(x) = layer(m)(x)
-layer(m::MutableLayer) = m.layer
+wrapped(m::MutableLayer) = m.layer
+layer(m::MutableLayer) = wrapped(m)
 layertype(m::MutableLayer) = layertype(layer(m))
 
 Flux.@treelike MutableLayer
@@ -226,7 +227,8 @@ end
 LazyMutable(m::AbstractMutableComp) = LazyMutable(m, nin(m), nout(m))
 LazyMutable(m, nin::Integer, nout::Integer) = LazyMutable(m, 1:nin, 1:nout)
 
-layer(m::LazyMutable) = layer(m.mutable)
+wrapped(m::LazyMutable) = m.mutable
+layer(m::LazyMutable) = layer(wrapped(m))
 
 (m::LazyMutable)(x) = dispatch!(m, m.mutable, x)
 dispatch!(m::LazyMutable, mutable::AbstractMutableComp, x) = mutable(x)
