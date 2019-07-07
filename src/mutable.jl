@@ -12,8 +12,8 @@ layertype(m::AbstractMutableComp) = layertype(layer(m))
 NaiveNASlib.nin(m::AbstractMutableComp) = nin(layer(m))
 NaiveNASlib.nout(m::AbstractMutableComp) = nout(layer(m))
 
-# Works in most cases...
-NaiveNASlib.clone(m::AbstractMutableComp) = mapfoldl(clone, typeof(m), getfield.(m, fieldnames(typeof(m))))
+# Leave some room to override clone
+NaiveNASlib.clone(m::AbstractMutableComp) = typeof(m)(map(clone, getfield.(m, fieldnames(typeof(m))))...)
 
 NaiveNASlib.clone(l) = deepcopy(l)
 
@@ -58,11 +58,6 @@ end
 (m::MutableLayer)(x) = layer(m)(x)
 layer(m::MutableLayer) = m.layer
 layertype(m::MutableLayer) = layertype(layer(m))
-
-NaiveNASlib.nin(m::MutableLayer) = nin(layer(m))
-NaiveNASlib.nout(m::MutableLayer) = nout(layer(m))
-
-NaiveNASlib.clone(m::MutableLayer) = MutableLayer(deepcopy(m.layer))
 
 Flux.@treelike MutableLayer
 
@@ -238,8 +233,6 @@ dispatch!(m::LazyMutable, mutable::AbstractMutableComp, x) = mutable(x)
 
 NaiveNASlib.nin(m::LazyMutable) = length(m.inputs)
 NaiveNASlib.nout(m::LazyMutable) = length(m.outputs)
-
-NaiveNASlib.clone(m::LazyMutable) = LazyMutable(clone(m.mutable), copy(m.inputs), copy(m.outputs))
 
 Flux.@treelike LazyMutable
 
