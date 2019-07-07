@@ -1,7 +1,8 @@
 module NaiveNASflux
 
-using NaiveNASlib
-using Flux
+using Reexport
+@reexport using NaiveNASlib
+@reexport using Flux
 import Flux.Tracker: hook
 using Statistics
 using Setfield

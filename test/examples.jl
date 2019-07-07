@@ -2,7 +2,7 @@
 @testset "Examples" begin
 
     @testset "Pruning xor example" begin
-        using NaiveNASflux
+        using NaiveNASflux, Test
         import Flux: train!, mse
         import Random
         Random.seed!(666)
@@ -20,7 +20,7 @@
         opt = ADAM(0.1)
         loss(g) = (x, y) -> mse(g(x), y)
 
-        # Xor truth table: y = xor(x)
+        # Training data: xor truth table: y = xor(x)
         x = Float32[0 0 1 1;
                     0 1 0 1]
         y = Float32[0 1 1 0]
@@ -34,7 +34,7 @@
         # Now, lets try three different ways to prune the network
         nprune = 5
 
-        # Prune randomly
+        # Prune randomly selected neurons
         pruned_random = copy(original)
         Δnin(pruned_random.outputs[], rand(1:nout(layer1), nout(layer1) - nprune))
         apply_mutation(pruned_random)
@@ -54,7 +54,7 @@
         # Can I have my free lunch now please?!
         @test loss(pruned_most)(x, y) > loss(pruned_random)(x, y) > loss(pruned_least)(x, y) > loss(original)(x, y)
 
-        # The metric calculated by ActivationContribution is actually quite good (in this case)!
+        # The metric calculated by ActivationContribution is actually quite good (in this case).
         @test loss(pruned_least)(x, y) ≈ loss(original)(x, y) rtol = 1e-5
     end
 end
