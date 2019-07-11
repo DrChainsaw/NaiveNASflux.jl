@@ -5,9 +5,6 @@ using Flux
 
 @testset "Size mutations" begin
 
-    NaiveNASflux.layer(v::AbstractVertex) = layer(base(v))
-    NaiveNASflux.layer(v::CompVertex) = layer(v.computation)
-
     @testset "Dense to Dense" begin
         inpt = inputvertex("in", 4)
         dl1 = Dense(4, 5)
@@ -246,31 +243,29 @@ using Flux
         rnnvertex(inpt, outsize) = mutable(RNN(nout(inpt), outsize), inpt)
         densevertex(inpt, outsize) = mutable(Dense(nout(inpt), outsize), inpt)
 
-        @testset "RNN with last time step to Dense" begin
+        @testset "RNN to Dense" begin
             inpt = inputvertex("in", 4)
             rnn = rnnvertex(inpt, 5)
             pv, p = probe(rnn)
-            lasttimestep = invariantvertex(x -> x[:,end], pv)
-            dnn = densevertex(lasttimestep, 3)
+            dnn = densevertex(pv, 3)
 
             graph = CompGraph([inpt], [dnn])
 
-            indata = reshape(collect(Float32, 1:nin(rnn)[1]*10), nin(rnn)[1],10)
-            @test size(graph(indata)) == (3,)
-            @test size(p.activation) == (5, 10)
-
+            indata = [collect(Float32, 1:nin(rnn)[]) for i =1:10]
+            @test size(hcat(graph.(indata)...)) == (3,10)
+            @test size(p.activation) == (5,)
 
             Δnin(dnn, [1, 2, 3, -1])
             apply_mutation(graph)
 
-            @test size(graph(indata)) == (3,)
-            @test size(p.activation) == (4, 10)
+            @test size(hcat(graph.(indata)...)) == (3,10)
+            @test size(p.activation) == (4,)
 
             Δnout(rnn, [-1, 1, 3])
             apply_mutation(graph)
 
-            @test size(graph(indata)) == (3,)
-            @test size(p.activation) == (3, 10)
+            @test size(hcat(graph.(indata)...)) == (3,10)
+            @test size(p.activation) == (3,)
         end
 
     end
