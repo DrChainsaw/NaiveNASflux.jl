@@ -17,6 +17,12 @@ NaiveNASlib.nout(::FluxParNorm, l) = length(l.β)
 
 NaiveNASlib.nout(::FluxRecurrent, l) = div(size(weights(l), outdim(l)), outscale(l))
 
+NaiveNASlib.minΔninfactor(::FluxLayer, l) = 1
+NaiveNASlib.minΔninfactor(::FluxDepthwiseConv, l) = error("Not implemented!")
+
+NaiveNASlib.minΔnoutfactor(::FluxLayer, l) = 1
+NaiveNASlib.minΔnoutfactor(::FluxDepthwiseConv, l) = error("Not implemented!")
+
 outscale(l) = outscale(layertype(l))
 outscale(::FluxRnn) = 1
 outscale(::FluxLstm) = 4

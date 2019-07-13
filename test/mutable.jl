@@ -22,6 +22,8 @@ import InteractiveUtils:subtypes
 
         @test nin(m) == nin(m.layer) == 2
         @test nout(m) == nout(m.layer) == 3
+        @test minΔninfactor(m) == 1
+        @test minΔnoutfactor(m) == 1
         @test m([1.0, 2.0]) == m.layer([1.0, 2.0])
 
         m.layer = Dense(3,4)
@@ -58,6 +60,8 @@ import InteractiveUtils:subtypes
 
             @test nin(m) == nin(m.layer) == 4
             @test nout(m) == nout(m.layer) == 5
+            @test minΔninfactor(m) == 1
+            @test minΔnoutfactor(m) == 1
             input = reshape(collect(Float32, 1:3*4*4), 3, 4, 4, 1)
             @test m(input) == m.layer(input)
 
@@ -104,6 +108,8 @@ import InteractiveUtils:subtypes
 
             @test nin(m) == nin(m.layer) == 4
             @test nout(m) == nout(m.layer) == 5
+            @test minΔninfactor(m) == 1
+            @test minΔnoutfactor(m) == 1
             input = reshape(collect(Float32, 1:3*4*4), 3, 4, 4, 1)
             @test m(input) == m.layer(input)
 
@@ -119,6 +125,8 @@ import InteractiveUtils:subtypes
 
             @test nin(m) == nin(m.layer) == 3
             @test nout(m) == nout(m.layer) == 6
+            @test_throws ErrorException minΔninfactor(m)
+            @test_throws ErrorException minΔnoutfactor(m)
             input = reshape(collect(Float32, 1:3*3*3), 3, 3, 3, 1)
             @test m(input) == m.layer(input)
 
@@ -134,6 +142,8 @@ import InteractiveUtils:subtypes
         m = MutableLayer(Flux.Diagonal(4))
 
         @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 4
+        @test minΔninfactor(m) == 1
+        @test minΔnoutfactor(m) == 1
         weights(m.layer)[1:end] = 1:4
         bias(m.layer)[1:end] = 1:4
 
@@ -156,6 +166,8 @@ import InteractiveUtils:subtypes
             m = MutableLayer(LayerNorm(3))
 
             @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 3
+            @test minΔninfactor(m) == 1
+            @test minΔnoutfactor(m) == 1
             weights(m.layer.diag)[1:end] = 1:3
             bias(m.layer.diag)[1:end] = 1:3
 
@@ -192,6 +204,8 @@ import InteractiveUtils:subtypes
             l_orig = layer(m)
 
             @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 5
+            @test minΔninfactor(m) == 1
+            @test minΔnoutfactor(m) == 1
             m.layer = mapchildren(par -> setpar(par, collect(Float32, 1:5)), layer(m))
 
             inds = [1,3,4]
@@ -258,6 +272,8 @@ import InteractiveUtils:subtypes
 
             @test nin(m) == nin(m.layer) == 3
             @test nout(m) == nout(m.layer) == 4
+            @test minΔninfactor(m) == 1
+            @test minΔnoutfactor(m) == 1
 
             inds = [1, 3]
             Wiexp = weights(layer(m))[:, inds]
@@ -290,6 +306,8 @@ import InteractiveUtils:subtypes
 
             @test nin(m) == nin(m.layer) == 3
             @test nout(m) == nout(m.layer) == 4
+            @test minΔninfactor(m) == 1
+            @test minΔnoutfactor(m) == 1
 
             inds = [1, 3]
             Wiexp = weights(layer(m))[:, inds]
@@ -324,6 +342,8 @@ import InteractiveUtils:subtypes
 
             @test nin(m) == nin(m.layer) == 3
             @test nout(m) == nout(m.layer) == 4
+            @test minΔninfactor(m) == 1
+            @test minΔnoutfactor(m) == 1
 
             inds = [1, 3]
             Wiexp = weights(layer(m))[:, inds]
@@ -396,6 +416,9 @@ import InteractiveUtils:subtypes
 
             Wexp = weights(layer(m))
             bexp = bias(layer(m))
+
+            @test minΔninfactor(m) == 1
+            @test minΔnoutfactor(m) == 1
 
             mutate_inputs(mlazy, [1, 3])
             assertlayer(layer(m), Wexp, bexp)
