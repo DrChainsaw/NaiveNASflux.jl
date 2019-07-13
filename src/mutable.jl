@@ -55,7 +55,7 @@ Wraps a layer in order to allow for mutation as layer structures are typically i
 mutable struct MutableLayer <: AbstractMutableComp
     layer
 end
-(m::MutableLayer)(x) = layer(m)(x)
+(m::MutableLayer)(x...) = layer(m)(x...)
 wrapped(m::MutableLayer) = m.layer
 layer(m::MutableLayer) = wrapped(m)
 layertype(m::MutableLayer) = layertype(layer(m))
@@ -230,8 +230,8 @@ LazyMutable(m, nin::Integer, nout::Integer) = LazyMutable(m, 1:nin, 1:nout)
 wrapped(m::LazyMutable) = m.mutable
 layer(m::LazyMutable) = layer(wrapped(m))
 
-(m::LazyMutable)(x) = dispatch!(m, m.mutable, x)
-dispatch!(m::LazyMutable, mutable::AbstractMutableComp, x) = mutable(x)
+(m::LazyMutable)(x...) = dispatch!(m, m.mutable, x...)
+dispatch!(m::LazyMutable, mutable::AbstractMutableComp, x...) = mutable(x...)
 
 NaiveNASlib.nin(m::LazyMutable) = length(m.inputs)
 NaiveNASlib.nout(m::LazyMutable) = length(m.outputs)
@@ -270,10 +270,10 @@ end
 trigger_mutation(m) = m
 trigger_mutation(m::AbstractMutableComp) = MutationTriggered(m)
 
-function dispatch!(lm::LazyMutable, m::MutationTriggered, x)
+function dispatch!(lm::LazyMutable, m::MutationTriggered, x...)
     mutate(m.wrapped; inputs=lm.inputs, outputs=lm.outputs)
     lm.mutable = m.wrapped
-    return lm(x)
+    return lm(x...)
 end
 
 """
@@ -285,9 +285,9 @@ struct ResetInAndOut
     wrapped
 end
 
-function dispatch!(lm::LazyMutable, m::ResetInAndOut, x)
+function dispatch!(lm::LazyMutable, m::ResetInAndOut, x...)
     lm.mutable = m.wrapped
-    output = lm(x)
+    output = lm(x...)
     lm.inputs = 1:nin(lm)
     lm.outputs = 1:nout(lm)
     return output
@@ -305,7 +305,7 @@ struct NoParams
     layer
 end
 
-(i::NoParams)(x) = layer(i)(x)
+(i::NoParams)(x...) = layer(i)(x...)
 layer(i::NoParams) = i.layer
 function NaiveNASlib.mutate_inputs(::NoParams, inputs) end
 function NaiveNASlib.mutate_outputs(::NoParams, outputs) end
