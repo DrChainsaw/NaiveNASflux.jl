@@ -20,6 +20,8 @@ The following operations are supported:
 Pkg.add("https://github.com/DrChainsaw/NaiveNASflux.jl")
 ```
 
+Check out the basic usage of [NaiveNASlib](https://github.com/DrChainsaw/NaiveNASlib.jl) for less verbose examples.
+
 While NaiveNASflux does not come with any built in search policies, it is still possible to do some cool stuff with it. Below is a very simple example of parameter pruning of a model trained on the `xor` function.
 
 First we need some boilerplate to create the model and do the training:
@@ -85,7 +87,7 @@ apply_mutation(pruned_most)
 @test loss(pruned_least)(x, y) ≈ loss(original)(x, y) rtol = 1e-5
 ```
 
-Another toy example where the model has to few layers to train efficiently.
+Another toy example where the model has too few layers to efficiently fit the data.
 
 Create model and train it just to have something to mutate:
 ```julia
@@ -160,7 +162,7 @@ function add2conv(in)
     l = conv(in, nout(in), relu, init=idmapping)
     return conv(l, nout(in), relu, init=idmapping)
 end
-insert!(flatten(add_layers.outputs[])[2], add2conv)
+insert!(vertices(add_layers)[2], add2conv)
 
 # New layers are initialized to identity mapping weights
 # We basically have the same model as before, just with more potential
@@ -183,9 +185,6 @@ end
 
 @test loss(add_layers)(x_test,y_test) < loss(new_model)(x_test,y_test) < loss(original)(x_test,y_test)
 ```
-
-
-Also check out the basic usage of [NaiveNASlib](https://github.com/DrChainsaw/NaiveNASlib.jl) for more examples.
 
 ## Contributing
 

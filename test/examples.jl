@@ -128,7 +128,7 @@
             l = conv(in, nout(in), relu, init=idmapping)
             return conv(l, nout(in), relu, init=idmapping)
         end
-        insert!(flatten(add_layers.outputs[])[2], add2conv)
+        insert!(vertices(add_layers)[2], add2conv)
 
         # New layers are initialized to identity mapping weights
         # We basically have the same model as before, just with more potential
