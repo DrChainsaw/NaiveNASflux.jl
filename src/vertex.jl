@@ -38,13 +38,24 @@ Flux.@treelike CompVertex
 
 
 """
-    mutable(l, in::AbstractVertex, mutation=IoChange, traitfun=identity)
+    mutable(l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated())
 
 Return a mutable vertex wrapping the layer `l` with input vertex `in`.
 
-Extra arguments `mutation` and `traitfun` can be used to change mutation type and to add extra info about the vertex.
+Extra arguments `layerfun`, `mutation` and `traitfun` can be used to change mutation type and to add extra info about the vertex.
 """
-mutable(l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=identity) = mutable(layertype(l), l, in, layerfun, mutation, traitfun)
+mutable(l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated()) = mutable(layertype(l), l, in, layerfun, mutation, traitfun)
+
+"""
+    mutable(name::String, l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated())
+
+Return a mutable vertex wrapping the layer `l` with input vertex `in` with name `name`.
+
+Name is only used when displaying or logging and does not have to be unique (although it probably is a good idea).
+
+Extra arguments `layerfun`, `mutation` and `traitfun` can be used to change mutation type and to add extra info about the vertex.
+"""
+mutable(name::String, l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated()) = mutable(layertype(l), l, in, layerfun, mutation, traitfun ∘ named(name))
 
 mutable(::FluxParLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) = absorbvertex(layerfun(MutableLayer(l)), nout(l), in, mutation=mutation, traitdecoration = traitfun)
 
@@ -52,6 +63,12 @@ mutable(::FluxParInvLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) 
 invariantvertex(layerfun(MutableLayer(l)), in, mutation=mutation, traitdecoration=traitfun)
 
 mutable(::FluxNoParLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) = invariantvertex(layerfun(NoParams(l)), in, mutation=mutation, traitdecoration=traitfun)
+
+# Decorate trait with extra stuff like logging of size changes or validation.
+# Meant to be composable, e.g. using ∘
+named(name) = t -> NamedTrait(t, name)
+validated() = t -> SizeChangeValidation(t)
+logged(;level = Base.CoreLogging.Debug, info = FullInfoStr()) = t -> SizeChangeLogger(level, info, t)
 
 """
    concat(v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitdecoration=identity)

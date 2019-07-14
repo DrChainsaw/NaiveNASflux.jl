@@ -18,6 +18,11 @@ using Flux
         @test outputs(dense1) == [dense2]
         @test inputs(dense1) == [inpt]
         @test outputs(inpt) == [dense1]
+        
+        @test layer(dense1) == dl1
+        @test layer(dense2) == dl2
+        @test layertype(dense1) == FluxDense()
+        @test layertype(dense2) == FluxDense()
 
         @test [nout(inpt)] == nin(dense1) == [4]
         @test [nout(dense1)] == nin(dense2) == [5]
@@ -240,8 +245,8 @@ using Flux
             @test size(p1b.activation) == (4, 4, 1, 1)
         end
 
-        rnnvertex(inpt, outsize) = mutable(RNN(nout(inpt), outsize), inpt)
-        densevertex(inpt, outsize) = mutable(Dense(nout(inpt), outsize), inpt)
+        rnnvertex(inpt, outsize) = mutable("rnn", RNN(nout(inpt), outsize), inpt)
+        densevertex(inpt, outsize) = mutable("dense", Dense(nout(inpt), outsize), inpt)
 
         @testset "RNN to Dense" begin
             inpt = inputvertex("in", 4)
@@ -268,5 +273,11 @@ using Flux
             @test size(p.activation) == (3,)
         end
 
+    end
+
+    @testset "Trait functions" begin
+        @test named("test")(SizeAbsorb()) == NamedTrait(SizeAbsorb(), "test")
+        @test validated()(SizeAbsorb()) == SizeChangeValidation(SizeAbsorb())
+        @test logged(level=Base.CoreLogging.Info, info=NameInfoStr())(SizeAbsorb()) == SizeChangeLogger(Base.CoreLogging.Info, NameInfoStr(), SizeAbsorb())
     end
 end

@@ -12,11 +12,14 @@ export FluxLayer, FluxParLayer, FluxDense, FluxRecurrent, FluxRnn, FluxGru, Flux
 
 export mutable, concat, AbstractMutableComp, MutableLayer, LazyMutable, NoParams
 
+export named, validated, logged
+
 export ActivationContribution, neuron_value
 
 export nin, nout, indim, outdim, actdim, layer, layertype
 
 export idmapping
+
 
 include("types.jl")
 include("util.jl")

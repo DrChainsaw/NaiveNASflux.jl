@@ -20,6 +20,9 @@ NaiveNASlib.clone(l) = deepcopy(l)
 NaiveNASlib.mutate_inputs(m::AbstractMutableComp, inputs::AbstractArray{<:Integer,1}...) = mutate_inputs(wrapped(m), inputs...)
 NaiveNASlib.mutate_outputs(m::AbstractMutableComp, outputs) = mutate_outputs(wrapped(m), outputs)
 
+NaiveNASlib.minΔninfactor(m::AbstractMutableComp) = minΔninfactor(layertype(m), layer(m))
+NaiveNASlib.minΔnoutfactor(m::AbstractMutableComp) = minΔnoutfactor(layertype(m), layer(m))
+
 #Generic helper functions
 
 select(pars::TrackedArray, elements_per_dim...; insval = 0) = param(select(pars.data, elements_per_dim..., insval=insval))
@@ -307,6 +310,11 @@ end
 
 (i::NoParams)(x...) = layer(i)(x...)
 layer(i::NoParams) = i.layer
+layertype(i::NoParams) = layertype(layer(i))
+
+LazyMutable(m::NoParams) = m
+
 function NaiveNASlib.mutate_inputs(::NoParams, inputs) end
 function NaiveNASlib.mutate_outputs(::NoParams, outputs) end
-LazyMutable(m::NoParams) = m
+NaiveNASlib.minΔninfactor(m::NoParams) = minΔninfactor(layertype(m), layer(m))
+NaiveNASlib.minΔnoutfactor(m::NoParams) = minΔnoutfactor(layertype(m), layer(m))
