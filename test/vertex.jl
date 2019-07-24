@@ -1,7 +1,12 @@
 using NaiveNASflux
 import NaiveNASflux: weights, bias
-using NaiveNASlib
-using Flux
+
+@testset "InputShapeVertex" begin
+    v = inputvertex("in", 3, FluxDense())
+    @test layertype(v) == FluxDense()
+    @test name(v) == "in"
+    @test nout(v) == 3
+end
 
 @testset "Size mutations" begin
 
