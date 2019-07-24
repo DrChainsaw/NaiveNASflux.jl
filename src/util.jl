@@ -53,12 +53,12 @@ outdim(::FluxRecurrent) = 1
 actdim(::FluxRecurrent) = 1
 actrank(::FluxRecurrent) = 2
 
-indim(::FluxConvolutional) = 4
-outdim(::FluxConvolutional) = 3
-actdim(::FluxConvolutional) = 3
-actrank(::FluxConvolutional) = 3
-indim(::FluxConv) = 3
-outdim(::FluxConv) = 4
+indim(::FluxConvolutional{N}) where N = 2+N
+outdim(::FluxConvolutional{N}) where N = 1+N
+actdim(::FluxConvolutional{N}) where N = 1+N
+actrank(::FluxConvolutional{N}) where N = 1+N
+indim(::FluxConv{N}) where N = 1+N
+outdim(::FluxConv{N}) where N = 2+N
 
 # Note: Contrary to other ML frameworks, bias seems to always be present in Flux
 weights(l) = weights(layertype(l), l)

@@ -108,7 +108,7 @@ height = 4
 width = 4
 
 function model(nconv)
-    invertex = inputvertex("in", 1, FluxConv())
+    invertex = inputvertex("in", 1, FluxConv{2}())
     l = invertex
     for i in 1:nconv
         l = conv(l, 16, relu)

@@ -10,14 +10,26 @@ using Flux
         @test nin(Dense(3,4)) == 3
         @test nout(Dense(3,4)) == 4
 
+        @test nin(Conv((2,), 3=>4)) == 3
+        @test nout(Conv((2,), 3=>4)) == 4
         @test nin(Conv((1,2), 3=>6)) == 3
         @test nout(Conv((1,2), 3=>6)) == 6
+        @test nin(Conv((1,2,3), 4=>5)) == 4
+        @test nout(Conv((1,2,3), 4=>5)) == 5
 
+        @test nin(ConvTranspose((2,), 3=>4)) == 3
+        @test nout(ConvTranspose((2,), 3=>4)) == 4
         @test nin(ConvTranspose((1,2), 3=>6)) == 3
         @test nout(ConvTranspose((1,2), 3=>6)) == 6
+        @test nin(ConvTranspose((1,2,3), 4=>5)) == 4
+        @test nout(ConvTranspose((1,2,3), 4=>5)) == 5
 
+        @test nin(DepthwiseConv((2,), 3=>4)) == 3
+        @test nout(DepthwiseConv((2,), 3=>4)) == 4
         @test nin(DepthwiseConv((1,2), 3=>6)) == 3
         @test nout(DepthwiseConv((1,2), 3=>6)) == 6
+        @test nin(DepthwiseConv((1,2,3), 4=>5)) == 4
+        @test nout(DepthwiseConv((1,2,3), 4=>5)) == 5
 
         @test nin(Flux.Diagonal(3)) == nout(Flux.Diagonal(3)) == 3
 

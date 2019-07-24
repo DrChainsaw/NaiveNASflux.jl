@@ -18,7 +18,7 @@ using Flux
         @test outputs(dense1) == [dense2]
         @test inputs(dense1) == [inpt]
         @test outputs(inpt) == [dense1]
-        
+
         @test layer(dense1) == dl1
         @test layer(dense2) == dl2
         @test layertype(dense1) == FluxDense()
@@ -147,8 +147,8 @@ using Flux
             nin2 = 7
             indata1 = reshape(collect(Float32, 1:nin1*4*4), 4, 4, nin1, 1)
             indata2 = reshape(collect(Float32, 1:nin2*4*4), 4, 4, nin2, 1)
-            in1 = inputvertex("in1", nin1, FluxConv())
-            in2 = inputvertex("in2", nin2, FluxConv())
+            in1 = inputvertex("in1", nin1, FluxConv{2}())
+            in2 = inputvertex("in2", nin2, FluxConv{2}())
             vfun(v,s) = mutable(BatchNorm(nout(v)), v)
 
             @test size(testgraph_vfun(vfun, in1, in2)(indata1, indata2)) == (4,4,10,1)

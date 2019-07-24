@@ -17,13 +17,13 @@ layertype(l::Flux.Recur{<:Flux.RNNCell}) = FluxRnn()
 layertype(l::Flux.Recur{<:Flux.LSTMCell}) = FluxLstm()
 layertype(l::Flux.Recur{<:Flux.GRUCell}) = FluxGru()
 
-abstract type FluxConvolutional <: FluxParLayer end
-struct FluxConv <: FluxConvolutional end
-struct FluxConvTranspose  <: FluxConvolutional end
-struct FluxDepthwiseConv <: FluxConvolutional  end
-layertype(l::Conv) = FluxConv()
-layertype(l::ConvTranspose) = FluxConvTranspose()
-layertype(l::DepthwiseConv) = FluxDepthwiseConv()
+abstract type FluxConvolutional{N} <: FluxParLayer end
+struct FluxConv{N} <: FluxConvolutional{N} end
+struct FluxConvTranspose{N}  <: FluxConvolutional{N} end
+struct FluxDepthwiseConv{N} <: FluxConvolutional{N}  end
+layertype(l::Conv{N}) where N = FluxConv{N}()
+layertype(l::ConvTranspose{N}) where N = FluxConvTranspose{N}()
+layertype(l::DepthwiseConv{N}) where N = FluxDepthwiseConv{N}()
 
 
 abstract type FluxTransparentLayer <: FluxLayer end
