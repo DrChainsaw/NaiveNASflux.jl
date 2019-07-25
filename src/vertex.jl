@@ -17,6 +17,7 @@ NaiveNASlib.inputvertex(name, size, type::FluxLayer) = InputShapeVertex(inputver
 layertype(v::InputShapeVertex) = v.t
 layer(v::InputShapeVertex) = LayerTypeWrapper(v.t)
 NaiveNASlib.base(v::InputShapeVertex) = v.base
+NaiveNASlib.name(v::InputShapeVertex) = name(base(v))
 NaiveNASlib.nout(v::InputShapeVertex) = nout(base(v))
 NaiveNASlib.nin(v::InputShapeVertex) = nin(base(v))
 NaiveNASlib.outputs(v::InputShapeVertex) = outputs(base(v))
