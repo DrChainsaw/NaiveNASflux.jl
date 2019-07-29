@@ -51,5 +51,6 @@
         Δnout(l, [1,2,3,4])
         apply_mutation(l)
         @test size(l(ones(Float32, 3,2))) == (4, 2)
+        @test size(neuron_value(l)) == (4,)
     end
 end

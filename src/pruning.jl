@@ -23,6 +23,11 @@ end
 layer(m::ActivationContribution) = layer(m.layer)
 wrapped(m::ActivationContribution) = m.layer
 
+function NaiveNASlib.mutate_outputs(m::ActivationContribution, outputs::AbstractVector{<:Integer})
+    m.contribution = m.contribution[outputs]
+    mutate_outputs(wrapped(m), outputs)
+end
+
 """
     mean_squeeze(x, dimkeep)
 
