@@ -10,18 +10,25 @@ mutable struct ActivationContribution <: AbstractMutableComp
     contribution
 end
 ActivationContribution(l::AbstractMutableComp) = ActivationContribution(l, zeros(Float32, nout(l)))
+ActivationContribution(l) = ActivationContribution(l, missing)
+
+layer(m::ActivationContribution) = layer(m.layer)
+wrapped(m::ActivationContribution) = m.layer
 
 Flux.@treelike ActivationContribution
 
 function(m::ActivationContribution)(x)
     act = wrapped(m)(x)
+    m.contribution = lazyinit(m.contribution, act)
     return hook(act) do grad
-        m.contribution[1:end] += mean_squeeze(abs.(act .* grad).data, actdim(layer(m)))
+        m.contribution[1:end] += mean_squeeze(abs.(act .* grad).data, actdim(ndims(act)))
         return grad
     end
 end
-layer(m::ActivationContribution) = layer(m.layer)
-wrapped(m::ActivationContribution) = m.layer
+lazyinit(::Missing, arr::AbstractArray{T, N}) where {T,N}= fill!(similar(arr, size(arr, actdim(N))), T(0))
+lazyinit(c, arr) = c
+
+actdim(nd::Integer) = nd - 1
 
 function NaiveNASlib.mutate_outputs(m::ActivationContribution, outputs::AbstractVector{<:Integer})
     m.contribution = m.contribution[outputs]
