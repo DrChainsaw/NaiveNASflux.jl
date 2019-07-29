@@ -31,7 +31,7 @@ lazyinit(c, arr) = c
 actdim(nd::Integer) = nd - 1
 
 function NaiveNASlib.mutate_outputs(m::ActivationContribution, outputs::AbstractVector{<:Integer})
-    m.contribution = m.contribution[outputs]
+    m.contribution = select(m.contribution, 1 => outputs)
     mutate_outputs(wrapped(m), outputs)
 end
 

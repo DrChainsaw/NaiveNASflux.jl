@@ -25,6 +25,8 @@ NaiveNASlib.minΔnoutfactor(m::AbstractMutableComp) = minΔnoutfactor(layertype(
 
 #Generic helper functions
 
+select(::Missing, elements_per_dim...; insval = 0) = missing
+
 select(pars::TrackedArray, elements_per_dim...; insval = 0) = param(select(pars.data, elements_per_dim..., insval=insval))
 
 function select(pars::AbstractArray{T,N}, elements_per_dim...; insval = 0) where {T, N}
