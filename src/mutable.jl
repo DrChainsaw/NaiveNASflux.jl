@@ -42,10 +42,10 @@ function select(pars::AbstractArray{T,N}, elements_per_dim...; insval = 0) where
         newmap = elements .> 0
 
         psize[dim] = length(newmap)
-        assign[dim] = newmap
+        assign[dim] = findall(newmap)
         access[dim] = indskeep
     end
-    newpars = zeros(T, psize...) .+ insval
+    newpars = fill!(similar(pars, psize...), T(0)) .+ T(insval)
     newpars[assign...] = pars[access...]
     return newpars
 end

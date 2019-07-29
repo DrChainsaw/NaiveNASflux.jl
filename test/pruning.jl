@@ -66,7 +66,14 @@
         l2 = mutable(MaxPool((3,3), pad=(1,1)), l1, layerfun = ActivationContribution ∘ LazyMutable)
         g = CompGraph(inputs(l1), l2)
 
-        @test size(g(ones(Float32, 4,4,2,3))) == (2,2,5,3)
+        # Mutate before activation contribution for l2 has been initialized
+        Δnout(l1, [1,2,3,4,-1,-1])
+        apply_mutation(g)
+        @test size(neuron_value(l1)) == (6,)
+        @test ismissing(neuron_value(l2))
+
+        # This will initialize it
+        @test size(g(ones(Float32, 4,4,2,3))) == (2,2,6,3)
 
         Δnout(l1, [1,2,3,4])
         apply_mutation(g)
