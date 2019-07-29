@@ -14,7 +14,7 @@ ActivationContribution(l::AbstractMutableComp) = ActivationContribution(l, zeros
 Flux.@treelike ActivationContribution
 
 function(m::ActivationContribution)(x)
-    act = layer(m)(x)
+    act = wrapped(m)(x)
     return hook(act) do grad
         m.contribution[1:end] += mean_squeeze(abs.(act .* grad).data, actdim(layer(m)))
         return grad

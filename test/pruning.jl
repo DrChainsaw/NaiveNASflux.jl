@@ -45,4 +45,11 @@
         tr(l, ones(Float32, 4,4,2,5))
         @test size(neuron_value(l)) == (5,)
     end
+
+    @testset "Mutate ActivationContribution" begin
+        l = ml(Dense(3,5), ActivationContribution ∘ LazyMutable)
+        Δnout(l, [1,2,3,4])
+        apply_mutation(l)
+        @test size(l(ones(Float32, 3,2))) == (4, 2)
+    end
 end
