@@ -65,7 +65,13 @@ wrapped(m::MutableLayer) = m.layer
 layer(m::MutableLayer) = wrapped(m)
 layertype(m::MutableLayer) = layertype(layer(m))
 
-Flux.@treelike MutableLayer
+# Instead of returning and hoping that caller will be able to create a copy of itself we just mutate the MutableLayer.
+# MutableLayers are intended to be wrapped in MutationVertices and they are not easy to create in the manner mapchildren is designed due to the cyclic structure (a vertex knows both its inputs and its outputs).
+function Flux.mapchildren(f, m::MutableLayer)
+    m.layer = f(m.layer)
+    return m
+end
+Flux.children(m::MutableLayer) = (m.layer,)
 
 function NaiveNASlib.mutate_inputs(m::MutableLayer, inputs::AbstractArray{<:Integer,1}...)
     @assert length(inputs) == 1 "Only one input per layer!"
