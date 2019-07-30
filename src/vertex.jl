@@ -22,7 +22,7 @@ NaiveNASlib.nout(v::InputShapeVertex) = nout(base(v))
 NaiveNASlib.nin(v::InputShapeVertex) = nin(base(v))
 NaiveNASlib.outputs(v::InputShapeVertex) = outputs(base(v))
 NaiveNASlib.inputs(v::InputShapeVertex) = []
-NaiveNASlib.clone(v::InputShapeVertex, ins::AbstractVertex...) = clone(base(v), ins...)
+NaiveNASlib.clone(v::InputShapeVertex, ins::AbstractVertex...) = InputShapeVertex(clone(base(v), ins...), layertype(v))
 
 # Only to prevent stack overflow above
 struct LayerTypeWrapper
@@ -30,12 +30,33 @@ struct LayerTypeWrapper
 end
 layertype(l::LayerTypeWrapper) = l.t
 
-Flux.@treelike CompGraph
-Flux.children(a::AbstractVector{<:AbstractVertex}) = Tuple(a)
-# Avoid outputs due to flux issue #803
-Flux.children(v::AbstractVertex) = tuple(base(v), inputs(v))
 Flux.@treelike InputVertex
 Flux.@treelike CompVertex
+
+# This is a bit of a hack to enable 1) params and 2) gpu. Other uses may not work as expected, especially if one tries to use these methods to view/manipulate things which are not from Flux.
+
+# Two things (afaik) prevent usage of @treelike:
+#   1) Flux issue #803 which is fixed on master but not on any release
+#   2) MutationVertices (OutputVertices really) can not be created by just copying their fields due to the cyclic structure (or?) and mapchildren seems to be designed around this.
+
+# Instead, we rely in the internals of the vertices to be mutable (e.g MutableLayer).
+
+Flux.children(a::AbstractVector{<:AbstractVertex}) = Tuple(a)
+function Flux.mapchildren(f, a::AbstractVector{<:AbstractVertex})
+    f.(a) # Returning this will do no good due to 2) above
+    return a
+end
+
+Flux.children(v::AbstractVertex) = (base(v),)
+function Flux.mapchildren(f, v::AbstractVertex)
+    f.(Flux.children(v)) # Returning this will do no good due to 2) above
+    return v
+end
+Flux.children(g::CompGraph) = Tuple(vertices(g))
+function Flux.mapchildren(f, g::CompGraph)
+    f.(Flux.children(g)) # Returning this will do no good due to 2) above
+    return g
+end
 
 
 """

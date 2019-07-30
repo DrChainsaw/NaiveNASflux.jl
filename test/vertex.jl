@@ -6,6 +6,11 @@ import NaiveNASflux: weights, bias
     @test layertype(v) == FluxDense()
     @test name(v) == "in"
     @test nout(v) == 3
+
+    c = clone(v)
+    @test layertype(c) == FluxDense()
+    @test name(c) == "in"
+    @test nout(c) == 3
 end
 
 @testset "Size mutations" begin
@@ -279,10 +284,36 @@ end
         end
 
     end
+end
 
-    @testset "Trait functions" begin
-        @test named("test")(SizeAbsorb()) == NamedTrait(SizeAbsorb(), "test")
-        @test validated()(SizeAbsorb()) == SizeChangeValidation(SizeAbsorb())
-        @test logged(level=Base.CoreLogging.Info, info=NameInfoStr())(SizeAbsorb()) == SizeChangeLogger(Base.CoreLogging.Info, NameInfoStr(), SizeAbsorb())
-    end
+@testset "Trait functions" begin
+    @test named("test")(SizeAbsorb()) == NamedTrait(SizeAbsorb(), "test")
+    @test validated()(SizeAbsorb()) == SizeChangeValidation(SizeAbsorb())
+    @test logged(level=Base.CoreLogging.Info, info=NameInfoStr())(SizeAbsorb()) == SizeChangeLogger(Base.CoreLogging.Info, NameInfoStr(), SizeAbsorb())
+end
+
+@testset "Flux children" begin
+    import Flux:children
+    inpt = inputvertex("in", 2, FluxDense())
+    v1 = mutable(Dense(2, 3), inpt)
+    v2 = mutable(Dense(3, 4), v1)
+    g1 = CompGraph(inpt, v2)
+
+    @test children(g1) == (inpt, v1, v2)
+
+    pars1 = params(g1).order
+    @test pars1[1] == layer(v1).W
+    @test pars1[2] == layer(v1).b
+    @test pars1[3] == layer(v2).W
+    @test pars1[4] == layer(v2).b
+
+    g2 = copy(g1)
+    # Emulate Flux.gpu
+    testfun(x) = x
+    # Modify x.data or else x.tracked.f is set which prevents it from being recognized as a parameter when param is called
+    testfun(x::TrackedArray) = param(2 .* x.data)
+    mapleaves(testfun, g2)
+
+    pars2 = params(g2).order
+    @test pars2 == 2 .* pars1
 end
