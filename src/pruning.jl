@@ -15,8 +15,6 @@ ActivationContribution(l) = ActivationContribution(l, missing)
 layer(m::ActivationContribution) = layer(m.layer)
 wrapped(m::ActivationContribution) = m.layer
 
-Flux.@treelike ActivationContribution
-
 function(m::ActivationContribution)(x)
     act = wrapped(m)(x)
     m.contribution = lazyinit(m.contribution, act)
