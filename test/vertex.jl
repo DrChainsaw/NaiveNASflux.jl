@@ -172,6 +172,16 @@ end
             @test_throws DimensionMismatch concat(r1, c1)
             @test_throws DimensionMismatch concat(d1, r1)
         end
+
+        @testset "Concat with name" begin
+            d1 = mutable(Dense(2,3), inputvertex("in1", 2))
+            d2 = mutable(Dense(2,5), inputvertex("in1", 2))
+            c = concat("c", d1, d2)
+
+            @test name(c) == "c"
+            @test nout(c) == 8
+            @test nin(c) == [3, 5]
+        end
     end
 
     @testset "Tricky structures" begin
