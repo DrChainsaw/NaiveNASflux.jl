@@ -105,6 +105,17 @@ function concat(v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, tra
     concat(Val.(dims), Val.(ranks), mutation, traitdecoration, v, vs...)
 end
 
+"""
+    concat(name::String, v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitdecoration=identity)
+
+Return a mutable vertex with name `name` which concatenates input.
+
+Name is only used when displaying or logging and does not have to be unique (although it probably is a good idea).
+
+Inputs must have compatible activation shapes or an exception will be thrown.
+"""
+concat(name::String, v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitdecoration=identity) = concat(v, vs..., mutation=mutation, traitdecoration=traitdecoration ∘ named(name))
+
 concat(actdims, actranks, mutation, traitdecoration, v::AbstractVertex, vs::AbstractVertex...) = throw(DimensionMismatch("Can not concatenate activations with different shapes! Got: $actdims and $actranks")) # I guess it might be doable, but CBA to try it out
 
 # NTuples only match if all actdims (N) and actranks (M) are identical
