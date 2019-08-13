@@ -93,34 +93,38 @@ validated() = t -> SizeChangeValidation(t)
 logged(;level = Base.CoreLogging.Debug, info = FullInfoStr()) = t -> SizeChangeLogger(level, info, t)
 
 """
-   concat(v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitdecoration=identity)
+   concat(v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitfun=identity)
 
 Return a mutable vertex which concatenates input.
 
 Inputs must have compatible activation shapes or an exception will be thrown.
+
+Extra arguments `layerfun`, `mutation` and `traitfun` can be used to change mutation type and to add extra info about the vertex.
 """
-function concat(v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitdecoration=identity)
+function concat(v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitfun=identity, layerfun=identity)
     dims = tuple(Iterators.flatten(actdim.([v, vs...]))...)
     ranks = tuple(Iterators.flatten(actrank.([v, vs...]))...)
-    concat(Val.(dims), Val.(ranks), mutation, traitdecoration, v, vs...)
+    concat(Val.(dims), Val.(ranks), mutation, traitfun, layerfun, v, vs...)
 end
 
 """
-    concat(name::String, v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitdecoration=identity)
+    concat(name::String, v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitfun=identity)
 
 Return a mutable vertex with name `name` which concatenates input.
 
 Name is only used when displaying or logging and does not have to be unique (although it probably is a good idea).
 
 Inputs must have compatible activation shapes or an exception will be thrown.
-"""
-concat(name::String, v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitdecoration=identity) = concat(v, vs..., mutation=mutation, traitdecoration=traitdecoration ∘ named(name))
 
-concat(actdims, actranks, mutation, traitdecoration, v::AbstractVertex, vs::AbstractVertex...) = throw(DimensionMismatch("Can not concatenate activations with different shapes! Got: $actdims and $actranks")) # I guess it might be doable, but CBA to try it out
+Extra arguments `layerfun`, `mutation` and `traitfun` can be used to change mutation type and to add extra info about the vertex.
+"""
+concat(name::String, v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitfun = identity, layerfun=identity) = concat(v, vs..., mutation=mutation, traitfun=traitfun ∘ named(name), layerfun=layerfun)
+
+concat(actdims, actranks, mutation, traitfun, layerfun, v::AbstractVertex, vs::AbstractVertex...) = throw(DimensionMismatch("Can not concatenate activations with different shapes! Got: $actdims and $actranks")) # I guess it might be doable, but CBA to try it out
 
 # NTuples only match if all actdims (N) and actranks (M) are identical
 # Can't ... stop ... dispatching ... on ... stuff ...
-concat(::NTuple{T, Val{N}}, ::NTuple{T, Val{M}}, mutation, traitdecoration, v::AbstractVertex, vs::AbstractVertex...) where {T,N,M} = conc(v, vs..., dims=N, mutation=mutation, traitdecoration=traitdecoration)
+concat(::NTuple{T, Val{N}}, ::NTuple{T, Val{M}}, mutation, traitfun, layerfun, v::AbstractVertex, vs::AbstractVertex...) where {T,N,M} = conc(v, vs..., dims=N, mutation=mutation, traitdecoration=traitfun, outwrap=layerfun)
 
 
 layer(v::AbstractVertex) = layer(base(v))

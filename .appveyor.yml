@@ -1,14 +1,16 @@
 # Documentation: https://github.com/JuliaCI/Appveyor.jl
+platform:
+  - x64
+  - x86
 environment:
   matrix:
   - julia_version: 1.1
   - julia_version: nightly
-platform:
-  - x86
-  - x64
 matrix:
+  fast_finish: true
   allow_failures:
     - julia_version: nightly
+    - platform: x86
 branches:
   only:
     - master
