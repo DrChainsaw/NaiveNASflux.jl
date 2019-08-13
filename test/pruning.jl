@@ -58,6 +58,18 @@
         v = ac >> ml(Dense(2,3)) + ml(Dense(4,3))
         @test v([1 2 3]', [4 5 6]') == [5 7 9]'
         @test neuron_value(v) == [0,0,0]
+
+        g = CompGraph(vcat(inputs.(inputs(v))...), v)
+        @test size(g(ones(Float32, 2,2), ones(Float32, 4, 2))) == (nout(v), 2)
+    end
+
+    @testset "Concat ActivationContribution" begin
+        v = concat(ml(Dense(2,3)), ml(Dense(4,5)), layerfun=ActivationContribution)
+        @test v([1 2 3]', [4 5 6 7 8]') == [1 2 3 4 5 6 7 8]'
+        @test neuron_value(v) == zeros(nout(v))
+
+        g = CompGraph(vcat(inputs.(inputs(v))...), v)
+        @test size(g(ones(Float32, 2,2), ones(Float32, 4, 2))) == (nout(v), 2)
     end
 
     @testset "Mutate ActivationContribution" begin
