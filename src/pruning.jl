@@ -15,8 +15,8 @@ ActivationContribution(l) = ActivationContribution(l, missing)
 layer(m::ActivationContribution) = layer(m.layer)
 wrapped(m::ActivationContribution) = m.layer
 
-function(m::ActivationContribution)(x)
-    act = wrapped(m)(x)
+function(m::ActivationContribution)(x...)
+    act = wrapped(m)(x...)
     m.contribution = lazyinit(m.contribution, act)
     return hook(act) do grad
         m.contribution[1:end] += mean_squeeze(abs.(act .* grad).data, actdim(ndims(act)))
