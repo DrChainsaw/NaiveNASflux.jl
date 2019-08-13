@@ -7,6 +7,7 @@ environment:
   - julia_version: 1.1
   - julia_version: nightly
 matrix:
+  fast_finish: true
   allow_failures:
     - julia_version: nightly
     - platform: x86
