@@ -244,20 +244,26 @@ function NaiveNASlib.mutate_inputs(m::LazyMutable, inputs::AbstractArray{<:Integ
     m.inputs == inputs[1] && return
 
     m.mutable = ResetInAndOut(trigger_mutation(m.mutable))
-    m.inputs = copy(inputs[1])
+    m.inputs = select(m.inputs, 1 => inputs[1], insval=-1)
 end
 
 function NaiveNASlib.mutate_outputs(m::LazyMutable, outputs::AbstractArray{<:Integer,1})
     outputs == m.outputs && return
 
     m.mutable = ResetInAndOut(trigger_mutation(m.mutable))
-    m.outputs = copy(outputs)
+    m.outputs = select(m.outputs, 1=>outputs, insval = -1)
 end
 
-NaiveNASlib.mutate_inputs(m::LazyMutable, nin::Integer...) = mutate_inputs(m, map(n -> collect(1:n), nin)...)
+NaiveNASlib.mutate_inputs(m::LazyMutable, nin::Integer...) = mutate_inputs(m, trunc_or_pad.(length(m.inputs), nin)...)
 
+NaiveNASlib.mutate_outputs(m::LazyMutable, nout::Integer) = mutate_outputs(m, trunc_or_pad(length(m.outputs), nout))
 
-NaiveNASlib.mutate_outputs(m::LazyMutable, nout::Integer) = mutate_outputs(m, 1:nout)
+function trunc_or_pad(maxselect, size)
+    res = -ones(Int, size)
+    lastselected = min(size, maxselect)
+    res[1:lastselected] = 1:lastselected
+    return res
+end
 
 """
     MutationTriggered
