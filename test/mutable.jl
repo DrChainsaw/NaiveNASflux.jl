@@ -434,6 +434,24 @@ import InteractiveUtils:subtypes
             @test expected == m(Float32[2,3])
         end
 
+        @testset "LazyMutable reselect" begin
+            m = LazyMutable(MutableLayer(Dense(5,5)))
+
+            mutate_inputs(m, [-1, 1, 3, -1, 4])
+            @test m.inputs == [-1, 1, 3, -1, 4]
+
+            mutate_inputs(m, [1,2,4,5])
+            @test m.inputs == [-1, 1,-1, 4]
+
+            mutate_outputs(m, [2, -1, 3, -1, 4])
+            @test m.outputs == [2, -1, 3, -1, 4]
+
+            mutate_outputs(m, [1, 2, 5,-1])
+            @test m.outputs == [2, -1, 4, -1]
+
+            @test m(Float32[1,3,5,7]) == layer(m)(Float32[1,3,5,7])
+        end
+
         @testset "Clone" begin
             mlazy = LazyMutable(MutableLayer(Dense(2,3)))
             cloned = clone(mlazy)
