@@ -233,6 +233,8 @@ LazyMutable(m, nin::Integer, nout::Integer) = LazyMutable(m, 1:nin, 1:nout)
 wrapped(m::LazyMutable) = m.mutable
 layer(m::LazyMutable) = layer(wrapped(m))
 
+treelike_fields(T::Type{LazyMutable}) = (:mutable,)
+
 (m::LazyMutable)(x...) = dispatch!(m, m.mutable, x...)
 dispatch!(m::LazyMutable, mutable::AbstractMutableComp, x...) = mutable(x...)
 
