@@ -8,23 +8,22 @@ Short summary is that the first order taylor approximation of the optimization p
 mutable struct ActivationContribution <: AbstractMutableComp
     layer
     contribution
+    aggmethod
 end
-ActivationContribution(l::AbstractMutableComp) = ActivationContribution(l, zeros(Float32, nout(l)))
-ActivationContribution(l) = ActivationContribution(l, missing)
+ActivationContribution(l::AbstractMutableComp) = ActivationContribution(l, zeros(Float32, nout(l)), Ewma(0.05))
+ActivationContribution(l) = ActivationContribution(l, missing, Ewma(0.05))
 
 layer(m::ActivationContribution) = layer(m.layer)
 wrapped(m::ActivationContribution) = m.layer
 
 function(m::ActivationContribution)(x...)
     act = wrapped(m)(x...)
-    m.contribution = lazyinit(m.contribution, act)
+
     return hook(act) do grad
-        m.contribution[1:end] += mean_squeeze(abs.(act .* grad).data, actdim(ndims(act)))
+        m.contribution = agg(m.aggmethod, m.contribution, mean_squeeze(abs.(act .* grad).data, actdim(ndims(act))))
         return grad
     end
 end
-lazyinit(::Missing, arr::AbstractArray{T, N}) where {T,N}= fill!(similar(arr, size(arr, actdim(N))), T(0))
-lazyinit(c, arr) = c
 
 actdim(nd::Integer) = nd - 1
 
@@ -53,3 +52,20 @@ neuron_value(l) = neuron_value(layertype(l), l)
 # Default: highest mean of abs of weights + bias. Not a very good metric, but should be better than random
 # Maybe do something about state in recurrent layers as well, but CBA to do it right now
 neuron_value(t::FluxParLayer, l) = mean_squeeze(abs.(weights(l)), outdim(l)) + abs.(bias(l))
+
+"""
+    Ewma(α::Real)
+
+Exponential moving average.
+
+Parameter `α` acts as a forgetting factor, i.e larger values means faster convergence but more noisy estimate.
+"""
+struct Ewma
+    α
+    function Ewma(α::Real)
+        0 <= α <= 1 || error("α must be between 0 and 1, was $α")
+        new(α)
+    end
+end
+agg(m::Ewma, x ,y) = m.α .* x .+ (1 - m.α) .* y
+agg(m::Ewma, ::Missing, y) = y
