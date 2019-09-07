@@ -67,5 +67,5 @@ struct Ewma
         new(α)
     end
 end
-agg(m::Ewma, x ,y) = m.α .* x .+ (1 - m.α) .* y
+agg(m::Ewma, x ,y) = x .+ m.α .* x .+ (1 - m.α) .* y
 agg(m::Ewma, ::Missing, y) = y
