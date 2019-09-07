@@ -9,11 +9,11 @@
         niters = 100
 
         # First lets define a simple architecture
-        dense(in, outsize, act) = mutable(Dense(nout(in),outsize, act), in, layerfun=ActivationContribution)
+        mdense(in, outsize, act) = mutable(Dense(nout(in),outsize, act), in, layerfun=ActivationContribution)
 
         invertex = inputvertex("input", 2, FluxDense())
-        layer1 = dense(invertex, 32, relu)
-        layer2 = dense(layer1, 1, sigmoid)
+        layer1 = mdense(invertex, 32, relu)
+        layer2 = mdense(layer1, 1, sigmoid)
         original = CompGraph(invertex, layer2)
 
         # Training params, nothing to see here
@@ -36,19 +36,20 @@
 
         # Prune randomly selected neurons
         pruned_random = copy(original)
-        Δnin(pruned_random.outputs[], rand(1:nout(layer1), nout(layer1) - nprune))
+        Δnin(pruned_random.outputs[], -nprune)
+        Δoutputs(pruned_random.outputs[], v -> rand(nout_org(v)))
         apply_mutation(pruned_random)
-
-        pruneorder = sortperm(neuron_value(layer1))
 
         # Prune the least valuable neurons according to the metric in ActivationContribution
         pruned_least = copy(original)
-        Δnin(pruned_least.outputs[], pruneorder[nprune:end])
+        Δnin(pruned_least.outputs[], -nprune)
+        Δoutputs(pruned_least.outputs[], neuron_value)
         apply_mutation(pruned_least)
 
         # Prune the most valuable neurons according to the metric in ActivationContribution
         pruned_most = copy(original)
-        Δnin(pruned_most.outputs[], pruneorder[1:end-nprune])
+        Δnin(pruned_most.outputs[], -nprune)
+        Δoutputs(pruned_most.outputs[], v -> -neuron_value(v))
         apply_mutation(pruned_most)
 
         # Can I have my free lunch now please?!
@@ -67,9 +68,9 @@
         niters = 20
 
         # Layers used in this example
-        conv(in, outsize, act; init=glorot_uniform) = mutable(Conv((3,3),nout(in)=>outsize, act, pad=(1,1), init=init), in)
-        avgpool(in, h, w) = mutable(MeanPool((h, w)), in)
-        dense(in, outsize, act) = mutable(Dense(nout(in),outsize, act), in)
+        mconv(in, outsize, act; init=glorot_uniform) = mutable(Conv((3,3),nout(in)=>outsize, act, pad=(1,1), init=init), in)
+        mavgpool(in, h, w) = mutable(MeanPool((h, w)), in)
+        mdense(in, outsize, act) = mutable(Dense(nout(in),outsize, act), in)
 
         # Size of the input
         height = 4
@@ -79,11 +80,11 @@
             invertex = inputvertex("in", 1, FluxConv{2}())
             l = invertex
             for i in 1:nconv
-                l = conv(l, 16, relu)
+                l = mconv(l, 16, relu)
             end
-            l = avgpool(l, height, width)
+            l = mavgpool(l, height, width)
             l = invariantvertex(x -> x[1,1,:,:], l)
-            l = dense(l, 2, identity)
+            l = mdense(l, 2, identity)
             return CompGraph(invertex, l)
         end
         original = model(1)
@@ -125,8 +126,8 @@
         # Add two layers after the conv layer
         add_layers = copy(original)
         function add2conv(in)
-            l = conv(in, nout(in), relu, init=idmapping)
-            return conv(l, nout(in), relu, init=idmapping)
+            l = mconv(in, nout(in), relu, init=idmapping)
+            return mconv(l, nout(in), relu, init=idmapping)
         end
         insert!(vertices(add_layers)[2], add2conv)
 

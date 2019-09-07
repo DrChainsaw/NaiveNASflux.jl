@@ -39,7 +39,8 @@ end
         @test nout(dense2) == 3
 
         inds = [1, 2, 4, 5]
-        Δnin(dense2, inds)
+        Δnin(NaiveNASlib.OnlyFor(), dense2, inds)
+        Δnout(NaiveNASlib.OnlyFor(), dense1, inds)
 
         @test [nout(inpt)] == nin(dense1) == [4]
         @test [nout(dense1)] == nin(dense2) == [4]
@@ -49,7 +50,7 @@ end
         W1exp, b1exp = weights(dl1)[inds, :], bias(dl1)[inds]
         apply_mutation.(flatten(dense2))
 
-        @test size(CompGraph([inpt], [dense2])(collect(Float32, 1:nin(inpt)))) == (3,)
+        @test size(CompGraph([inpt], [dense2])(collect(Float32, 1:nout(inpt)))) == (3,)
 
         assertlayer(layer(dense2), W2exp, b2exp)
         assertlayer(layer(dense1), W1exp, b1exp)
@@ -62,7 +63,7 @@ end
 
         @test nin(bv) == [nout(cv)] == [4]
 
-        Δnin(bv, [1,3,4])
+        Δnin(bv, -1)
         apply_mutation.(flatten(bv))
 
         @test nin(bv) == [nout(cv)] == [3]
@@ -75,7 +76,7 @@ end
 
         @test nin(bv) == [nout(cv)] == [4]
 
-        Δnin(bv, [1,3,4])
+        Δnin(bv, -1)
         apply_mutation.(flatten(bv))
 
         @test nin(bv) == [nout(cv)] == [3]
@@ -201,7 +202,7 @@ end
 
         conv3x3(inpt::AbstractVertex, nch::Integer) = mutable(Conv((3,3), nout(inpt)=>nch, pad=(1,1)), inpt)
         batchnorm(inpt) = mutable(BatchNorm(nout(inpt)), inpt)
-        maxpool(inpt) = mutable(MaxPool((2,2)), inpt)
+        mmaxpool(inpt) = mutable(MaxPool((2,2)), inpt)
 
         @testset "Residual Conv block" begin
             inpt = inputvertex("in", 3)
@@ -212,7 +213,7 @@ end
             pv2, p2 = probe(conv2)
             bn2 = batchnorm(pv2)
             add = bn2 + bn1
-            mp = maxpool(add)
+            mp = mmaxpool(add)
             out = conv3x3(mp, 3)
 
             graph = CompGraph([inpt], [out])
@@ -223,7 +224,8 @@ end
             @test size(p1.activation) == (4, 4, 5, 1)
             @test size(p2.activation) == (4, 4, 5, 1)
 
-            Δnin(out, [-1, 2, 3, -1])
+            Δnin(out, -1)
+            Δoutputs(out, v -> 1:nout_org(v))
             apply_mutation(graph)
 
             @test size(graph(indata)) == (2, 2, 3, 1)
@@ -242,9 +244,9 @@ end
             conv1b = conv3x3(bn1, 2)
             pv1b, p1b = probe(conv1b)
             bn1b = batchnorm(pv1b)
-            mv = StackingVertex(CompVertex((x,y) -> cat(x,y,dims=3), bn1a, bn1b))
+            mv = concat(bn1a, bn1b)
             add = mv + bn1
-            mp = maxpool(add)
+            mp = mmaxpool(add)
             out = conv3x3(mp, 3)
 
             graph = CompGraph([inpt], [out])
@@ -256,13 +258,14 @@ end
             @test size(p1a.activation) == (4, 4, 3, 1)
             @test size(p1b.activation) == (4, 4, 2, 1)
 
-            Δnin(out, [-1, 2, -1, 4])
+            Δnin(out, -1)
+            Δoutputs(out, v -> 1:nout_org(v))
             apply_mutation(graph)
 
             @test size(graph(indata)) == (2, 2, 3, 1)
             @test size(p1.activation) == (4, 4, 4, 1)
-            @test size(p1a.activation) == (4, 4, 3, 1)
-            @test size(p1b.activation) == (4, 4, 1, 1)
+            @test size(p1a.activation) == (4, 4, 2, 1)
+            @test size(p1b.activation) == (4, 4, 2, 1)
         end
 
         rnnvertex(inpt, outsize) = mutable("rnn", RNN(nout(inpt), outsize), inpt)
@@ -280,17 +283,19 @@ end
             @test size(hcat(graph.(indata)...)) == (3,10)
             @test size(p.activation) == (5,)
 
-            Δnin(dnn, [1, 2, 3, -1])
+            Δnin(dnn, 1)
+            Δoutputs(dnn, v -> 1:nout_org(v))
+            apply_mutation(graph)
+
+            @test size(hcat(graph.(indata)...)) == (3,10)
+            @test size(p.activation) == (6,)
+
+            Δnout(rnn, -2)
+            Δoutputs(rnn, v -> 1:nout_org(v))
             apply_mutation(graph)
 
             @test size(hcat(graph.(indata)...)) == (3,10)
             @test size(p.activation) == (4,)
-
-            Δnout(rnn, [-1, 1, 3])
-            apply_mutation(graph)
-
-            @test size(hcat(graph.(indata)...)) == (3,10)
-            @test size(p.activation) == (3,)
         end
 
     end

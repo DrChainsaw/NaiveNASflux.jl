@@ -44,6 +44,7 @@ end
 
 # To peel the onion...
 neuron_value(v::AbstractVertex) = neuron_value(base(v))
+neuron_value(v::InputSizeVertex) = ones(nout(v))
 neuron_value(v::CompVertex) = neuron_value(v.computation)
 neuron_value(m::AbstractMutableComp) = neuron_value(wrapped(m))
 neuron_value(m::ActivationContribution) = m.contribution
