@@ -6,8 +6,20 @@
     function tr(l, data)
         outshape = collect(size(data))
         outshape[[actdim(ndims(data))]] .= nout(l)
-        example = [(data, ones(Float32, outshape...))];
+        example = [(param(data), ones(Float32, outshape...))];
         Flux.train!((x,y) -> Flux.mse(l(x), y), params(l), example, Descent(0.1))
+    end
+
+    function tr(l, output, inputs...)
+        example = [(param.(inputs), output)];
+        Flux.train!((x,y) -> Flux.mse(l(x...), y), params(l), example, Descent(0.1))
+    end
+
+    @testset "Ewma" begin
+        import NaiveNASflux:agg
+        m = Ewma(0.3)
+        @test agg(m, missing, [1,2,3,4]) == [1,2,3,4]
+        @test agg(m, [1,2,3,4], [5,6,7,8]) ≈ [3.8, 4.8, 5.8, 6.8]
     end
 
     @testset "Neuron value Dense default" begin
@@ -49,15 +61,15 @@
     @testset "Neuron value MaxPool act contrib" begin
         l = ml(MaxPool((3,3)), ActivationContribution, insize=2)
         @test ismissing(neuron_value(l))
-        l(ones(Float32, 4,4,2,5))
+        tr(l, ones(Float32, 4,4,2,5))
         @test size(neuron_value(l)) == (2,)
     end
 
     @testset "Elem add ActivationContribution" begin
         ac(l) = ActivationContribution(l)
         v = ac >> ml(Dense(2,3)) + ml(Dense(4,3))
-        @test v([1 2 3]', [4 5 6]') == [5 7 9]'
-        @test neuron_value(v) == [0,0,0]
+        tr(v, [1 1 1]', [1 2 3]', [4 5 6]')
+        @test size(neuron_value(v)) == (3,)
 
         g = CompGraph(vcat(inputs.(inputs(v))...), v)
         @test size(g(ones(Float32, 2,2), ones(Float32, 4, 2))) == (nout(v), 2)
@@ -65,8 +77,8 @@
 
     @testset "Concat ActivationContribution" begin
         v = concat(ml(Dense(2,3)), ml(Dense(4,5)), layerfun=ActivationContribution)
-        @test v([1 2 3]', [4 5 6 7 8]') == [1 2 3 4 5 6 7 8]'
-        @test neuron_value(v) == zeros(nout(v))
+        tr(v,ones(nout(v), 1), [1 2 3]', [4 5 6 7 8]')
+        @test size(neuron_value(v)) == (nout(v),)
 
         g = CompGraph(vcat(inputs.(inputs(v))...), v)
         @test size(g(ones(Float32, 2,2), ones(Float32, 4, 2))) == (nout(v), 2)
@@ -96,12 +108,12 @@
 
         Δnout(l1, [1,2,3,4])
         apply_mutation(g)
-        @test size(g(ones(Float32, 4,4,2,3)))  == (2,2,4,3)
+        tr(g, ones(Float32, 2,2,4,3), ones(Float32, 4,4,2,3))
         @test size(neuron_value(l1)) == size(neuron_value(l2)) == (4,)
 
         Δnin(l2, [1,2, -1])
         apply_mutation(g)
-        @test size(g(ones(Float32, 4,4,2,3)))  == (2,2,3,3)
+        tr(g, ones(Float32, 2,2,3,3), ones(Float32, 4,4,2,3))
         @test size(neuron_value(l1)) == size(neuron_value(l2)) == (3,)
     end
 end

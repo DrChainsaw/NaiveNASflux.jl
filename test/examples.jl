@@ -32,7 +32,7 @@
         @test loss(original)(x, y) < 0.001
 
         # Now, lets try three different ways to prune the network
-        nprune = 5
+        nprune = 16
 
         # Prune randomly selected neurons
         pruned_random = copy(original)
@@ -55,7 +55,7 @@
         @test loss(pruned_most)(x, y) > loss(pruned_random)(x, y) > loss(pruned_least)(x, y) > loss(original)(x, y)
 
         # The metric calculated by ActivationContribution is actually quite good (in this case).
-        @test loss(pruned_least)(x, y) ≈ loss(original)(x, y) rtol = 1e-5
+        @test loss(pruned_least)(x, y) ≈ loss(original)(x, y) atol = 1e-5
     end
 
     @testset "Conv 2D xor example" begin

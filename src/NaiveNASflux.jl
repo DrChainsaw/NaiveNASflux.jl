@@ -15,7 +15,7 @@ export mutable, concat, AbstractMutableComp, MutableLayer, LazyMutable, NoParams
 
 export named, validated, logged
 
-export ActivationContribution, neuron_value
+export ActivationContribution, neuron_value, Ewma
 
 export nin, nout, indim, outdim, actdim, layer, layertype
 
