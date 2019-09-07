@@ -32,7 +32,7 @@
         @test loss(original)(x, y) < 0.001
 
         # Now, lets try three different ways to prune the network
-        nprune = 5
+        nprune = 10
 
         # Prune randomly selected neurons
         pruned_random = copy(original)
