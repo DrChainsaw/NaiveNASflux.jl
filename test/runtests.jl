@@ -10,10 +10,6 @@ end
 
 @testset "NaiveNASflux.jl" begin
 
-    NaiveNASlib.set_defaultΔNoutStrategy(DefaultJuMPΔSizeStrategy())
-    NaiveNASlib.set_defaultΔNinStrategy(DefaultJuMPΔSizeStrategy())
-
-
     @info "Testing util"
     include("util.jl")
 
