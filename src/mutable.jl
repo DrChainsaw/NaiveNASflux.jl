@@ -285,6 +285,9 @@ function dispatch!(lm::LazyMutable, m::MutationTriggered, x...)
     return lm(x...)
 end
 
+layer(m::MutationTriggered) = layer(m.wrapped)
+layertype(m::MutationTriggered) = layertype(layer(m))
+
 """
     ResetInAndOut
 
@@ -302,6 +305,8 @@ function dispatch!(lm::LazyMutable, m::ResetInAndOut, x...)
     return output
 end
 
+layer(m::ResetInAndOut) = layer(m.wrapped)
+layertype(m::ResetInAndOut) = layertype(layer(m))
 
 """
     NoParams
