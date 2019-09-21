@@ -426,6 +426,9 @@ import InteractiveUtils:subtypes
             mutate_outputs(mlazy, [2, 4, -1])
             assertlayer(layer(m), Wexp, bexp)
 
+            @test layer(m) == layer(mlazy)
+            @test layertype(m) == layertype(mlazy)
+
             expected = mlazy(Float32[2,3])
 
             @test nin(mlazy) == nin(m) == 2
