@@ -199,7 +199,7 @@ import InteractiveUtils:subtypes
             @test l.σ² == varexp
         end
 
-        function testnorm(l)
+        @testset "$l MutableLayer" for l in (BatchNorm, InstanceNorm, n -> GroupNorm(n,n))            
             m = MutableLayer(l(5))
             l_orig = layer(m)
 
@@ -217,16 +217,7 @@ import InteractiveUtils:subtypes
             assertnorm(m.layer, [0, 3, 0], [1, 3, 1])
         end
 
-        @testset "BatchNorm MutableLayer" begin
-            testnorm(BatchNorm)
-        end
-
-        @testset "InstanceNorm MutableLayer" begin
-            testnorm(InstanceNorm)
-        end
-
-        @testset "GroupNorm MutableLayer" begin
-            testnorm(n -> GroupNorm(n, n))
+        @testset "GroupNorm MutableLayer with groups" begin
 
             #Test with groups of 2
             m = MutableLayer(GroupNorm(6,3))

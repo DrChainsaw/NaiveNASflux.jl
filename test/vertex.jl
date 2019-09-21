@@ -112,25 +112,24 @@ end
             @test size(testgraph(Dense, nin1, nin2)(ones(nin1), ones(nin2))) == (9,)
         end
 
-        @testset "Concatenate RNN, GRU and LSTM" begin
+        @testset "Concatenate $rnntype" for rnntype in (RNN, GRU, LSTM)
             nin1 = 2
             nin2 = 5
             indata1 = reshape(collect(Float32, 1:nin1*4), nin1, 4)
             indata2 = reshape(collect(Float32, 1:nin2*4), nin2, 4)
-            for rnntype in [RNN, GRU, LSTM]
-                @test size(testgraph(rnntype, nin1, nin2)(indata1, indata2)) == (9,4)
-            end
+
+            @test size(testgraph(rnntype, nin1, nin2)(indata1, indata2)) == (9,4)
         end
 
-        @testset "Concatenate Conv and ConvTranspose" begin
+        @testset "Concatenate $convtype" for convtype in (Conv, ConvTranspose)
             nin1 = 2
             nin2 = 5
             indata1 = reshape(collect(Float32, 1:nin1*4*4), 4, 4, nin1, 1)
             indata2 = reshape(collect(Float32, 1:nin2*4*4), 4, 4, nin2, 1)
-            for convtype in [Conv, ConvTranspose]
-                convfun = (nin,nout) -> convtype((3,3), nin=>nout, pad = (1,1))
-                @test size(testgraph(convfun, nin1, nin2)(indata1, indata2)) == (4,4,9,1)
-            end
+
+            convfun = (nin,nout) -> convtype((3,3), nin=>nout, pad = (1,1))
+            @test size(testgraph(convfun, nin1, nin2)(indata1, indata2)) == (4,4,9,1)
+
         end
 
         @testset "Concatenate Pooled Conv" begin
