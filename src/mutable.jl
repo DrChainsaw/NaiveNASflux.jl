@@ -288,6 +288,8 @@ end
 layer(m::MutationTriggered) = layer(m.wrapped)
 layertype(m::MutationTriggered) = layertype(layer(m))
 
+Flux.@treelike MutationTriggered
+
 """
     ResetInAndOut
 
@@ -307,6 +309,8 @@ end
 
 layer(m::ResetInAndOut) = layer(m.wrapped)
 layertype(m::ResetInAndOut) = layertype(layer(m))
+
+Flux.@treelike ResetInAndOut
 
 """
     NoParams

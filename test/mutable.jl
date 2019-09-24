@@ -199,7 +199,7 @@ import InteractiveUtils:subtypes
             @test l.σ² == varexp
         end
 
-        @testset "$l MutableLayer" for l in (BatchNorm, InstanceNorm, n -> GroupNorm(n,n))            
+        @testset "$l MutableLayer" for l in (BatchNorm, InstanceNorm, n -> GroupNorm(n,n))
             m = MutableLayer(l(5))
             l_orig = layer(m)
 
@@ -451,6 +451,21 @@ import InteractiveUtils:subtypes
             cloned = clone(mlazy)
             @test layer(cloned) !== layer(mlazy)
             @test cloned([1, 2]) == mlazy([1, 2])
+        end
+
+        @testset "Treelike" begin
+            m = LazyMutable(MutableLayer(Dense(2,3)))
+            visitfun(x) = x
+            visitdense = false
+            function visitfun(l::TrackedArray)
+                visitdense = true
+                return l
+            end
+
+            mutate_inputs(m, [-1, -1, 1, 2])
+
+            Flux.mapleaves(visitfun, m)
+            @test visitdense
         end
     end
 end
