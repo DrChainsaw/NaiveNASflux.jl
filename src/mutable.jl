@@ -13,9 +13,7 @@ NaiveNASlib.nin(m::AbstractMutableComp) = nin(layer(m))
 NaiveNASlib.nout(m::AbstractMutableComp) = nout(layer(m))
 
 # Leave some room to override clone
-NaiveNASlib.clone(m::AbstractMutableComp) = typeof(m)(map(clone, getfield.(m, fieldnames(typeof(m))))...)
-
-NaiveNASlib.clone(l) = deepcopy(l)
+NaiveNASlib.clone(m::AbstractMutableComp;cf=clone) = typeof(m)(map(cf, getfield.(m, fieldnames(typeof(m))))...)
 
 NaiveNASlib.mutate_inputs(m::AbstractMutableComp, inputs::AbstractArray{<:Integer,1}...) = mutate_inputs(wrapped(m), inputs...)
 NaiveNASlib.mutate_outputs(m::AbstractMutableComp, outputs) = mutate_outputs(wrapped(m), outputs)
