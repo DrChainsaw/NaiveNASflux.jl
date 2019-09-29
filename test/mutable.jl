@@ -121,7 +121,7 @@ import InteractiveUtils:subtypes
         end
 
         @testset "DepthwiseConv MutableLayer" begin
-            m = MutableLayer(DepthwiseConv((2,2),(3=>6)))
+            m = MutableLayer(DepthwiseConv((2,2),(3=>6*3)))
 
             @test nin(m) == nin(m.layer) == 3
             @test nout(m) == nout(m.layer) == 6
