@@ -19,7 +19,7 @@ export ActivationContribution, neuron_value, Ewma
 
 export nin, nout, indim, outdim, actdim, layer, layertype
 
-export idmapping
+export idmapping, idmapping_nowarn
 
 
 include("types.jl")
