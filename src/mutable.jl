@@ -266,6 +266,7 @@ Reset input and output when dispatching a LazyMutable
 struct ResetInAndOut
     wrapped
 end
+ResetInAndOut(r::ResetInAndOut) = r
 
 function dispatch!(lm::LazyMutable, m::ResetInAndOut, x...)
     lm.mutable = m.wrapped
