@@ -21,9 +21,12 @@ export nin, nout, indim, outdim, actdim, layer, layertype
 
 export idmapping, idmapping_nowarn
 
+export KernelSizeAligned, selectfilters
+
 
 include("types.jl")
 include("util.jl")
+include("select.jl")
 include("mutable.jl")
 include("vertex.jl")
 include("pruning.jl")

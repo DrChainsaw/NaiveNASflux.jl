@@ -21,36 +21,6 @@ NaiveNASlib.mutate_outputs(m::AbstractMutableComp, outputs) = mutate_outputs(wra
 NaiveNASlib.minΔninfactor(m::AbstractMutableComp) = minΔninfactor(layertype(m), layer(m))
 NaiveNASlib.minΔnoutfactor(m::AbstractMutableComp) = minΔnoutfactor(layertype(m), layer(m))
 
-
-#Generic helper functions
-
-select(::Missing, elements_per_dim...; insval = 0) = missing
-
-select(pars::TrackedArray, elements_per_dim...; insval = 0) = param(select(pars.data, elements_per_dim..., insval=insval))
-
-function select(pars::AbstractArray{T,N}, elements_per_dim...; insval = 0) where {T, N}
-    psize = collect(size(pars))
-    assign = repeat(Any[Colon()], N)
-    access = repeat(Any[Colon()], N)
-
-    for de in elements_per_dim
-        dim = de.first
-        elements = de.second
-
-        indskeep = filter(ind -> ind > 0, elements)
-        newmap = elements .> 0
-
-        psize[dim] = length(newmap)
-        assign[dim] = findall(newmap)
-        access[dim] = indskeep
-    end
-    newpars = fill!(similar(pars, psize...), T(0)) .+ T(insval)
-    newpars[assign...] = pars[access...]
-    return newpars
-end
-
-#Generic helper functions end
-
 """
     MutableLayer
 

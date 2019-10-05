@@ -13,6 +13,9 @@ end
     @info "Testing util"
     include("util.jl")
 
+    @info "Testing select"
+    include("select.jl")
+
     @info "Testing mutable"
     include("mutable.jl")
 
