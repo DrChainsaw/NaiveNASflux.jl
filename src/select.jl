@@ -1,7 +1,5 @@
 
-
 select(::Missing, elements_per_dim...; insval = 0) = missing
-
 select(pars::TrackedArray, elements_per_dim...; insval = 0) = param(select(pars.data, elements_per_dim..., insval=insval))
 
 """
@@ -53,16 +51,27 @@ function select(pars::AbstractArray{T,N}, elements_per_dim...; insval = 0) where
     return newpars
 end
 
+
 """
     KernelSizeAligned(Δsize)
     KernelSizeAligned(Δs::Integer...)
 
-Strategy for changing kernel size of convoluional layers where filters remain phase aligned. In other words, the same element indices are removed/added for all filters.
+Strategy for changing kernel size of convolutional layers where filters remain phase aligned. In other words, the same element indices are removed/added for all filters and only 'outer' elements are dropped or added.
 """
-struct KernelSizeAligned{T}
+struct KernelSizeAligned{T, P}
     Δsize::T
+    pad::P
 end
-KernelSizeAligned(Δs::Integer...) = KernelSizeAligned(Δs)
+KernelSizeAligned(Δs::Integer...;pad = ntuple(i -> 0, length(Δs))) = KernelSizeAligned(Δs, pad)
+
+(s::KernelSizeAligned)(l) = selectfilters(layertype(l), l, s)
+
+otherpars(s::KernelSizeAligned, l) = paddingfor(layertype(l), s)
+paddingfor(t, s) = ()
+paddingfor(::FluxConvolutional, s) = (pad = s.pad,)
+
+selectfilters(t, l, s) = ()
+selectfilters(::FluxConvolutional, l, s) = selectfilters(s, weights(l))
 
 function selectfilters(s::KernelSizeAligned, pars)
     csize = size(pars)

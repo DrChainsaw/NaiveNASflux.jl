@@ -135,3 +135,6 @@ layertype(v::CompVertex) = layertype(v.computation)
 
 actdim(v::AbstractVertex) = actdim.(layer.(NaiveNASlib.findterminating(v, inputs)))
 actrank(v::AbstractVertex) = actrank.(layer.(NaiveNASlib.findterminating(v, inputs)))
+
+mutate_weights(v::AbstractVertex, w) = mutate_weights(base(v), w)
+mutate_weights(v::CompVertex, w) = mutate_weights(v.computation, w)
