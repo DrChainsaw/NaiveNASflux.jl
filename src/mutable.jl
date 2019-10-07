@@ -1,9 +1,13 @@
 
-abstract type AbstractMutableComp end
+"""
+     AbstractMutableComp
 
+Abstract base type for computation units (read layers) which may mutate.
+"""
+abstract type AbstractMutableComp end
 Base.Broadcast.broadcastable(m::AbstractMutableComp) = Ref(m)
 
-# Generic forwarding methods. Just implement layer(t::Type) to enable
+# Generic forwarding methods. Just implement layer(t::Type) and wrapped(t::Type) to enable
 
 # Not possible in julia <= 1.1. See #14919
 # (m::AbstractMutableComp)(x...) = layer(m)(x...)
@@ -18,38 +22,10 @@ NaiveNASlib.clone(m::AbstractMutableComp;cf=clone) = typeof(m)(map(cf, getfield.
 NaiveNASlib.mutate_inputs(m::AbstractMutableComp, inputs::AbstractArray{<:Integer,1}...) = mutate_inputs(wrapped(m), inputs...)
 NaiveNASlib.mutate_outputs(m::AbstractMutableComp, outputs) = mutate_outputs(wrapped(m), outputs)
 
+mutate_weights(m::AbstractMutableComp, w) = mutate_weights(wrapped(m), w)
+
 NaiveNASlib.minΔninfactor(m::AbstractMutableComp) = minΔninfactor(layertype(m), layer(m))
 NaiveNASlib.minΔnoutfactor(m::AbstractMutableComp) = minΔnoutfactor(layertype(m), layer(m))
-
-
-#Generic helper functions
-
-select(::Missing, elements_per_dim...; insval = 0) = missing
-
-select(pars::TrackedArray, elements_per_dim...; insval = 0) = param(select(pars.data, elements_per_dim..., insval=insval))
-
-function select(pars::AbstractArray{T,N}, elements_per_dim...; insval = 0) where {T, N}
-    psize = collect(size(pars))
-    assign = repeat(Any[Colon()], N)
-    access = repeat(Any[Colon()], N)
-
-    for de in elements_per_dim
-        dim = de.first
-        elements = de.second
-
-        indskeep = filter(ind -> ind > 0, elements)
-        newmap = elements .> 0
-
-        psize[dim] = length(newmap)
-        assign[dim] = findall(newmap)
-        access[dim] = indskeep
-    end
-    newpars = fill!(similar(pars, psize...), T(0)) .+ T(insval)
-    newpars[assign...] = pars[access...]
-    return newpars
-end
-
-#Generic helper functions end
 
 """
     MutableLayer
@@ -71,15 +47,20 @@ end
 
 NaiveNASlib.mutate_outputs(m::MutableLayer, outputs) = mutate(layertype(m), m, outputs=outputs)
 
-mutate(m::MutableLayer; inputs, outputs) = mutate(layertype(m), m, inputs=inputs, outputs=outputs)
-function mutate(::FluxParLayer, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m))
-    l = layer(m)
-    w = select(weights(l), outdim(l) => outputs, indim(l) => inputs)
-    b = select(bias(l), 1 => outputs)
-    newlayer(m, w, b)
-end
+mutate_weights(m::MutableLayer, w) = mutate(layertype(m), m, other=w)
 
-function mutate(t::FluxRecurrent, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m))
+mutate(m::MutableLayer; inputs, outputs, other = l -> ()) = mutate(layertype(m), m, inputs=inputs, outputs=outputs, other=other)
+
+function mutate(::FluxParLayer, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m), other= l -> ())
+    l = layer(m)
+    otherdims = other(l)
+    w = select(weights(l), outdim(l) => outputs, indim(l) => inputs, otherdims...)
+    b = select(bias(l), 1 => outputs)
+    newlayer(m, w, b, otherpars(other, l))
+end
+otherpars(o, l) = ()
+
+function mutate(t::FluxRecurrent, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m), other=missing)
     l = layer(m)
     outputs_scaled = mapfoldl(vcat, 1:outscale(l)) do i
         offs = (i-1) * nout(l)
@@ -116,7 +97,7 @@ function mutate_recurrent_state(::FluxLstm, m::MutableLayer, outputs, wi, wh, b)
 end
 
 
-function mutate(t::FluxParInvLayer, m::MutableLayer; inputs=missing, outputs=missing)
+function mutate(t::FluxParInvLayer, m::MutableLayer; inputs=missing, outputs=missing, other=missing)
     @assert any(ismissing.((inputs, outputs))) || inputs == outputs "Try to mutate $inputs and $outputs for invariant layer $(m)!"
     ismissing(inputs) || return mutate(t, m, inputs)
     ismissing(outputs) || return mutate(t, m, outputs)
@@ -132,7 +113,7 @@ end
 function mutate(::FluxLayerNorm, m::MutableLayer, inds)
     # LayerNorm is only a wrapped Diagonal. Just mutate the Diagonal and make a new LayerNorm of it
     proxy = MutableLayer(layer(m).diag)
-    mutate(proxy, inputs=inds, outputs=inds)
+    mutate(proxy, inputs=inds, outputs=inds, other=l->())
     m.layer = LayerNorm(layer(proxy))
 end
 
@@ -173,11 +154,11 @@ function mutate(::FluxGroupNorm, m::MutableLayer, inds)
 end
 
 
-newlayer(m::MutableLayer, w, b) = m.layer = newlayer(layertype(m), m, w, b)
+newlayer(m::MutableLayer, w, b, other=nothing) = m.layer = newlayer(layertype(m), m, w, b, other)
 
-newlayer(::FluxDense, m::MutableLayer, w, b) = Dense(param(w), param(b), deepcopy(layer(m).σ))
-newlayer(::FluxConvolutional, m::MutableLayer, w, b) = setproperties(layer(m), (weight=param(w), bias=param(b), σ=deepcopy(layer(m).σ)))
-newlayer(::FluxDiagonal, m::MutableLayer, w, b) = Flux.Diagonal(param(w), param(b))
+newlayer(::FluxDense, m::MutableLayer, w, b, other) = Dense(param(w), param(b), deepcopy(layer(m).σ))
+newlayer(::FluxConvolutional, m::MutableLayer, w, b, other) = setproperties(layer(m), (weight=param(w), bias=param(b), σ=deepcopy(layer(m).σ), other...))
+newlayer(::FluxDiagonal, m::MutableLayer, w, b, other) = Flux.Diagonal(param(w), param(b))
 
 
 """
@@ -222,11 +203,12 @@ LazyMutable(MutableLayer(Dense(2, 3, NNlib.relu)), 1:2, 1:3)
 """
 mutable struct LazyMutable <: AbstractMutableComp
     mutable
-    inputs::AbstractArray{<:Integer, 1}
-    outputs::AbstractArray{<:Integer, 1}
+    inputs::AbstractVector{<:Integer}
+    outputs::AbstractVector{<:Integer}
+    other
 end
 LazyMutable(m::AbstractMutableComp) = LazyMutable(m, nin(m), nout(m))
-LazyMutable(m, nin::Integer, nout::Integer) = LazyMutable(m, 1:nin, 1:nout)
+LazyMutable(m, nin::Integer, nout::Integer) = LazyMutable(m, 1:nin, 1:nout, m -> ())
 
 wrapped(m::LazyMutable) = m.mutable
 layer(m::LazyMutable) = layer(wrapped(m))
@@ -243,15 +225,22 @@ function NaiveNASlib.mutate_inputs(m::LazyMutable, inputs::AbstractArray{<:Integ
     @assert length(inputs) == 1 "Only one input per layer!"
     m.inputs == inputs[1] && return
 
-    m.mutable = ResetInAndOut(trigger_mutation(m.mutable))
+    m.mutable = ResetLazyMutable(trigger_mutation(m.mutable))
     m.inputs = select(m.inputs, 1 => inputs[1], insval=-1)
 end
 
 function NaiveNASlib.mutate_outputs(m::LazyMutable, outputs::AbstractArray{<:Integer,1})
     outputs == m.outputs && return
 
-    m.mutable = ResetInAndOut(trigger_mutation(m.mutable))
+    m.mutable = ResetLazyMutable(trigger_mutation(m.mutable))
     m.outputs = select(m.outputs, 1=>outputs, insval = -1)
+end
+
+function mutate_weights(m::LazyMutable, w)
+    m.other == w && return
+
+    m.mutable = ResetLazyMutable(trigger_mutation(m.mutable))
+    m.other = w
 end
 
 NaiveNASlib.mutate_inputs(m::LazyMutable, nin::Integer...) = mutate_inputs(m, trunc_or_pad.(length(m.inputs), nin)...)
@@ -278,7 +267,7 @@ trigger_mutation(m) = m
 trigger_mutation(m::AbstractMutableComp) = MutationTriggered(m)
 
 function dispatch!(lm::LazyMutable, m::MutationTriggered, x...)
-    mutate(m.wrapped; inputs=lm.inputs, outputs=lm.outputs)
+    mutate(m.wrapped; inputs=lm.inputs, outputs=lm.outputs, other=lm.other)
     lm.mutable = m.wrapped
     return lm(x...)
 end
@@ -289,26 +278,28 @@ layertype(m::MutationTriggered) = layertype(layer(m))
 Flux.@treelike MutationTriggered
 
 """
-    ResetInAndOut
+    ResetLazyMutable
 
-Reset input and output when dispatching a LazyMutable
+Reset a `LazyMutable` when dispatching.
 """
-struct ResetInAndOut
+struct ResetLazyMutable
     wrapped
 end
+ResetLazyMutable(r::ResetLazyMutable) = r
 
-function dispatch!(lm::LazyMutable, m::ResetInAndOut, x...)
+function dispatch!(lm::LazyMutable, m::ResetLazyMutable, x...)
     lm.mutable = m.wrapped
     output = lm(x...)
     lm.inputs = 1:nin(lm)
     lm.outputs = 1:nout(lm)
+    lm.other = m -> ()
     return output
 end
 
-layer(m::ResetInAndOut) = layer(m.wrapped)
-layertype(m::ResetInAndOut) = layertype(layer(m))
+layer(m::ResetLazyMutable) = layer(m.wrapped)
+layertype(m::ResetLazyMutable) = layertype(layer(m))
 
-Flux.@treelike ResetInAndOut
+Flux.@treelike ResetLazyMutable
 
 """
     NoParams
@@ -329,5 +320,6 @@ LazyMutable(m::NoParams) = m
 
 function NaiveNASlib.mutate_inputs(::NoParams, inputs) end
 function NaiveNASlib.mutate_outputs(::NoParams, outputs) end
+function mutate_weights(::NoParams, w) end
 NaiveNASlib.minΔninfactor(m::NoParams) = minΔninfactor(layertype(m), layer(m))
 NaiveNASlib.minΔnoutfactor(m::NoParams) = minΔnoutfactor(layertype(m), layer(m))

@@ -22,6 +22,89 @@ Pkg.add("https://github.com/DrChainsaw/NaiveNASflux.jl")
 
 Check out the basic usage of [NaiveNASlib](https://github.com/DrChainsaw/NaiveNASlib.jl) for less verbose examples.
 
+Here is a quick rundown of some common operations:
+
+```julia
+# Input type: 3 channels 2D image
+invertex = inputvertex("in", 3, FluxConv{2}())
+
+# Mutable layers
+conv = mutable(Conv((3,3), 3 => 5, pad=(1,1)), invertex)
+batchnorm = mutable(BatchNorm(nout(conv), relu), conv)
+
+# Explore graph
+@test inputs(conv) == [invertex]
+@test outputs(conv) == [batchnorm]
+
+@test nin(conv) == [3]
+@test nout(conv) == 5
+
+@test layertype(conv) isa FluxConv{2}
+@test layertype(batchnorm) isa FluxBatchNorm
+
+# naming vertices is a good idea for debugging and logging purposes
+namedconv = mutable("namedconv", Conv((5,5), 3=>7, pad=(2,2)), invertex)
+
+@test name(namedconv) == "namedconv"
+
+# Concatenate activations
+conc = concat("conc", namedconv, batchnorm)
+
+@test nout(conc) == nout(namedconv) + nout(batchnorm)
+
+residualconv = mutable("residualconv", Conv((3,3), nout(conc) => nout(conc), pad=(1,1)), conc)
+
+# Elementwise addition. '>>' operation can be used to add metadata, such as a name in this case
+add = "add" >> conc + residualconv
+
+@test name(add) == "add"
+@test inputs(add) == [conc, residualconv]
+
+# Computation graph for evaluation
+graph = CompGraph(invertex, add)
+
+# Can be evaluated just like any function
+x = ones(Float32, 7, 7, nout(invertex), 2)
+@test size(graph(x)) == (7, 7, nout(add), 2) == (7 ,7, 12 ,2)
+
+# Graphs can be copied
+graphcopy = copy(graph)
+
+# Mutate number of neurons
+@test nout(add) == nout(residualconv) == nout(conv) + nout(namedconv) == 12
+Δnout(add, -3)
+@test nout(add) == nout(residualconv) == nout(conv) + nout(namedconv) == 9
+
+# Remove layer
+@test nv(graph) == 7
+remove!(batchnorm)
+@test nv(graph) == 6
+
+# Add layer
+insert!(residualconv, v -> mutable(BatchNorm(nout(v), relu), v))
+@test nv(graph) == 7
+
+
+# Change kernel size (and supply new padding)
+let Δsize = (-2, -2), pad = (1,1)
+    mutate_weights(namedconv, KernelSizeAligned(Δsize, pad))
+end
+
+# Apply all mutations
+apply_mutation(graph)
+
+# Note: Parameters not changed yet...
+size(NaiveNASflux.weights(layer(namedconv))) == (5, 5, 3, 7)
+
+@test size(graph(x)) == (7, 7, nout(add), 2) == (7, 7, 9, 2)
+
+# ... because mutations are lazy by default so that no new layers are created until the graph is evaluated
+size(NaiveNASflux.weights(layer(namedconv))) == (3, 3, 3, 7)
+
+# Btw, the copy we made above is of course unaffected
+@test size(graphcopy(x)) == (7, 7, 12, 2)
+```
+
 While NaiveNASflux does not come with any built in search policies, it is still possible to do some cool stuff with it. Below is a very simple example of parameter pruning of a model trained on the `xor` function.
 
 First we need some boilerplate to create the model and do the training:

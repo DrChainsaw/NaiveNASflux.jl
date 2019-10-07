@@ -1,7 +1,7 @@
 
 abstract type FluxLayer end
 
-layertype(l::T) where T = error("No FluxLayer type defined for $T")
+layertype(l::T) where T = T
 
 # Types for layers with parameters (e.g. weights and biases) and with similar handling
 # w.r.t what shape of parameters means in terms of number of inputs and number of outputs

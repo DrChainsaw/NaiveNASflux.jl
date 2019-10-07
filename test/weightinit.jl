@@ -14,7 +14,7 @@
         @test l(indata) == indata
 
         @test_logs (:warn, "Identity mapping not possible with nin != nout! Got nin=3, nout=4.") l = Dense(3,4, initW=idmapping)
-        @test nin(l) == [3]
+        @test nin(l) == 3
         @test nout(l) == 4
     end
 
@@ -25,7 +25,7 @@
         @test l(indata) == indata
 
         @test_logs (:warn, "Identity mapping not possible with nin != nout! Got nin=$nch, nout=$(nch+2).") l = Conv((3,5), nch=> nch+2, init=idmapping, pad=(2,1))
-        @test nin(l) == [nch]
+        @test nin(l) == nch
         @test nout(l) == nch+2
     end
 
