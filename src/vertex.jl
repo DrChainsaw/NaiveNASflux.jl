@@ -35,29 +35,26 @@ Flux.@treelike CompVertex
 
 # This is a bit of a hack to enable 1) params and 2) gpu. Other uses may not work as expected, especially if one tries to use these methods to view/manipulate things which are not from Flux.
 
-# Two things (afaik) prevent usage of @treelike:
-#   1) Flux issue #803 which is fixed on master but not on any release
-#   2) MutationVertices (OutputVertices really) can not be created by just copying their fields due to the cyclic structure (or?) and mapchildren seems to be designed around this.
+# Problem with using Flux.@treelike is that MutationVertices (OutputVertices really) can not be created by just copying their fields as this would create multiple copies of the same vertex if it is input to more than one vertex and mapchildren seems to be designed around this.
 
 # Instead, we rely in the internals of the vertices to be mutable (e.g MutableLayer).
 
 Flux.children(a::AbstractVector{<:AbstractVertex}) = Tuple(a)
 function Flux.mapchildren(f, a::AbstractVector{<:AbstractVertex})
-    f.(a) # Returning this will do no good due to 2) above
+    f.(a) # Returning this will do no good due to the above
     return a
 end
 
 Flux.children(v::AbstractVertex) = (base(v),)
 function Flux.mapchildren(f, v::AbstractVertex)
-    f.(Flux.children(v)) # Returning this will do no good due to 2) above
+    f.(Flux.children(v)) # Returning this will do no good due to the above
     return v
 end
 Flux.children(g::CompGraph) = Tuple(vertices(g))
 function Flux.mapchildren(f, g::CompGraph)
-    f.(Flux.children(g)) # Returning this will do no good due to 2) above
+    f.(Flux.children(g)) # Returning this will do no good due to the above
     return g
 end
-
 
 """
     mutable(l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated())

@@ -15,6 +15,8 @@ ActivationContribution(l) = ActivationContribution(l, missing, Ewma(0.05))
 
 layer(m::ActivationContribution) = layer(m.layer)
 wrapped(m::ActivationContribution) = m.layer
+NaiveNASlib.minΔninfactor(m::ActivationContribution) = minΔninfactor(wrapped(m))
+NaiveNASlib.minΔnoutfactor(m::ActivationContribution) = minΔnoutfactor(wrapped(m))
 
 function(m::ActivationContribution)(x...)
     act = wrapped(m)(x...)
