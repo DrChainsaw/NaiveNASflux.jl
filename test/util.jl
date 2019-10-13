@@ -25,11 +25,11 @@ using Flux
         @test nout(ConvTranspose((1,2,3), 4=>5)) == 5
 
         @test nin(DepthwiseConv((2,), 3=>4*3)) == 3
-        @test nout(DepthwiseConv((2,), 3=>4*3)) == 4
+        @test nout(DepthwiseConv((2,), 3=>4*3)) == 12
         @test nin(DepthwiseConv((1,2), 3=>6*3)) == 3
-        @test nout(DepthwiseConv((1,2), 3=>6*3)) == 6
+        @test nout(DepthwiseConv((1,2), 3=>6*3)) == 18
         @test nin(DepthwiseConv((1,2,3), 4=>5*4)) == 4
-        @test nout(DepthwiseConv((1,2,3), 4=>5*4)) == 5
+        @test nout(DepthwiseConv((1,2,3), 4=>5*4)) == 20
 
         @test nin(CrossCor((2,), 3=>4)) == 3
         @test nout(CrossCor((2,), 3=>4)) == 4

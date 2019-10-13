@@ -27,6 +27,11 @@ mutate_weights(m::AbstractMutableComp, w) = mutate_weights(wrapped(m), w)
 NaiveNASlib.minΔninfactor(m::AbstractMutableComp) = minΔninfactor(layertype(m), layer(m))
 NaiveNASlib.minΔnoutfactor(m::AbstractMutableComp) = minΔnoutfactor(layertype(m), layer(m))
 
+NaiveNASlib.compconstraint!(s, m::AbstractMutableComp, data) = NaiveNASlib.compconstraint!(s, layertype(m), m, data)
+function NaiveNASlib.compconstraint!(s, l, m::AbstractMutableComp, data) end
+NaiveNASlib.compconstraint!(s, l::FluxLayer, m::AbstractMutableComp, data) = NaiveNASlib.compconstraint!(s, l, layer(m), data)
+
+
 """
     MutableLayer
 
@@ -59,6 +64,8 @@ function mutate(::FluxParLayer, m::MutableLayer; inputs=1:nin(m), outputs=1:nout
     newlayer(m, w, b, otherpars(other, l))
 end
 otherpars(o, l) = ()
+
+mutate(::FluxDepthwiseConv{N}, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m), other= l -> ()) where N = mutate(FluxConv{N}(), m, inputs=inputs, outputs = unique((outputs .- 1) .÷ nin(m) .+ 1), other=other)
 
 function mutate(t::FluxRecurrent, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m), other=missing)
     l = layer(m)

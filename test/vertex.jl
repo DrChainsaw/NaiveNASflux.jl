@@ -82,6 +82,24 @@ end
         @test nin(bv) == [nout(cv)] == [3]
     end
 
+    @testset "DepthwiseConv" begin
+        inpt = inputvertex("in", 4)
+        dc1 = mutable("dc1", DepthwiseConv((2,2), nout(inpt) => 2 * nout(inpt)), inpt)
+        dc2 = mutable("dc2", DepthwiseConv((2,2), nout(dc1) => nout(dc1)), dc1)
+
+        @test_logs (:warn, r"Could not change nout of") Δnout(dc1, 2)
+        @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [12]
+
+        @test_logs (:warn, r"Could not change nout of") Δnout(dc1, -2)
+        @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [8]
+
+        @test_logs (:warn, r"Could not change nout of") Δsize(ΔNoutExact(dc2, -2), all_in_graph(dc2))
+        @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [4]
+
+        @test_logs (:warn, r"Could not change nout of") Δsize(ΔNoutExact(dc2, 2), all_in_graph(dc2))
+        @test [2nout(dc1)] == 2 .* nin(dc2) == [nout(dc2)] == [8]
+    end
+
     @testset "Concatenate activations" begin
 
         function testgraph(layerfun, nin1, nin2)

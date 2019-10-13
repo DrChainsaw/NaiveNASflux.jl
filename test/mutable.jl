@@ -115,16 +115,16 @@ import InteractiveUtils:subtypes
             m = MutableLayer(DepthwiseConv((2,2),(3=>6*3)))
 
             @test nin(m) == nin(m.layer) == 3
-            @test nout(m) == nout(m.layer) == 6
-            @test_throws ErrorException minΔninfactor(m)
-            @test_throws ErrorException minΔnoutfactor(m)
+            @test nout(m) == nout(m.layer) == 18
+
             input = reshape(collect(Float32, 1:3*3*3), 3, 3, 3, 1)
             @test m(input) == m.layer(input)
 
-            inputs = [1, 3]
-            outputs = [1, 2, 4, 5]
-            Wexp, bexp = weights(m.layer)[:,:,outputs,inputs], bias(m.layer)[outputs]
-            mutate(m, inputs=inputs, outputs=outputs)
+            ins = [1, 3]
+            outs = [1, 2, 5, 6]
+            chouts = mapfoldl(i -> nin(m) * i ,vcat, outs)
+            Wexp, bexp = weights(m.layer)[:,:,outs,ins], bias(m.layer)[outs]
+            mutate(m, inputs=ins, outputs=chouts)
             assertlayer(m.layer, Wexp, bexp)
         end
 
