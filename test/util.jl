@@ -31,6 +31,13 @@ using Flux
         @test nin(DepthwiseConv((1,2,3), 4=>5*4)) == 4
         @test nout(DepthwiseConv((1,2,3), 4=>5*4)) == 5
 
+        @test nin(CrossCor((2,), 3=>4)) == 3
+        @test nout(CrossCor((2,), 3=>4)) == 4
+        @test nin(CrossCor((1,2), 3=>6)) == 3
+        @test nout(CrossCor((1,2), 3=>6)) == 6
+        @test nin(CrossCor((1,2,3), 4=>5)) == 4
+        @test nout(CrossCor((1,2,3), 4=>5)) == 5
+
         @test nin(Flux.Diagonal(3)) == nout(Flux.Diagonal(3)) == 3
 
         @test nin(LayerNorm(3)) == nout(LayerNorm(3)) == 3
@@ -57,6 +64,8 @@ using Flux
         @test actdim(ConvTranspose((1,2), 3=>6)) == 3
 
         @test actdim(DepthwiseConv((1,2), 3=>6)) == 3
+
+        @test actdim(CrossCor((1,2), 3=>6)) == 3
 
         @test actdim(Flux.Diagonal(1)) == indim(Flux.Diagonal(2)) == outdim(Flux.Diagonal(3)) == 1
 

@@ -57,8 +57,8 @@ indim(::FluxConvolutional{N}) where N = 2+N
 outdim(::FluxConvolutional{N}) where N = 1+N
 actdim(::FluxConvolutional{N}) where N = 1+N
 actrank(::FluxConvolutional{N}) where N = 1+N
-indim(::FluxConv{N}) where N = 1+N
-outdim(::FluxConv{N}) where N = 2+N
+indim(::Union{FluxConv{N}, FluxCrossCor{N}}) where N = 1+N
+outdim(::Union{FluxConv{N}, FluxCrossCor{N}}) where N = 2+N
 
 # Note: Contrary to other ML frameworks, bias seems to always be present in Flux
 weights(l) = weights(layertype(l), l)

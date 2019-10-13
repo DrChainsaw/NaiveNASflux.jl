@@ -127,6 +127,23 @@ import InteractiveUtils:subtypes
             mutate(m, inputs=inputs, outputs=outputs)
             assertlayer(m.layer, Wexp, bexp)
         end
+
+        @testset "CrossCor MutableLayer" begin
+            m = MutableLayer(CrossCor((2,3),(4=>5)))
+
+            @test nin(m) == nin(m.layer) == 4
+            @test nout(m) == nout(m.layer) == 5
+            @test minΔninfactor(m) == 1
+            @test minΔnoutfactor(m) == 1
+            input = reshape(collect(Float32, 1:3*4*4), 3, 4, 4, 1)
+            @test m(input) == m.layer(input)
+
+            inputs = [1,3]
+            outputs = [1,2,4]
+            Wexp, bexp = weights(m.layer)[:,:,inputs, outputs], bias(m.layer)[outputs]
+            mutate(m, inputs=inputs, outputs=outputs)
+            assertlayer(m.layer, Wexp, bexp)
+        end
     end
 
     @testset "Diagonal MutableLayer" begin

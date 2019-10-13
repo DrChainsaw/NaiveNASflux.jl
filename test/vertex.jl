@@ -121,7 +121,7 @@ end
             @test size(testgraph(rnntype, nin1, nin2)(indata1, indata2)) == (9,4)
         end
 
-        @testset "Concatenate $convtype" for convtype in (Conv, ConvTranspose)
+        @testset "Concatenate $convtype" for convtype in (Conv, ConvTranspose, CrossCor)
             nin1 = 2
             nin2 = 5
             indata1 = reshape(collect(Float32, 1:nin1*4*4), 4, 4, nin1, 1)

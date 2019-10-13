@@ -21,9 +21,11 @@ abstract type FluxConvolutional{N} <: FluxParLayer end
 struct FluxConv{N} <: FluxConvolutional{N} end
 struct FluxConvTranspose{N}  <: FluxConvolutional{N} end
 struct FluxDepthwiseConv{N} <: FluxConvolutional{N}  end
+struct FluxCrossCor{N} <: FluxConvolutional{N}  end
 layertype(l::Conv{N}) where N = FluxConv{N}()
 layertype(l::ConvTranspose{N}) where N = FluxConvTranspose{N}()
 layertype(l::DepthwiseConv{N}) where N = FluxDepthwiseConv{N}()
+layertype(l::CrossCor{N}) where N = FluxCrossCor{N}()
 
 
 abstract type FluxTransparentLayer <: FluxLayer end
