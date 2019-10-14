@@ -68,7 +68,11 @@ otherpars(o, l) = ()
 function mutate(::FluxDepthwiseConv, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m), other= l -> ())
     l = layer(m)
     otherdims = other(l)
-    weightouts = unique((outputs .- 1) .÷ nin(m) .+ 1)
+    weightouts = map(Iterators.partition(outputs, length(inputs))) do group
+        all(group .< 0) && return group[1]
+        return (maximum(group) - 1) ÷ length(inputs) + 1
+    end
+
     w = select(weights(l), outdim(l) => weightouts, indim(l) => inputs, otherdims...)
     b = select(bias(l), 1 => outputs)
     newlayer(m, w, b, otherpars(other, l))

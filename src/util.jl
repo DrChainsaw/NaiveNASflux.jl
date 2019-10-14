@@ -99,3 +99,4 @@ function NaiveNASlib.compconstraint!(s::NaiveNASlib.AbstractJuMPΔSizeStrategy, 
   fixedins = filter(vin -> vin ∉ ins, inputs(data.vertex))
   @constraint(data.model, [i=1:length(fixedins)], data.noutdict[data.vertex] == nout(fixedins[i]) + nin(data.vertex)[] * fv_out)
 end
+# compconstraint! for AbstractJuMPSelectionStrategy not needed as there currently is no strategy which allows size changes 
