@@ -65,7 +65,14 @@ function mutate(::FluxParLayer, m::MutableLayer; inputs=1:nin(m), outputs=1:nout
 end
 otherpars(o, l) = ()
 
-mutate(::FluxDepthwiseConv{N}, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m), other= l -> ()) where N = mutate(FluxConv{N}(), m, inputs=inputs, outputs = unique((outputs .- 1) .÷ nin(m) .+ 1), other=other)
+function mutate(::FluxDepthwiseConv, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m), other= l -> ())
+    l = layer(m)
+    otherdims = other(l)
+    weightouts = unique((outputs .- 1) .÷ nin(m) .+ 1)
+    w = select(weights(l), outdim(l) => weightouts, indim(l) => inputs, otherdims...)
+    b = select(bias(l), 1 => outputs)
+    newlayer(m, w, b, otherpars(other, l))
+end
 
 function mutate(t::FluxRecurrent, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m), other=missing)
     l = layer(m)

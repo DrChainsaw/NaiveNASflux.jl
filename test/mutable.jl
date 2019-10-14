@@ -1,9 +1,6 @@
 import NaiveNASflux
 import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, layer, mutate, hiddenweights, hiddenstate, state, outscale
-using Flux
 import Flux: mapchildren
-using NaiveNASlib
-import InteractiveUtils:subtypes
 
 @testset "Mutable computation" begin
 
@@ -121,11 +118,12 @@ import InteractiveUtils:subtypes
             @test m(input) == m.layer(input)
 
             ins = [1, 3]
-            outs = [1, 2, 5, 6]
-            chouts = mapfoldl(i -> nin(m) * i ,vcat, outs)
-            Wexp, bexp = weights(m.layer)[:,:,outs,ins], bias(m.layer)[outs]
-            mutate(m, inputs=ins, outputs=chouts)
+            wouts = [1, 2, 5, 6]
+            outs = mapfoldl(i -> nin(m) * i .+ [-2, -1] ,vcat, wouts)
+            Wexp, bexp = weights(m.layer)[:,:,wouts,ins], bias(m.layer)[outs]
+            mutate(m, inputs=ins, outputs=outs)
             assertlayer(m.layer, Wexp, bexp)
+            @test size(m(ones(Float32, 3,3,2,2)))[3:4] == (8, 2)
         end
 
         @testset "CrossCor MutableLayer" begin
@@ -434,6 +432,27 @@ import InteractiveUtils:subtypes
             @test nout(mlazy) == nout(m) == 3
 
             @test expected == m(Float32[2,3])
+        end
+
+        @testset "LazyeMutable DepthwiseConv" begin
+            m = LazyMutable(MutableLayer(DepthwiseConv((2,2),(3=>6*3))))
+
+            @test nin(m) == nin(layer(m)) == 3
+            @test nout(m) == nout(layer(m)) == 18
+
+            input = reshape(collect(Float32, 1:3*3*3), 3, 3, 3, 1)
+            @test m(input) == layer(m)(input)
+
+            ins = [1, 3]
+            wouts = [1, 2, 5, 6]
+            outs = mapfoldl(i -> nin(m) * i .+ [-2, -1] ,vcat, wouts)
+            Wexp, bexp = weights(layer(m))[:,:,wouts,ins], bias(layer(m))[outs]
+
+            mutate_inputs(m, ins)
+            mutate_outputs(m, outs)
+            @test size(m(ones(Float32, 3,3,2,2)))[3:4] == (8, 2)
+
+            assertlayer(layer(m), Wexp, bexp)
         end
 
         @testset "LazyMutable reselect" begin
