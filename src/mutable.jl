@@ -27,10 +27,7 @@ mutate_weights(m::AbstractMutableComp, w) = mutate_weights(wrapped(m), w)
 NaiveNASlib.minΔninfactor(m::AbstractMutableComp) = minΔninfactor(layertype(m), layer(m))
 NaiveNASlib.minΔnoutfactor(m::AbstractMutableComp) = minΔnoutfactor(layertype(m), layer(m))
 
-NaiveNASlib.compconstraint!(s, m::AbstractMutableComp, data) = NaiveNASlib.compconstraint!(s, layertype(m), m, data)
-function NaiveNASlib.compconstraint!(s, l, m::AbstractMutableComp, data) end
-NaiveNASlib.compconstraint!(s, l::FluxLayer, m::AbstractMutableComp, data) = NaiveNASlib.compconstraint!(s, l, layer(m), data)
-
+NaiveNASlib.compconstraint!(s, m::AbstractMutableComp, data) = NaiveNASlib.compconstraint!(s, layertype(m), data)
 
 """
     MutableLayer

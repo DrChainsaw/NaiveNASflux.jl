@@ -84,9 +84,9 @@ state(::FluxRecurrent, l) = l.state.data
 state(::FluxLstm, l) = [h.data for h in l.state]
 
 
-function NaiveNASlib.compconstraint!(s, ::FluxLayer, l, data) end
+function NaiveNASlib.compconstraint!(s, ::FluxLayer, data) end
 
-function NaiveNASlib.compconstraint!(s::NaiveNASlib.AbstractJuMPΔSizeStrategy, ::FluxDepthwiseConv, l::DepthwiseConv, data)
+function NaiveNASlib.compconstraint!(s::NaiveNASlib.AbstractJuMPΔSizeStrategy, ::FluxDepthwiseConv, data)
   # Add constraint that nout(l) == n * nin(l) where n is integer
   fv_out = @variable(data.model, integer=true)
   ins = filter(vin -> vin in keys(data.noutdict), inputs(data.vertex))
@@ -99,4 +99,4 @@ function NaiveNASlib.compconstraint!(s::NaiveNASlib.AbstractJuMPΔSizeStrategy, 
   fixedins = filter(vin -> vin ∉ ins, inputs(data.vertex))
   @constraint(data.model, [i=1:length(fixedins)], data.noutdict[data.vertex] == nout(fixedins[i]) + nin(data.vertex)[] * fv_out)
 end
-# compconstraint! for AbstractJuMPSelectionStrategy not needed as there currently is no strategy which allows size changes 
+# compconstraint! for AbstractJuMPSelectionStrategy not needed as there currently is no strategy which allows size changes
