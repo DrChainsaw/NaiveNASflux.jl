@@ -4,7 +4,7 @@
 [![Build Status](https://ci.appveyor.com/api/projects/status/github/DrChainsaw/NaiveNASflux.jl?svg=true)](https://ci.appveyor.com/project/DrChainsaw/NaiveNASflux-jl)
 [![Codecov](https://codecov.io/gh/DrChainsaw/NaiveNASflux.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/DrChainsaw/NaiveNASflux.jl)
 
-NaiveNASflux is a library for Neural Architecture Search (NAS) using [Flux](https://github.com/FluxML/Flux.jl) built on top of [NaiveNASlib](https://github.com/DrChainsaw/NaiveNASlib.jl). It offers powerful mutation operations of arbitrary computation graphs at your fingertips!
+NaiveNASflux uses [NaiveNASlib](https://github.com/DrChainsaw/NaiveNASlib.jl) to enable mutation operations of arbitrary [Flux](https://github.com/FluxML/Flux.jl) computation graphs. It is designed with Neural Architecture Search (NAS) in mind, but can be used for any purpose where doing changes to a model is desired.
 
 The following operations are supported:
 * Change the input/output size of layers
@@ -13,6 +13,8 @@ The following operations are supported:
 * Remove layers from the model
 * Add inputs to layers
 * Remove inputs to layers
+
+Note that NaiveNASflux does not have any functionality to search for a model architecture. Check out [NaiveGAflux](https://github.com/DrChainsaw/NaiveGAflux.jl) for a simple proof of concept.  
 
 ## Basic Usage
 
