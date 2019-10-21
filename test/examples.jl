@@ -90,7 +90,8 @@
         Random.seed!(666)
         niters = 100
 
-        # First lets define a simple architecture
+        # First lets create a simple model
+        # layerfun=ActivationContribution will wrap the layer and compute a pruning metric for it while the model trains
         mdense(in, outsize, act) = mutable(Dense(nout(in),outsize, act), in, layerfun=ActivationContribution)
 
         invertex = inputvertex("input", 2, FluxDense())
