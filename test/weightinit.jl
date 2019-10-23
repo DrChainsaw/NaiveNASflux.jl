@@ -19,12 +19,19 @@
     end
 
     @testset "Conv ID mapping" begin
+        import NaiveNASflux: weights
         nch = 5
-        l = Conv((3,5), nch=>nch, init=idmapping, pad=(2,1))
         indata = reshape(collect(Float32, 1:nch*7*13), 7, 13, nch, 1)
-        @test l(indata) == indata
 
-        @test_logs (:warn, "Identity mapping not possible with nin != nout! Got nin=$nch, nout=$(nch+2).") l = Conv((3,5), nch=> nch+2, init=idmapping, pad=(2,1))
+        l = Conv((3,5), nch=>nch, init=idmapping, pad=(1,2))
+        @test l(indata) == indata
+        @test size(weights(l)) == size(weights(Conv((3,5), nch=>nch)))
+
+        l = Conv((1,3), nch=>nch, init=idmapping, pad=(0,1))
+        @test l(indata) == indata
+        @test size(weights(l)) == size(weights(Conv((1,3), nch=>nch)))
+
+        @test_logs (:warn, "Identity mapping not possible with nin != nout! Got nin=$nch, nout=$(nch+2).") l = Conv((3,5), nch=> nch+2, init=idmapping, pad=(1,2))
         @test nin(l) == nch
         @test nout(l) == nch+2
     end

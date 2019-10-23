@@ -1,9 +1,6 @@
 import NaiveNASflux
 import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, layer, mutate, hiddenweights, hiddenstate, state, outscale
-using Flux
 import Flux: mapchildren
-using NaiveNASlib
-import InteractiveUtils:subtypes
 
 @testset "Mutable computation" begin
 
@@ -115,15 +112,42 @@ import InteractiveUtils:subtypes
             m = MutableLayer(DepthwiseConv((2,2),(3=>6*3)))
 
             @test nin(m) == nin(m.layer) == 3
-            @test nout(m) == nout(m.layer) == 6
-            @test_throws ErrorException minΔninfactor(m)
-            @test_throws ErrorException minΔnoutfactor(m)
+            @test nout(m) == nout(m.layer) == 18
+
             input = reshape(collect(Float32, 1:3*3*3), 3, 3, 3, 1)
             @test m(input) == m.layer(input)
 
-            inputs = [1, 3]
-            outputs = [1, 2, 4, 5]
-            Wexp, bexp = weights(m.layer)[:,:,outputs,inputs], bias(m.layer)[outputs]
+            ins = [1, 3]
+            wouts = [1, 2, 5, 6]
+            outs = mapfoldl(i -> 2 * i .+ [-1, -0] ,vcat, wouts)
+            Wexp, bexp = weights(m.layer)[:,:,wouts,ins], bias(m.layer)[outs]
+            mutate(m, inputs=ins, outputs=outs)
+            assertlayer(m.layer, Wexp, bexp)
+            @test size(m(ones(Float32, 3,3,2,2)))[3:4] == (8, 2)
+
+            ins = [1, 2, -1]
+            outs = [1, 2, -1, -1, -1, -1, 3, 4, -1, -1, -1, -1]
+            mutate(m, inputs=ins, outputs=outs)
+
+            @test nin(m) == 3
+            @test nout(m) == 12
+
+            @test size(m(ones(Float32, 3,3,3,2)))[3:4] == (12, 2)
+        end
+
+        @testset "CrossCor MutableLayer" begin
+            m = MutableLayer(CrossCor((2,3),(4=>5)))
+
+            @test nin(m) == nin(m.layer) == 4
+            @test nout(m) == nout(m.layer) == 5
+            @test minΔninfactor(m) == 1
+            @test minΔnoutfactor(m) == 1
+            input = reshape(collect(Float32, 1:3*4*4), 3, 4, 4, 1)
+            @test m(input) == m.layer(input)
+
+            inputs = [1,3]
+            outputs = [1,2,4]
+            Wexp, bexp = weights(m.layer)[:,:,inputs, outputs], bias(m.layer)[outputs]
             mutate(m, inputs=inputs, outputs=outputs)
             assertlayer(m.layer, Wexp, bexp)
         end
@@ -417,6 +441,27 @@ import InteractiveUtils:subtypes
             @test nout(mlazy) == nout(m) == 3
 
             @test expected == m(Float32[2,3])
+        end
+
+        @testset "LazyeMutable DepthwiseConv" begin
+            m = LazyMutable(MutableLayer(DepthwiseConv((2,2),(3=>6*3))))
+
+            @test nin(m) == nin(layer(m)) == 3
+            @test nout(m) == nout(layer(m)) == 18
+
+            input = reshape(collect(Float32, 1:3*3*3), 3, 3, 3, 1)
+            @test m(input) == layer(m)(input)
+
+            ins = [1, 3]
+            wouts = [1, 2, 5, 6]
+            outs = mapfoldl(i -> 2 * i .+ [-1, -0] ,vcat, wouts)
+            Wexp, bexp = weights(layer(m))[:,:,wouts,ins], bias(layer(m))[outs]
+
+            mutate_inputs(m, ins)
+            mutate_outputs(m, outs)
+            @test size(m(ones(Float32, 3,3,2,2)))[3:4] == (8, 2)
+
+            assertlayer(layer(m), Wexp, bexp)
         end
 
         @testset "LazyMutable reselect" begin

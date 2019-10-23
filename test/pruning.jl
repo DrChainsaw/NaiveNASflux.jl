@@ -62,6 +62,9 @@
         l = ml(MaxPool((3,3)), ActivationContribution, insize=2)
         @test ismissing(neuron_value(l))
         tr(l, ones(Float32, 4,4,2,5))
+
+        @test ismissing(minΔninfactor(l))
+        @test ismissing(minΔnoutfactor(l))
         @test size(neuron_value(l)) == (2,)
     end
 
@@ -70,6 +73,9 @@
         v = ac >> ml(Dense(2,3)) + ml(Dense(4,3))
         tr(v, [1 1 1]', [1 2 3]', [4 5 6]')
         @test size(neuron_value(v)) == (3,)
+
+        @test minΔninfactor(v) == 1
+        @test minΔnoutfactor(v) == 1
 
         g = CompGraph(vcat(inputs.(inputs(v))...), v)
         @test size(g(ones(Float32, 2,2), ones(Float32, 4, 2))) == (nout(v), 2)
@@ -80,8 +86,24 @@
         tr(v,ones(nout(v), 1), [1 2 3]', [4 5 6 7 8]')
         @test size(neuron_value(v)) == (nout(v),)
 
+        @test minΔninfactor(v) == 1
+        @test minΔnoutfactor(v) == 1
+
         g = CompGraph(vcat(inputs.(inputs(v))...), v)
         @test size(g(ones(Float32, 2,2), ones(Float32, 4, 2))) == (nout(v), 2)
+    end
+
+    @testset "Function ActivationContribution" begin
+        # Not really an absorbvertex, but ActivationContribution should work on stuff which is not FLux layers.
+        v = absorbvertex(ActivationContribution(x -> 2x), 3, ml(Dense(2,3)))
+        tr(v, ones(nout(v), 1))
+        @test size(neuron_value(v)) == (nout(v),)
+
+        @test minΔninfactor(v) == 1
+        @test minΔnoutfactor(v) == 1
+
+        g = CompGraph(vcat(inputs.(inputs(v))...), v)
+        @test size(g(ones(Float32, 2,2))) == (nout(v), 2)
     end
 
     @testset "Mutate ActivationContribution" begin
