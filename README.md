@@ -19,7 +19,7 @@ Note that NaiveNASflux does not have any functionality to search for a model arc
 ## Basic Usage
 
 ```julia
-Pkg.add("https://github.com/DrChainsaw/NaiveNASflux.jl")
+]add NaiveNASflux
 ```
 
 Check out the basic usage of [NaiveNASlib](https://github.com/DrChainsaw/NaiveNASlib.jl) for less verbose examples.
