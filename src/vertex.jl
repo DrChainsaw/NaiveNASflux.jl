@@ -30,31 +30,34 @@ struct LayerTypeWrapper
 end
 layertype(l::LayerTypeWrapper) = l.t
 
-Flux.@treelike InputVertex
-Flux.@treelike CompVertex
+Flux.@functor InputVertex
+Flux.@functor CompVertex
 
 # This is a bit of a hack to enable 1) params and 2) gpu. Other uses may not work as expected, especially if one tries to use these methods to view/manipulate things which are not from Flux.
 
-# Problem with using Flux.@treelike is that MutationVertices (OutputVertices really) can not be created by just copying their fields as this would create multiple copies of the same vertex if it is input to more than one vertex and mapchildren seems to be designed around this.
+# Problem with using Flux.@functor is that MutationVertices (OutputVertices really) can not be created by just copying their fields as this would create multiple copies of the same vertex if it is input to more than one vertex.
+Flux.functor(a::AbstractVector{<:AbstractVertex}) = Tuple(a), y -> a
+Flux.functor(v::AbstractVertex) = (base(v),), y -> v
+Flux.functor(g::CompGraph) = Tuple(vertices(g)), y -> g
 
 # Instead, we rely in the internals of the vertices to be mutable (e.g MutableLayer).
 
-Flux.children(a::AbstractVector{<:AbstractVertex}) = Tuple(a)
-function Flux.mapchildren(f, a::AbstractVector{<:AbstractVertex})
-    f.(a) # Returning this will do no good due to the above
-    return a
-end
+# Flux.functor(a::AbstractVector{<:AbstractVertex}) = Tuple(a)
+# function Flux.mapchildren(f, a::AbstractVector{<:AbstractVertex})
+#     f.(a) # Returning this will do no good due to the above
+#     return a
+# end
 
-Flux.children(v::AbstractVertex) = (base(v),)
-function Flux.mapchildren(f, v::AbstractVertex)
-    f.(Flux.children(v)) # Returning this will do no good due to the above
-    return v
-end
-Flux.children(g::CompGraph) = Tuple(vertices(g))
-function Flux.mapchildren(f, g::CompGraph)
-    f.(Flux.children(g)) # Returning this will do no good due to the above
-    return g
-end
+# Flux.children(v::AbstractVertex) = (base(v),)
+# function Flux.mapchildren(f, v::AbstractVertex)
+#     f.(Flux.children(v)) # Returning this will do no good due to the above
+#     return v
+# end
+# Flux.children(g::CompGraph) = Tuple(vertices(g))
+# function Flux.mapchildren(f, g::CompGraph)
+#     f.(Flux.children(g)) # Returning this will do no good due to the above
+#     return g
+# end
 
 """
     mutable(l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated())

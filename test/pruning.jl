@@ -6,12 +6,12 @@
     function tr(l, data)
         outshape = collect(size(data))
         outshape[[actdim(ndims(data))]] .= nout(l)
-        example = [(param(data), ones(Float32, outshape...))];
+        example = [(data, ones(Float32, outshape...))];
         Flux.train!((x,y) -> Flux.mse(l(x), y), params(l), example, Descent(0.1))
     end
 
     function tr(l, output, inputs...)
-        example = [(param.(inputs), output)];
+        example = [(inputs, output)];
         Flux.train!((x,y) -> Flux.mse(l(x...), y), params(l), example, Descent(0.1))
     end
 

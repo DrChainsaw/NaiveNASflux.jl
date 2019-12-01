@@ -62,26 +62,26 @@ outdim(::Union{FluxConv{N}, FluxCrossCor{N}}) where N = 2+N
 weights(l) = weights(layertype(l), l)
 bias(l) = bias(layertype(l), l)
 
-weights(::FluxDense, l) = l.W.data
-bias(::FluxDense, l) = l.b.data
+weights(::FluxDense, l) = l.W
+bias(::FluxDense, l) = l.b
 
-weights(::FluxConvolutional, l) = l.weight.data
-bias(::FluxConvolutional, l) = l.bias.data
+weights(::FluxConvolutional, l) = l.weight
+bias(::FluxConvolutional, l) = l.bias
 
-weights(::FluxDiagonal, l) = l.α.data
-bias(::FluxDiagonal, l) = l.β.data
+weights(::FluxDiagonal, l) = l.α
+bias(::FluxDiagonal, l) = l.β
 
-weights(::FluxRecurrent, l) = l.cell.Wi.data
-bias(::FluxRecurrent, l) = l.cell.b.data
+weights(::FluxRecurrent, l) = l.cell.Wi
+bias(::FluxRecurrent, l) = l.cell.b
 
 hiddenweights(l) = hiddenweights(layertype(l), l)
-hiddenweights(::FluxRecurrent, l) = l.cell.Wh.data
+hiddenweights(::FluxRecurrent, l) = l.cell.Wh
 hiddenstate(l) = hiddenstate(layertype(l), l)
-hiddenstate(::FluxRecurrent, l) = Flux.hidden(l.cell).data
-hiddenstate(::FluxLstm, l) = [h.data for h in Flux.hidden(l.cell)]
+hiddenstate(::FluxRecurrent, l) = Flux.hidden(l.cell)
+hiddenstate(::FluxLstm, l) = [h for h in Flux.hidden(l.cell)]
 state(l) = state(layertype(l), l)
-state(::FluxRecurrent, l) = l.state.data
-state(::FluxLstm, l) = [h.data for h in l.state]
+state(::FluxRecurrent, l) = l.state
+state(::FluxLstm, l) = [h for h in l.state]
 
 
 function NaiveNASlib.compconstraint!(s, ::FluxLayer, data) end

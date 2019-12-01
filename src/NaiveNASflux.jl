@@ -3,7 +3,7 @@ module NaiveNASflux
 using Reexport
 @reexport using NaiveNASlib
 @reexport using Flux
-import Flux.Tracker: hook
+import Flux.Zygote: hook
 using Statistics
 using Setfield
 using LinearAlgebra
@@ -34,27 +34,34 @@ include("pruning.jl")
 include("weightinit.jl")
 
 
-# Modified version of Flux.treelike for mutable structs which are mutable mainly because they are intended to be wrapped in MutationVertices which are not easy to create in the manner which Flux.mapchildren is designed.
-function treelike_mutable(m::Module, T, fs = treelike_fields(T))
+# Modified version of Flux.functor for mutable structs which are mutable mainly because they are intended to be wrapped in MutationVertices which in turn are not easy to create in the manner which Flux.functor is designed.
+function mutable_makefunctor(m::Module, T, fs = functor_fields(T))
   @eval m begin
-    Flux.children(x::$T) = ($([:(x.$f) for f in fs]...),)
-    function Flux.mapchildren(f, x::$T)
-        $([:(x.$fn = f(x.$fn)) for fn in fs]...)
-        return x
+    Flux.functor(x::$T) = ($([:($f=x.$f) for f in fs]...),),
+    # Instead of creating a new T, we set all fields in fs of x to y (since y is the fields returned in line above)
+    function(y)
+      $([:(x.$f = y[$i]) for (i, f) in enumerate(fs)]...)
+      return x
     end
   end
 end
 
-treelike_fields(T) = fieldnames(T)
-
-macro treelike_mutable(T, fs = nothing)
-  fs == nothing || Meta.isexpr(fs, :tuple) || error("@treelike_mutable T (a, b)")
+function mutable_functorm(T, fs = nothing)
+  fs == nothing || isexpr(fs, :tuple) || error("@functor T (a, b)")
   fs = fs == nothing ? [] : [:($(map(QuoteNode, fs.args)...),)]
-  :(treelike_mutable(@__MODULE__, $(esc(T)), $(fs...)))
+  :(mutable_makefunctor(@__MODULE__, $(esc(T)), $(fs...)))
 end
+
+macro mutable_functor(args...)
+  mutable_functorm(args...)
+end
+
+functor_fields(T) = fieldnames(T)
 
 for subtype in subtypes(AbstractMutableComp)
-  @treelike_mutable subtype
+  @mutable_functor subtype
 end
+
+
 
 end # module
