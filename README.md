@@ -116,7 +116,7 @@ using NaiveNASflux, Test
 import Flux: train!, mse
 import Random
 Random.seed!(666)
-niters = 100
+niters = 50
 
 # First lets create a simple model
 # layerfun=ActivationContribution will wrap the layer and compute a pruning metric for it while the model trains

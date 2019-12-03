@@ -62,6 +62,34 @@ for subtype in subtypes(AbstractMutableComp)
   @mutable_functor subtype
 end
 
+# Needed as CompGraph creates a dict in a way which Zygote can not differentiate
+Flux.Zygote.@adjoint! function getfield(p::Pair, i)
+    getfield(p, i), Δ -> nothing
+end
+Flux.Zygote.@nograd Dict
 
+Flux.Zygote.@adjoint! function get!(f::Function, d::AbstractDict, k)
+    exists = true
+    fback = () -> nothing
+
+    function ∇f()
+        exists = false
+        res,fback = Flux.Zygote.pullback(__context__,f)
+        return res
+    end
+
+    get!(∇f, d, k), function(Δ)
+        if exists
+            grad = Flux.Zygote.grad_mut(__context__, d)
+            grad[k] = Flux.Zygote.accum(get(grad, k, nothing), Δ)
+            return (nothing, grad, nothing)
+        else
+            Δd = get(Flux.Zygote.grad_mut(__context__, d), k, nothing)
+            delete!(Flux.Zygote.grad_mut(__context__, d), k)
+            fback(Δ) # Always return empty tuple due to no arg?
+            return (nothing, Δd, nothing)
+        end
+    end
+end
 
 end # module
