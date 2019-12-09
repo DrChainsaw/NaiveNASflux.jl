@@ -3,11 +3,11 @@
 
     ml(l, lfun=LazyMutable; insize=nin(l)[]) = mutable(l, inputvertex("in", insize, layertype(l)), layerfun = lfun)
 
-    function tr(l, data)
+    function tr(l, data; loss=Flux.mse)
         outshape = collect(size(data))
         outshape[[actdim(ndims(data))]] .= nout(l)
         example = [(data, ones(Float32, outshape...))];
-        Flux.train!((x,y) -> Flux.mse(l(x), y), params(l), example, Descent(0.1))
+        Flux.train!((x,y) -> loss(l(x), y), params(l), example, Descent(0.1))
     end
 
     function tr(l, output, inputs...)
@@ -35,6 +35,15 @@
     @testset "Neuron value Conv default" begin
         l = ml(Conv((2,3), 4=>5))
         @test size(neuron_value(l)) == (5,)
+    end
+
+    @testset "ActivationContribution no grad" begin
+        f(x) = 2 .* x .^ 2
+        Flux.Zygote.@nograd f
+        l = ml(Dense(2,3), ActivationContribution)
+        @test neuron_value(l) == zeros(3)
+        tr(l, ones(Float32, 2, 1), loss = f ∘ Flux.mse)
+        @test neuron_value(l) == zeros(3)
     end
 
     @testset "Neuron value Dense act contrib" begin
