@@ -1,5 +1,8 @@
 # Stuff (mostly adjoints) to make things play nice with Zygote
 
+nograd(f) = f()
+Flux.Zygote.@nograd nograd
+
 # Needed as CompGraph creates a dict in a way which Zygote can not differentiate
 Flux.Zygote.@adjoint! function getfield(p::Pair, i)
     getfield(p, i), Δ -> nothing
@@ -11,28 +14,31 @@ end
 
 Flux.Zygote.@nograd mutate
 Flux.Zygote.@adjoint! function dispatch!(lm::LazyMutable, m::ResetLazyMutable, x...)
-    dispatch!(lm, m, x...), Δ -> nothing
+     dispatch!(lm, m, x...), Δ -> nothing
 end
 
-function ∇getdictkey(d::AbstractDict, k, ctx, Δ)
-    grad = Flux.Zygote.grad_mut(ctx, d)
-    grad[k] = Flux.Zygote.accum(get(grad, k, nothing), Δ)
-    return (nothing, grad, nothing)
+# Basically a workaround as the pullback for the recursive implementation in NaiveNASlib which
+#       1) uses get! which does not have a pullback function
+#        and
+#       2) was in some cases extremely slow or even stalled completely
+Flux.Zygote.@adjoint function output!(memo::Dict{AbstractVertex, Any}, v::AbstractVertex)
+    return Flux.Zygote.pullback(__context__, output_loop!, memo, v)
 end
 
-Flux.Zygote.@adjoint! function get!(f::Function, d::AbstractDict, k)
-    # Will be replaced if ∇f is called
-    back = Δ -> ∇getdictkey(d, k, __context__, Δ)
 
-    function ∇f()
-        res,fback = Flux.Zygote.pullback(__context__,f)
-        back = function(Δ)
-                Δd = get(Flux.Zygote.grad_mut(__context__, d), k, nothing)
-                delete!(Flux.Zygote.grad_mut(__context__, d), k)
-                fback(Δ) # Always return empty tuple due to no arg?
-                return (nothing, Δd, nothing)
-            end
-        return res
+function output_loop!(memo, v)
+    vs = nograd() do
+        # flatten returns all input ancestors to v in topological order
+        # We also provide all vertices for which we have the output already in memo
+        # so we don't do unnecessary calculations.
+        flatten(v, collect(AbstractVertex, keys(memo)))
     end
-    return get!(∇f, d, k), back
+
+    for vn in vs
+        if !haskey(memo, vn)
+            inpt = map(iv -> memo[iv], inputs(vn))
+            memo[vn] = vn(inpt...)
+        end
+    end
+    return memo[v]
 end
