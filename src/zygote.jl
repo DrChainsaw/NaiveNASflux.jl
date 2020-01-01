@@ -31,14 +31,12 @@ function output_loop!(memo, v)
         # flatten returns all input ancestors to v in topological order
         # We also provide all vertices for which we have the output already in memo
         # so we don't do unnecessary calculations.
-        flatten(v, collect(AbstractVertex, keys(memo)))
+        flatten(v, collect(AbstractVertex, keys(memo)))[length(memo)+1:end]
     end
 
     for vn in vs
-        if !haskey(memo, vn)
-            inpt = map(iv -> memo[iv], inputs(vn))
-            memo[vn] = vn(inpt...)
-        end
+        inpt = map(iv -> memo[iv], inputs(vn))
+        memo[vn] = vn(inpt...)
     end
     return memo[v]
 end
