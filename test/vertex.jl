@@ -1,4 +1,3 @@
-using NaiveNASflux
 import NaiveNASflux: weights, bias
 
 @testset "InputShapeVertex" begin
@@ -324,14 +323,14 @@ end
     @test logged(level=Base.CoreLogging.Info, info=NameInfoStr())(SizeAbsorb()) == SizeChangeLogger(Base.CoreLogging.Info, NameInfoStr(), SizeAbsorb())
 end
 
-@testset "Flux children" begin
-    import Flux:children
+@testset "Flux functor" begin
+    import Flux:functor
     inpt = inputvertex("in", 2, FluxDense())
     v1 = mutable(Dense(2, 3), inpt)
     v2 = mutable(Dense(3, 4), v1)
     g1 = CompGraph(inpt, v2)
 
-    @test children(g1) == (inpt, v1, v2)
+    @test functor(g1)[1] == (inpt, v1, v2)
 
     pars1 = params(g1).order
     @test pars1[1] == layer(v1).W
@@ -340,11 +339,10 @@ end
     @test pars1[4] == layer(v2).b
 
     g2 = copy(g1)
-    # Emulate Flux.gpu
+    # Basically what Flux.gpu does except function is CuArrays.cu(x) instead of 2 .* x
     testfun(x) = x
-    # Modify x.data or else x.tracked.f is set which prevents it from being recognized as a parameter when param is called
-    testfun(x::TrackedArray) = param(2 .* x.data)
-    mapleaves(testfun, g2)
+    testfun(x::AbstractArray) = 2 .* x
+    fmap(testfun, g2)
 
     pars2 = params(g2).order
     @test pars2 == 2 .* pars1

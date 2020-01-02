@@ -23,7 +23,8 @@ function(m::ActivationContribution)(x...)
     act = wrapped(m)(x...)
 
     return hook(act) do grad
-        m.contribution = agg(m.aggmethod, m.contribution, mean_squeeze(abs.(act .* grad).data, actdim(ndims(act))))
+        grad == nothing && return grad
+        m.contribution = agg(m.aggmethod, m.contribution, mean_squeeze(abs.(act .* grad), actdim(ndims(act))))
         return grad
     end
 end

@@ -93,8 +93,8 @@ function mutate_recurrent_state(::FluxRecurrent, m::MutableLayer, outputs, wi, w
     h = select(hiddenstate(l), 1 => outputs)
     s = select(state(l), 1 => outputs)
 
-    cellnew = setproperties(layer(m).cell, (Wi=param(wi), Wh=param(wh), b = param(b), h = param(h)))
-    lnew = setproperties(layer(m), (cell=cellnew, state = param(s)))
+    cellnew = setproperties(layer(m).cell, (Wi=wi, Wh=wh, b = b, h = h))
+    lnew = setproperties(layer(m), (cell=cellnew, state = s))
     m.layer = lnew
 end
 
@@ -104,11 +104,11 @@ function mutate_recurrent_state(::FluxLstm, m::MutableLayer, outputs, wi, wh, b)
     hc = select.(hcurr, repeat([1 => outputs], length(hcurr)))
     s = select.(scurr, repeat([1 => outputs], length(scurr)))
 
-    cellnew = setproperties(layer(m).cell, (Wi=param(wi), Wh=param(wh), b = param(b), h = param(hc[1]), c = param(hc[2])))
-    lnew = setproperties(layer(m), (cell=cellnew, state = tuple(param.(s)...)))
+    cellnew = setproperties(layer(m).cell, (Wi=wi, Wh=wh, b = b, h = hc[1], c = hc[2]))
+    lnew = setproperties(layer(m), (cell=cellnew, state = tuple(s...)))
     m.layer = lnew
 
-    return (h = hc[1], c = hc[2]), tuple(param.(s))
+    return (h = hc[1], c = hc[2]), tuple(s)
 end
 
 
@@ -135,11 +135,13 @@ end
 function mutate(::FluxParNorm, m::MutableLayer, inds)
     # Good? bad? I'm the guy who assumes mean and std type parameters will be visited in a certain order and uses a closure for that assumption
     ismean = false
-    parselect = function(x)
+    function parselect(x::AbstractArray)
         ismean = !ismean
         return select(x, 1 => inds; insval = (ismean ? 0 : 1))
     end
-    m.layer = Flux.mapchildren(parselect, m.layer)
+    parselect(x) = x
+
+    m.layer = Flux.fmap(parselect, m.layer)
 end
 
 function mutate(::FluxGroupNorm, m::MutableLayer, inds)
@@ -147,8 +149,11 @@ function mutate(::FluxGroupNorm, m::MutableLayer, inds)
     l = m.layer
     ngroups = l.G
     nchannels = length(inds)
+
     # Make a "best fit" to new group size, but don't allow 1 as group size
+    # Step 1: Possible group sizes are all integers which divde the new number of channels evenly
     g_alts = filter(ga -> ga > 1, findall(r -> r == 0, nchannels .% (1:nchannels)))
+    # Step 2: Select the size which is closest to the original number of groups
     ngroups = g_alts[argmin(abs.(g_alts .- ngroups))]
 
     nchannels_per_group = div(nchannels, ngroups)
@@ -160,20 +165,21 @@ function mutate(::FluxGroupNorm, m::MutableLayer, inds)
     sizetoinds = Dict(nin(l) => inds, l.G => inds_groups)
 
     ismean = false
-    parselect = function(x)
+    function parselect(x::AbstractArray)
         ismean = !ismean
         return select(x, 1 => sizetoinds[length(x)]; insval = (ismean ? 0 : 1))
     end
-    m.layer = Flux.mapchildren(parselect, m.layer)
+    parselect(x) = x
+    m.layer = Flux.fmap(parselect, m.layer)
     m.layer.G = ngroups
 end
 
 
 newlayer(m::MutableLayer, w, b, other=nothing) = m.layer = newlayer(layertype(m), m, w, b, other)
 
-newlayer(::FluxDense, m::MutableLayer, w, b, other) = Dense(param(w), param(b), deepcopy(layer(m).σ))
-newlayer(::FluxConvolutional, m::MutableLayer, w, b, other) = setproperties(layer(m), (weight=param(w), bias=param(b), σ=deepcopy(layer(m).σ), other...))
-newlayer(::FluxDiagonal, m::MutableLayer, w, b, other) = Flux.Diagonal(param(w), param(b))
+newlayer(::FluxDense, m::MutableLayer, w, b, other) = Dense(w, b, deepcopy(layer(m).σ))
+newlayer(::FluxConvolutional, m::MutableLayer, w, b, other) = setproperties(layer(m), (weight=w, bias=b, σ=deepcopy(layer(m).σ), other...))
+newlayer(::FluxDiagonal, m::MutableLayer, w, b, other) = Flux.Diagonal(w, b)
 
 
 """
@@ -228,7 +234,7 @@ LazyMutable(m, nin::Integer, nout::Integer) = LazyMutable(m, 1:nin, 1:nout, m ->
 wrapped(m::LazyMutable) = m.mutable
 layer(m::LazyMutable) = layer(wrapped(m))
 
-treelike_fields(T::Type{LazyMutable}) = (:mutable,)
+functor_fields(T::Type{LazyMutable}) = (:mutable,)
 
 (m::LazyMutable)(x...) = dispatch!(m, m.mutable, x...)
 dispatch!(m::LazyMutable, mutable::AbstractMutableComp, x...) = mutable(x...)
@@ -290,7 +296,7 @@ end
 layer(m::MutationTriggered) = layer(m.wrapped)
 layertype(m::MutationTriggered) = layertype(layer(m))
 
-Flux.@treelike MutationTriggered
+Flux.@functor MutationTriggered
 
 """
     ResetLazyMutable
@@ -314,7 +320,7 @@ end
 layer(m::ResetLazyMutable) = layer(m.wrapped)
 layertype(m::ResetLazyMutable) = layertype(layer(m))
 
-Flux.@treelike ResetLazyMutable
+Flux.@functor ResetLazyMutable
 
 """
     NoParams

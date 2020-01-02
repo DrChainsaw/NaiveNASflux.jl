@@ -1,6 +1,4 @@
-import NaiveNASflux
 import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, layer, mutate, hiddenweights, hiddenstate, state, outscale
-import Flux: mapchildren
 
 @testset "Mutable computation" begin
 
@@ -202,17 +200,15 @@ import Flux: mapchildren
             assertlayer(m.layer.diag, Wexp, bexp)
         end
 
-        array(arr) = arr
-        array(arr::TrackedArray) = arr.data
-        setpar(::Any, x) = x
-        setpar(::TrackedArray, x) = param(x)
-
         function assertnorm(l, meanexp, varexp)
-            @test l.β.data == meanexp
-            @test l.γ.data == varexp
-            @test l.μ == meanexp
-            @test l.σ² == varexp
+            @test l.β == meanexp
+            @test l.γ == varexp
+            @test vec(l.μ) == meanexp
+            @test vec(l.σ²) == varexp
         end
+
+        setpar(x) = x
+        setpar(x::AbstractArray) = reshape(collect(Float32, 1:length(x)), size(x))
 
         @testset "$l MutableLayer" for l in (BatchNorm, InstanceNorm, n -> GroupNorm(n,n))
             m = MutableLayer(l(5))
@@ -221,7 +217,8 @@ import Flux: mapchildren
             @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 5
             @test minΔninfactor(m) == 1
             @test minΔnoutfactor(m) == 1
-            m.layer = mapchildren(par -> setpar(par, collect(Float32, 1:5)), layer(m))
+
+            m.layer = Flux.fmap(setpar, layer(m))
 
             inds = [1,3,4]
             expall = Float32.(inds)
@@ -236,10 +233,10 @@ import Flux: mapchildren
 
             #Test with groups of 2
             m = MutableLayer(GroupNorm(6,3))
-            m.layer = mapchildren(par -> setpar(par, collect(Float32, 1:length(par))), layer(m))
+            m.layer = Flux.fmap(setpar, layer(m))
             mutate_inputs(m, [1,2,5,6])
-            @test layer(m).μ == [1, 3]
-            @test layer(m).σ² == [1, 3]
+            @test layer(m).μ == reshape([1, 3],2,1)
+            @test layer(m).σ² == reshape([1, 3],2,1)
 
             # Now when dimensions don't add up: size 8 becomes size 9
             m = MutableLayer(GroupNorm(8,4))
@@ -493,14 +490,14 @@ import Flux: mapchildren
             m = LazyMutable(MutableLayer(Dense(2,3)))
             visitfun(x) = x
             visitdense = false
-            function visitfun(l::TrackedArray)
+            function visitfun(l::AbstractArray{Float32})
                 visitdense = true
                 return l
             end
 
             mutate_inputs(m, [-1, -1, 1, 2])
 
-            Flux.mapleaves(visitfun, m)
+            Flux.fmap(visitfun, m)
             @test visitdense
         end
     end
