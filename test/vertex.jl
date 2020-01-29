@@ -344,6 +344,6 @@ end
     testfun(x::AbstractArray) = 2 .* x
     fmap(testfun, g2)
 
-    pars2 = params(g2).order
+    pars2 = params(g2).order.data
     @test pars2 == 2 .* pars1
 end
