@@ -44,6 +44,7 @@
         @test neuron_value(l) == zeros(3)
         tr(l, ones(Float32, 2, 1), loss = f ∘ Flux.mse)
         @test neuron_value(l) == zeros(3)
+        @test length(params(l)) == length(params(layer(l)))
     end
 
     @testset "Neuron value Dense act contrib" begin
@@ -51,6 +52,7 @@
         @test neuron_value(l) == zeros(5)
         tr(l, ones(Float32, 3, 4))
         @test size(neuron_value(l)) == (5,)
+        @test length(params(l)) == length(params(layer(l)))
     end
 
     @testset "Neuron value RNN act contrib" begin
@@ -58,6 +60,7 @@
         @test neuron_value(l) == zeros(5)
         tr(l, ones(Float32, 3, 8))
         @test size(neuron_value(l)) == (5,)
+        @test length(params(l)) == length(params(layer(l)))
     end
 
     @testset "Neuron value Conv act contrib" begin
@@ -65,6 +68,7 @@
         @test neuron_value(l) == zeros(5)
         tr(l, ones(Float32, 4,4,2,5))
         @test size(neuron_value(l)) == (5,)
+        @test length(params(l)) == length(params(layer(l)))
     end
 
     @testset "Neuron value MaxPool act contrib" begin

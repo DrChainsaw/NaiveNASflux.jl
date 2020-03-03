@@ -18,6 +18,7 @@ layertype(m::ActivationContribution) = layertype(m.layer)
 wrapped(m::ActivationContribution) = m.layer
 NaiveNASlib.minΔninfactor(m::ActivationContribution) = minΔninfactor(wrapped(m))
 NaiveNASlib.minΔnoutfactor(m::ActivationContribution) = minΔnoutfactor(wrapped(m))
+functor_fields(T::Type{ActivationContribution}) = (:layer,)
 
 function(m::ActivationContribution)(x...)
     act = wrapped(m)(x...)
