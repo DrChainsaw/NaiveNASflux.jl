@@ -73,5 +73,5 @@ struct Ewma
         new(α)
     end
 end
-agg(m::Ewma, x ,y) = m.α .* x .+ (1 - m.α) .* y
-agg(m::Ewma, ::Missing, y) = y
+agg(m::Ewma, x, y) = m.α .* x .+ (1 - m.α) .* cpu(y)
+agg(m::Ewma, ::Missing, y) = cpu(y)
