@@ -51,6 +51,8 @@ layertype(l::MaxPool) = FluxNoParLayer()
 layertype(l::MeanPool) = FluxNoParLayer()
 layertype(l::Dropout) = FluxNoParLayer()
 layertype(l::AlphaDropout) = FluxNoParLayer()
+layertype(l::GlobalMaxPool) = FluxNoParLayer()
+layertype(l::GlobalMeanPool) = FluxNoParLayer()
 
 # Compositions? Might not have any common methods...
 # MaxOut, Chain?

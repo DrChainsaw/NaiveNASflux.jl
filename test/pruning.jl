@@ -81,6 +81,16 @@
         @test size(neuron_value(l)) == (2,)
     end
 
+    @testset "Neuron value GlobalMeanPool act contrib" begin
+        l = ml(GlobalMeanPool(), ActivationContribution, insize=2)
+        @test ismissing(neuron_value(l))
+        tr(l, ones(Float32, 4,4,2,5))
+
+        @test ismissing(minΔninfactor(l))
+        @test ismissing(minΔnoutfactor(l))
+        @test size(neuron_value(l)) == (2,)
+    end
+
     @testset "Elem add ActivationContribution" begin
         ac(l) = ActivationContribution(l)
         v = ac >> ml(Dense(2,3)) + ml(Dense(4,3))
