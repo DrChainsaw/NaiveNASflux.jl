@@ -2,6 +2,7 @@ module NaiveNASflux
 
 using Reexport
 @reexport using NaiveNASlib
+import NaiveNASlib: base, mutate_inputs, mutate_outputs
 @reexport using Flux
 import Flux.Zygote: hook
 using Statistics

@@ -40,51 +40,32 @@ Flux.functor(a::AbstractVector{<:AbstractVertex}) = Tuple(a), y -> a
 Flux.functor(v::AbstractVertex) = (base(v),), y -> v
 Flux.functor(g::CompGraph) = Tuple(vertices(g)), y -> g
 
-# Instead, we rely in the internals of the vertices to be mutable (e.g MutableLayer).
-
-# Flux.functor(a::AbstractVector{<:AbstractVertex}) = Tuple(a)
-# function Flux.mapchildren(f, a::AbstractVector{<:AbstractVertex})
-#     f.(a) # Returning this will do no good due to the above
-#     return a
-# end
-
-# Flux.children(v::AbstractVertex) = (base(v),)
-# function Flux.mapchildren(f, v::AbstractVertex)
-#     f.(Flux.children(v)) # Returning this will do no good due to the above
-#     return v
-# end
-# Flux.children(g::CompGraph) = Tuple(vertices(g))
-# function Flux.mapchildren(f, g::CompGraph)
-#     f.(Flux.children(g)) # Returning this will do no good due to the above
-#     return g
-# end
-
 """
-    mutable(l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated())
+    mutable(l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated())
 
 Return a mutable vertex wrapping the layer `l` with input vertex `in`.
 
-Extra arguments `layerfun`, `mutation` and `traitfun` can be used to change mutation type and to add extra info about the vertex.
+Extra arguments `layerfun` and `traitfun` can be used to add wrap the layer and extra info about the vertex respectively.
 """
-mutable(l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated()) = mutable(layertype(l), l, in, layerfun, mutation, traitfun)
+mutable(l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated()) = mutable(layertype(l), l, in, layerfun, traitfun)
 
 """
-    mutable(name::String, l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated())
+    mutable(name::String, l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated())
 
 Return a mutable vertex wrapping the layer `l` with input vertex `in` with name `name`.
 
 Name is only used when displaying or logging and does not have to be unique (although it probably is a good idea).
 
-Extra arguments `layerfun`, `mutation` and `traitfun` can be used to change mutation type and to add extra info about the vertex.
+Extra arguments `layerfun` and `traitfun` can be used to add wrap the layer and extra info about the vertex respectively.
 """
-mutable(name::String, l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated()) = mutable(layertype(l), l, in, layerfun, mutation, traitfun ∘ named(name))
+mutable(name::String, l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated()) = mutable(layertype(l), l, in, layerfun, traitfun ∘ named(name))
 
-mutable(::FluxParLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) = absorbvertex(layerfun(MutableLayer(l)), nout(l), in, mutation=mutation, traitdecoration = traitfun)
+mutable(::FluxParLayer, l, in::AbstractVertex, layerfun, traitfun) = absorbvertex(layerfun(MutableLayer(l)), nout(l), in, traitdecoration = traitfun)
 
-mutable(::FluxParInvLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) =
-invariantvertex(layerfun(MutableLayer(l)), in, mutation=mutation, traitdecoration=traitfun)
+mutable(::FluxParInvLayer, l, in::AbstractVertex, layerfun, traitfun) =
+invariantvertex(layerfun(MutableLayer(l)), in, traitdecoration=traitfun)
 
-mutable(::FluxNoParLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) = invariantvertex(layerfun(NoParams(l)), in, mutation=mutation, traitdecoration=traitfun)
+mutable(::FluxNoParLayer, l, in::AbstractVertex, layerfun, traitfun) = invariantvertex(layerfun(NoParams(l)), in, traitdecoration=traitfun)
 
 # Decorate trait with extra stuff like logging of size changes or validation.
 # Meant to be composable, e.g. using ∘
@@ -93,22 +74,22 @@ validated() = t -> SizeChangeValidation(t)
 logged(;level = Base.CoreLogging.Debug, info = FullInfoStr()) = t -> SizeChangeLogger(level, info, t)
 
 """
-   concat(v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitfun=identity)
+   concat(v::AbstractVertex, vs::AbstractVertex...; traitfun=identity)
 
 Return a mutable vertex which concatenates input.
 
 Inputs must have compatible activation shapes or an exception will be thrown.
 
-Extra arguments `layerfun`, `mutation` and `traitfun` can be used to change mutation type and to add extra info about the vertex.
+Extra arguments `layerfun` and `traitfun` can be used to add wrap the layer and extra info about the vertex respectively.
 """
-function concat(v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitfun=identity, layerfun=identity)
+function concat(v::AbstractVertex, vs::AbstractVertex...; traitfun=identity, layerfun=identity)
     dims = tuple(Iterators.flatten(actdim.([v, vs...]))...)
     ranks = tuple(Iterators.flatten(actrank.([v, vs...]))...)
-    concat(Val.(dims), Val.(ranks), mutation, traitfun, layerfun, v, vs...)
+    concat(Val.(dims), Val.(ranks), traitfun, layerfun, v, vs...)
 end
 
 """
-    concat(name::String, v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitfun=identity)
+    concat(name::String, v::AbstractVertex, vs::AbstractVertex...; traitfun=identity)
 
 Return a mutable vertex with name `name` which concatenates input.
 
@@ -116,15 +97,15 @@ Name is only used when displaying or logging and does not have to be unique (alt
 
 Inputs must have compatible activation shapes or an exception will be thrown.
 
-Extra arguments `layerfun`, `mutation` and `traitfun` can be used to change mutation type and to add extra info about the vertex.
+Extra arguments `layerfun` and `traitfun` can be used to add wrap the layer and extra info about the vertex respectively.
 """
-concat(name::String, v::AbstractVertex, vs::AbstractVertex...; mutation=IoChange, traitfun = identity, layerfun=identity) = concat(v, vs..., mutation=mutation, traitfun=traitfun ∘ named(name), layerfun=layerfun)
+concat(name::String, v::AbstractVertex, vs::AbstractVertex...; traitfun = identity, layerfun=identity) = concat(v, vs..., traitfun=traitfun ∘ named(name), layerfun=layerfun)
 
-concat(actdims, actranks, mutation, traitfun, layerfun, v::AbstractVertex, vs::AbstractVertex...) = throw(DimensionMismatch("Can not concatenate activations with different shapes! Got: $actdims and $actranks")) # I guess it might be doable, but CBA to try it out
+concat(actdims, actranks, traitfun, layerfun, v::AbstractVertex, vs::AbstractVertex...) = throw(DimensionMismatch("Can not concatenate activations with different shapes! Got: $actdims and $actranks")) # I guess it might be doable, but CBA to try it out
 
 # NTuples only match if all actdims (N) and actranks (M) are identical
 # Can't ... stop ... dispatching ... on ... stuff ...
-concat(::NTuple{T, Val{N}}, ::NTuple{T, Val{M}}, mutation, traitfun, layerfun, v::AbstractVertex, vs::AbstractVertex...) where {T,N,M} = conc(v, vs..., dims=N, mutation=mutation, traitdecoration=traitfun, outwrap=layerfun)
+concat(::NTuple{T, Val{N}}, ::NTuple{T, Val{M}}, traitfun, layerfun, v::AbstractVertex, vs::AbstractVertex...) where {T,N,M} = conc(v, vs..., dims=N, traitdecoration=traitfun, outwrap=layerfun)
 
 
 layer(v::AbstractVertex) = layer(base(v))

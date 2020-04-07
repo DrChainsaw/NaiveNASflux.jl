@@ -1,6 +1,7 @@
-import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, layer, mutate, hiddenweights, hiddenstate, state, outscale
-
 @testset "Mutable computation" begin
+
+    import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, layer, mutate, hiddenweights, hiddenstate, state, outscale
+    import NaiveNASlib: mutate_inputs, mutate_outputs
 
     @testset "Dense MutableLayer" begin
 

@@ -1,5 +1,7 @@
 @testset "Select" begin
 
+    import NaiveNASlib: mutate_outputs
+
     @testset "Select parameters" begin
         import NaiveNASflux: select
         mat = reshape(collect(1:3*4), 3, 4)

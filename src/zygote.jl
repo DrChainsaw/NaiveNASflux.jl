@@ -28,10 +28,10 @@ end
 
 function output_loop!(memo, v)
     vs = nograd() do
-        # flatten returns all input ancestors to v in topological order
+        # ancestors returns all input ancestors to v in topological order
         # We also provide all vertices for which we have the output already in memo
         # so we don't do unnecessary calculations.
-        flatten(v, collect(AbstractVertex, keys(memo)))[length(memo)+1:end]
+        ancestors(v, collect(AbstractVertex, keys(memo)))[length(memo)+1:end]
     end
 
     for vn in vs
