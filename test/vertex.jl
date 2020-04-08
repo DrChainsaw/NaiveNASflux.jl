@@ -47,7 +47,7 @@ end
 
         W2exp, b2exp = weights(dl2)[:, inds], bias(dl2)
         W1exp, b1exp = weights(dl1)[inds, :], bias(dl1)[inds]
-        apply_mutation.(flatten(dense2))
+        apply_mutation.(NaiveNASlib.flatten(dense2))
 
         @test size(CompGraph([inpt], [dense2])(collect(Float32, 1:nout(inpt)))) == (3,)
 
@@ -63,7 +63,7 @@ end
         @test nin(bv) == [nout(cv)] == [4]
 
         Δnin(bv, -1)
-        apply_mutation.(flatten(bv))
+        apply_mutation.(NaiveNASlib.flatten(bv))
 
         @test nin(bv) == [nout(cv)] == [3]
     end
@@ -76,7 +76,7 @@ end
         @test nin(bv) == [nout(cv)] == [4]
 
         Δnin(bv, -1)
-        apply_mutation.(flatten(bv))
+        apply_mutation.(NaiveNASlib.flatten(bv))
 
         @test nin(bv) == [nout(cv)] == [3]
     end
