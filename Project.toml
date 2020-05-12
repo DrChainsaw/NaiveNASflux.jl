@@ -1,6 +1,6 @@
 name = "NaiveNASflux"
 uuid = "85610aed-7d32-5e57-bb50-4c2e1c9e7997"
-version = "1.1.2"
+version = "1.2.0"
 
 [deps]
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
@@ -14,7 +14,7 @@ Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
-Flux = "=0.10.3"
+Flux = "0.10.4"
 JuMP = "0.19, 0.20, 0.21"
 NaiveNASlib = "1"
 Reexport = "0.2.0"

@@ -1,8 +1,8 @@
 module NaiveNASflux
 
 using Reexport
-@reexport using NaiveNASlib
-@reexport using Flux
+using NaiveNASlib
+using Flux
 import Flux.Zygote: hook
 using Statistics
 using Setfield
@@ -36,5 +36,10 @@ include("weightinit.jl")
 # Stuff to integrate with Flux and Zygote
 include("functor.jl")
 include("zygote.jl")
+
+# Reexporting before include("functor.jl") causes a warning about duplicate name (flatten) in NaiveNASlib and Flux when subtypes are called
+# https://discourse.julialang.org/t/avoid-error-message-for-function-name-conflict/37176/10
+@reexport using NaiveNASlib
+@reexport using Flux
 
 end # module
