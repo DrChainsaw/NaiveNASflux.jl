@@ -24,6 +24,6 @@ end
 
 functor_fields(T) = fieldnames(T)
 
-for subtype in subtypes(AbstractMutableComp)
+for subtype in filter(st -> st !== LazyMutable, subtypes(AbstractMutableComp))
   @mutable_functor subtype
 end

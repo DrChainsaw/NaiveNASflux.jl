@@ -486,7 +486,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             @test cloned([1, 2]) == mlazy([1, 2])
         end
 
-        @testset "Treelike" begin
+        @testset "Functor" begin
             m = LazyMutable(MutableLayer(Dense(2,3)))
             visitfun(x) = x
             visitdense = false
@@ -496,9 +496,32 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             end
 
             mutate_inputs(m, [-1, -1, 1, 2])
+            @test size(weights(layer(m))) == (3,2)
 
             Flux.fmap(visitfun, m)
             @test visitdense
+
+            @test size(weights(layer(m))) == (3,4)
         end
+
+        @testset "forcemutation" begin
+            invertex = inputvertex("in", 3, FluxDense())
+            hlayer = mutable("hlayer", Dense(3,4), invertex)
+            outlayer = mutable("outlayer", Dense(4, 2), hlayer)
+            graph = CompGraph(invertex, outlayer)
+
+            Δnout(hlayer, 2)
+            Δoutputs(hlayer, v -> ones(nout_org(v)))
+            apply_mutation(graph)
+
+            @test nout(layer(hlayer)) == 4
+            @test nin(layer(outlayer)) == 4
+
+            NaiveNASflux.forcemutation(graph)
+
+            @test nout(layer(hlayer)) == 6
+            @test nin(layer(outlayer)) == 6
+        end
+
     end
 end

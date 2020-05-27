@@ -234,7 +234,14 @@ LazyMutable(m, nin::Integer, nout::Integer) = LazyMutable(m, 1:nin, 1:nout, m ->
 wrapped(m::LazyMutable) = m.mutable
 layer(m::LazyMutable) = layer(wrapped(m))
 
-functor_fields(T::Type{LazyMutable}) = (:mutable,)
+function Flux.functor(m::LazyMutable)
+    forcemutation(m)
+    return (mutable=m.mutable,),
+    function(y)
+        m.mutable = y[1]
+        return m
+    end
+end
 
 (m::LazyMutable)(x...) = dispatch!(m, m.mutable, x...)
 dispatch!(m::LazyMutable, mutable::AbstractMutableComp, x...) = mutable(x...)
@@ -274,6 +281,17 @@ function trunc_or_pad(maxselect, size)
     res[1:lastselected] = 1:lastselected
     return res
 end
+
+function forcemutation(x) end
+function forcemutation(v::InputVertex) end
+forcemutation(g::CompGraph) = forcemutation.(vertices(g::CompGraph))
+forcemutation(v::AbstractVertex) = forcemutation(base(v))
+forcemutation(v::CompVertex) = forcemutation(v.computation)
+forcemutation(m::AbstractMutableComp) = forcemutation(NaiveNASflux.wrapped(m))
+forcemutation(m::LazyMutable) = m(NoComp())
+
+struct NoComp end
+function (::MutableLayer)(x::NoComp) end
 
 """
     MutationTriggered
