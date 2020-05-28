@@ -56,7 +56,7 @@ mutate(m::MutableLayer; inputs, outputs, other = l -> ()) = mutate(layertype(m),
 function mutate(::FluxParLayer, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m), other= l -> ())
     l = layer(m)
     otherdims = other(l)
-    w = select(weights(l), outdim(l) => outputs, indim(l) => inputs, otherdims...)
+    w = select(weights(l), indim(l) => inputs, outdim(l) => outputs, otherdims...)
     b = select(bias(l), 1 => outputs)
     newlayer(m, w, b, otherpars(other, l))
 end
@@ -137,7 +137,7 @@ function mutate(::FluxParNorm, m::MutableLayer, inds)
     ismean = false
     function parselect(x::AbstractArray)
         ismean = !ismean
-        return select(x, 1 => inds; insval = (ismean ? 0 : 1))
+        return select(x, 1 => inds; newfun = (args...) -> (ismean ? 0 : 1))
     end
     parselect(x) = x
 
@@ -254,14 +254,14 @@ function NaiveNASlib.mutate_inputs(m::LazyMutable, inputs::AbstractArray{<:Integ
     m.inputs == inputs[1] && return
 
     m.mutable = ResetLazyMutable(trigger_mutation(m.mutable))
-    m.inputs = select(m.inputs, 1 => inputs[1], insval=-1)
+    m.inputs = select(m.inputs, 1 => inputs[1], newfun = (args...) -> -1)
 end
 
 function NaiveNASlib.mutate_outputs(m::LazyMutable, outputs::AbstractArray{<:Integer,1})
     outputs == m.outputs && return
 
     m.mutable = ResetLazyMutable(trigger_mutation(m.mutable))
-    m.outputs = select(m.outputs, 1=>outputs, insval = -1)
+    m.outputs = select(m.outputs, 1=>outputs, newfun = (args...) -> -1)
 end
 
 function mutate_weights(m::LazyMutable, w)
