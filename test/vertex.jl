@@ -407,9 +407,9 @@ end
     @testset "Conv-Conv-Conv" begin
         Random.seed!(0)
         iv = inputvertex("in", 2, FluxConv{2}())
-        v1 = mutable("v1", Conv((1,1), 2 => 2), iv)
-        v2 = mutable("v2", Conv((1,1), 2 => 2), v1)
-        v3 = mutable("v3", Conv((1,1), 2 => 2), v2)
+        v1 = mutable("v1", Conv((1,1), 2 => 2), iv; layerfun=ActivationContribution ∘ LazyMutable)
+        v2 = mutable("v2", Conv((1,1), 2 => 2), v1; layerfun=ActivationContribution ∘ LazyMutable)
+        v3 = mutable("v3", Conv((1,1), 2 => 2), v2; layerfun=ActivationContribution ∘ LazyMutable)
 
         g = CompGraph(iv, v3)
 
