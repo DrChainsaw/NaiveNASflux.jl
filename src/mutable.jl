@@ -19,8 +19,8 @@ NaiveNASlib.nout(m::AbstractMutableComp) = nout(layer(m))
 # Leave some room to override clone
 NaiveNASlib.clone(m::AbstractMutableComp;cf=clone) = typeof(m)(map(cf, getfield.(m, fieldnames(typeof(m))))...)
 
-NaiveNASlib.mutate_inputs(m::AbstractMutableComp, inputs::AbstractArray{<:Integer,1}...;insert=neuroninsert) = mutate_inputs(wrapped(m), inputs...;insert=insert)
-NaiveNASlib.mutate_outputs(m::AbstractMutableComp, outputs; insert=neuroninsert) = mutate_outputs(wrapped(m), outputs; insert=insert)
+NaiveNASlib.mutate_inputs(m::AbstractMutableComp, inputs::AbstractArray{<:Integer,1}...;kwargs...) = mutate_inputs(wrapped(m), inputs...;kwargs...)
+NaiveNASlib.mutate_outputs(m::AbstractMutableComp, outputs; kwargs...) = mutate_outputs(wrapped(m), outputs; kwargs...)
 
 mutate_weights(m::AbstractMutableComp, w) = mutate_weights(wrapped(m), w)
 
