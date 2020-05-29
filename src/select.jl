@@ -55,6 +55,13 @@ function select(pars::AbstractArray{T,N}, elements_per_dim...; newfun = randoutz
     return newpars
 end
 
+"""
+    neuroninsert(lt)
+
+Return a function which creates new parameters for layers of type `lt` to use for [`select`](@Ref).
+"""
+neuroninsert(lt) = randoutzeroin
+
 randoutzeroin(T, d, s...) = _randoutzeroin(T,d,s)
 _randoutzeroin(T, d, s) = zeros(T, s)
 _randoutzeroin(T, d, s::NTuple{2, Int}) = d == indim(FluxDense()) ? zeros(T, s) : randn(T, s)
