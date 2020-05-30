@@ -2,7 +2,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
 
 @testset "Mutable computation" begin
 
-    inszero = pairs((insert = lt -> (args...) -> 0,))
+    inszero = pairs((insert = (lt, pn) -> (args...) -> 0,))
 
     @testset "Dense MutableLayer" begin
 

@@ -56,8 +56,8 @@ mutate(m::MutableLayer; inputs, outputs, other = l -> (), insert=neuroninsert) =
 function mutate(lt::FluxParLayer, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m), other= l -> (), insert=neuroninsert)
     l = layer(m)
     otherdims = other(l)
-    w = select(weights(l), indim(l) => inputs, outdim(l) => outputs, otherdims...; newfun=insert(lt))
-    b = select(bias(l), 1 => outputs; newfun=insert(lt))
+    w = select(weights(l), indim(l) => inputs, outdim(l) => outputs, otherdims...; newfun=insert(lt, WeightParam()))
+    b = select(bias(l), 1 => outputs; newfun=insert(lt, BiasParam()))
     newlayer(m, w, b, otherpars(other, l))
 end
 otherpars(o, l) = ()
@@ -70,8 +70,8 @@ function mutate(lt::FluxDepthwiseConv, m::MutableLayer; inputs=1:nin(m), outputs
         return (maximum(group) - 1) ÷ length(inputs) + 1
     end
 
-    w = select(weights(l), indim(l) => inputs, outdim(l) => weightouts, otherdims...; newfun=insert(lt))
-    b = select(bias(l), 1 => outputs; newfun=insert(lt))
+    w = select(weights(l), indim(l) => inputs, outdim(l) => weightouts, otherdims...; newfun=insert(lt, WeightParam()))
+    b = select(bias(l), 1 => outputs; newfun=insert(lt, BiasParam()))
     newlayer(m, w, b, otherpars(other, l))
 end
 
@@ -82,16 +82,16 @@ function mutate(lt::FluxRecurrent, m::MutableLayer; inputs=1:nin(m), outputs=1:n
         return map(x -> x > 0 ? x + offs : x, outputs)
     end
 
-    wi = select(weights(l), indim(l) => inputs, outdim(l) => outputs_scaled, newfun=insert(lt))
-    wh = select(hiddenweights(l), 2 => outputs, 1 => outputs_scaled, newfun=insert(lt))
-    b = select(bias(l), 1 => outputs_scaled, newfun=insert(lt))
+    wi = select(weights(l), indim(l) => inputs, outdim(l) => outputs_scaled, newfun=insert(lt, WeightParam()))
+    wh = select(hiddenweights(l), 2 => outputs, 1 => outputs_scaled, newfun=insert(lt, RecurrentWeightParam()))
+    b = select(bias(l), 1 => outputs_scaled, newfun=insert(lt, BiasParam()))
     mutate_recurrent_state(lt, m, outputs, wi, wh, b, insert)
 end
 
 function mutate_recurrent_state(lt::FluxRecurrent, m::MutableLayer, outputs, wi, wh, b, insert)
     l = layer(m)
-    h = select(hiddenstate(l), 1 => outputs, newfun=insert(lt))
-    s = select(state(l), 1 => outputs; newfun=insert(lt))
+    h = select(hiddenstate(l), 1 => outputs, newfun=insert(lt, RecurrentState()))
+    s = select(state(l), 1 => outputs; newfun=insert(lt, RecurrentState()))
 
     cellnew = setproperties(layer(m).cell, (Wi=wi, Wh=wh, b = b, h = h))
     lnew = setproperties(layer(m), (cell=cellnew, state = s))
@@ -101,8 +101,8 @@ end
 function mutate_recurrent_state(lt::FluxLstm, m::MutableLayer, outputs, wi, wh, b, insert)
     l = layer(m)
     hcurr, scurr = hiddenstate(l), state(l)
-    hc = select.(hcurr, repeat([1 => outputs], length(hcurr)); newfun=insert(lt))
-    s = select.(scurr, repeat([1 => outputs], length(scurr)); newfun=insert(lt))
+    hc = select.(hcurr, repeat([1 => outputs], length(hcurr)); newfun=insert(lt, RecurrentState()))
+    s = select.(scurr, repeat([1 => outputs], length(scurr)); newfun=insert(lt, RecurrentState()))
 
     cellnew = setproperties(layer(m).cell, (Wi=wi, Wh=wh, b = b, h = hc[1], c = hc[2]))
     lnew = setproperties(layer(m), (cell=cellnew, state = tuple(s...)))
@@ -120,8 +120,8 @@ end
 
 function mutate(lt::FluxDiagonal, m::MutableLayer, inds; insert=neuroninsert)
     l = layer(m)
-    w = select(weights(l), 1 => inds, newfun=insert(lt))
-    b = select(bias(l), 1 => inds; newfun=insert(lt))
+    w = select(weights(l), 1 => inds, newfun=insert(lt, WeightParam()))
+    b = select(bias(l), 1 => inds; newfun=insert(lt, BiasParam()))
     newlayer(m, w, b)
 end
 
@@ -132,19 +132,18 @@ function mutate(::FluxLayerNorm, m::MutableLayer, inds; insert=neuroninsert)
     m.layer = LayerNorm(layer(proxy))
 end
 
-function mutate(::FluxParNorm, m::MutableLayer, inds; insert=missing)
-    # Good? bad? I'm the guy who assumes mean and std type parameters will be visited in a certain order and uses a closure for that assumption
-    ismean = false
-    function parselect(x::AbstractArray)
-        ismean = !ismean
-        return select(x, 1 => inds; newfun = (args...) -> (ismean ? 0 : 1))
-    end
-    parselect(x) = x
+function mutate(lt::FluxParNorm, m::MutableLayer, inds; insert=neuroninsert)
 
-    m.layer = Flux.fmap(parselect, m.layer)
+    # Filter out the parameters which need to change and decide for each name (e.g. γ, β etc) what to do (typically insert 1 for scaling things and 0 for offset things)
+    parselect(p::Pair) = parselect(p...)
+    parselect(pname, x::AbstractArray) = select(x, 1 => inds; newfun = neuroninsert(lt, pname))
+    parselect(pname, x) = x
+
+    fs, re = Flux.functor(m.layer)
+    m.layer = re(map(parselect, pairs(fs) |> collect))
 end
 
-function mutate(::FluxGroupNorm, m::MutableLayer, inds; insert=missing)
+function mutate(lt::FluxGroupNorm, m::MutableLayer, inds; insert=neuroninsert)
 
     l = m.layer
     ngroups = l.G
@@ -164,13 +163,12 @@ function mutate(::FluxGroupNorm, m::MutableLayer, inds; insert=missing)
 
     sizetoinds = Dict(nin(l) => inds, l.G => inds_groups)
 
-    ismean = false
-    function parselect(x::AbstractArray)
-        ismean = !ismean
-        return select(x, 1 => sizetoinds[length(x)]; newfun = (args...) -> (ismean ? 0 : 1))
-    end
-    parselect(x) = x
-    m.layer = Flux.fmap(parselect, m.layer)
+    parselect(p::Pair) = parselect(p...)
+    parselect(pname, x::AbstractArray) = select(x, 1 => sizetoinds[length(x)]; newfun = insert(lt, pname))
+    parselect(pname, x) = x
+
+    fs, re = Flux.functor(m.layer)
+    m.layer = re(map(parselect, pairs(fs) |> collect))
     m.layer.G = ngroups
 end
 
