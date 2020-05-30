@@ -75,8 +75,8 @@ norminsert(::FluxParNorm, ::Union{Val{:γ},Val{:σ²}}) = (args...) -> 1
 
 randoutzeroin(T, d, s...) = _randoutzeroin(T,d,s)
 _randoutzeroin(T, d, s) = 0
-_randoutzeroin(T, d, s::NTuple{2, Int}) = d == indim(FluxDense()) ? 0 : randn(T, s)
-_randoutzeroin(T, d, s::NTuple{N, Int}) where N = d == indim(FluxConv{N-2}()) ? 0 : randn(T, s)
+_randoutzeroin(T, d, s::NTuple{2, Int}) = d == indim(FluxDense()) ? 0 : randn(T, s) ./ prod(s)
+_randoutzeroin(T, d, s::NTuple{N, Int}) where N = d == indim(FluxConv{N-2}()) ? 0 : randn(T, s) ./ prod(s)
 
 
 """
