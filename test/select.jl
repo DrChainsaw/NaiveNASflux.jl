@@ -4,10 +4,15 @@
         import NaiveNASflux: select
         mat = reshape(collect(1:3*4), 3, 4)
 
-        @test select(mat, 2 => [2,-1,-1,4]) == [4 0 0 10;5 0 0 11;6 0 0 12]
-        @test select(mat, 1 => [-1,1,3]) == [0 0 0 0;1 4 7 10;3 6 9 12]
+        @test select(mat, 2 => [2,-1,-1,4]; newfun = (args...) -> 0) == [4 0 0 10;5 0 0 11;6 0 0 12]
+        @test select(mat, 1 => [-1,1,3]; newfun = (args...) -> 0) == [0 0 0 0;1 4 7 10;3 6 9 12]
 
-        @test select(mat, 1 => [2,-1,3,-1], 2 => [-1,1,-1,4]) == [0 2 0 11;0 0 0 0;0 3 0 12;0 0 0 0]
+        @test select(mat, 1 => [2,-1,3,-1], 2 => [-1,1,-1,4]; newfun = (args...) -> 0) == [0 2 0 11;0 0 0 0;0 3 0 12;0 0 0 0]
+
+        dfun = (T, d, s...) ->  d == 1 ? 10 : -10
+
+        @test select(ones(2,2), 1 => [-1, 1], 2 => [1 , -1], newfun=dfun) == [10 -10; 1 -10]
+        @test select(ones(2,2), 2 => [1 , -1], 1 => [-1, 1], newfun=dfun) == [10 10; 1 -10]
     end
 
     @testset "KernelSizeAligned" begin

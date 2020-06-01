@@ -347,3 +347,88 @@ end
     pars2 = params(g2).order.data
     @test pars2 == 2 .* pars1
 end
+
+@testset "Trainable insert values" begin
+    using Random
+    import NaiveNASflux: weights, bias
+
+    @testset "Dense-Dense-Dense" begin
+        Random.seed!(0)
+        iv = inputvertex("in", 3, FluxDense())
+        v1 = mutable("v1", Dense(3,3), iv)
+        v2 = mutable("v2", Dense(3,4), v1)
+        v3 = mutable("v3", Dense(4,2), v2)
+
+        g = CompGraph(iv, v3)
+
+        indata = randn(3,4)
+        expectedout = g(indata)
+
+        Δnout(v1, 2)
+        #Δnout(v2, 1)
+        Δoutputs(g, v -> ones(nout_org(v)))
+        apply_mutation(g)
+        NaiveNASflux.forcemutation(g)
+
+        @test g(indata) ≈ expectedout
+
+        Flux.train!((x,y) -> Flux.mse(g(x), y), params(g), [(randn(nin(v1)[],8), randn(nout(v3) ,8))], Descent(0.5))
+
+        @test minimum(abs.(weights(layer(v1)))) > 0
+        @test minimum(abs.(weights(layer(v2)))) > 0
+        @test minimum(abs.(weights(layer(v3)))) > 0
+    end
+
+    @testset "Conv-Bn-Conv" begin
+        Random.seed!(0)
+        iv = inputvertex("in", 2, FluxConv{2}())
+        v1 = mutable("v1", Conv((1,1), 2 => 2), iv)
+        v2 = mutable("v2", BatchNorm(2), v1)
+        v3 = mutable("v3", Conv((1,1), 2 => 2), v2)
+
+        g = CompGraph(iv, v3)
+
+        indata = randn(2,2,2,8)
+        expectedout = g(indata)
+
+        Δnout(v1, 2)
+        Δoutputs(g, v -> ones(nout_org(v)))
+        apply_mutation(g)
+        NaiveNASflux.forcemutation(g)
+
+        @test g(indata) == expectedout
+
+        Flux.train!((x,y) -> Flux.mse(g(x), y), params(g), [(randn(2,2,2,8), randn(2,2,2,8))], Descent(0.5))
+
+        @test minimum(abs.(weights(layer(v1)))) > 0
+        @test minimum(abs.(weights(layer(v3)))) > 0
+    end
+
+    @testset "Conv-Conv-Conv" begin
+        Random.seed!(0)
+        iv = inputvertex("in", 2, FluxConv{2}())
+        v1 = mutable("v1", Conv((1,1), 2 => 2), iv; layerfun=ActivationContribution ∘ LazyMutable)
+        v2 = mutable("v2", Conv((1,1), 2 => 2), v1; layerfun=ActivationContribution ∘ LazyMutable)
+        v3 = mutable("v3", Conv((1,1), 2 => 2), v2; layerfun=ActivationContribution ∘ LazyMutable)
+
+        g = CompGraph(iv, v3)
+
+        indata = randn(2,2,2,8)
+        expectedout = g(indata)
+
+        Δnout(v1, 2)
+        Δnout(v2, 1)
+        Δoutputs(g, v -> ones(nout_org(v)))
+
+        apply_mutation(g)
+        NaiveNASflux.forcemutation(g)
+
+        @test g(indata) == expectedout
+
+        Flux.train!((x,y) -> Flux.mse(g(x), y), params(g), [(randn(2,2,2,8), randn(2,2,2,8))], Descent(0.5))
+
+        @test minimum(abs.(weights(layer(v1)))) > 0
+        @test minimum(abs.(weights(layer(v2)))) > 0
+        @test minimum(abs.(weights(layer(v3)))) > 0
+    end
+end

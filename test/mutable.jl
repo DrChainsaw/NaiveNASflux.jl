@@ -2,6 +2,8 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
 
 @testset "Mutable computation" begin
 
+    inszero = pairs((insert = (lt, pn) -> (args...) -> 0,))
+
     @testset "Dense MutableLayer" begin
 
         m = MutableLayer(Dense(2,3))
@@ -30,13 +32,13 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
 
         inds = [1,-1, 2]
         Wexp = hcat(weights(m.layer)[:, 1], zeros(Float32, 3), weights(m.layer)[:, 2])
-        mutate_inputs(m, inds)
+        mutate_inputs(m, inds; inszero...)
         assertlayer(m.layer, Wexp, bexp)
 
         inds = [-1, 1, -1, 3, -1]
         Wexp = permutedims(hcat(zeros(Float32, 3), weights(m.layer)[1, :], zeros(Float32, 3), weights(m.layer)[3, :], zeros(Float32,3)))
         bexp = Float32[0, bias(m.layer)[1], 0, bias(m.layer)[3], 0]
-        mutate_outputs(m, inds)
+        mutate_outputs(m, inds; inszero...)
         assertlayer(m.layer, Wexp, bexp)
     end
     @testset "Convolutional layers" begin
@@ -71,7 +73,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             zeros(Float32, wsize...),
             weights(m.layer)[:,:,2,:], dims=4), [1,2,4,3])
 
-            mutate_inputs(m, inds)
+            mutate_inputs(m, inds; inszero...)
             assertlayer(m.layer, Wexp, bexp)
 
             inds = [-1, 1, -1, 3, -1]
@@ -85,7 +87,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             zeros(Float32,wsize...), dims=4)
 
             bexp = Float32[0, bias(m.layer)[1], 0, bias(m.layer)[3], 0]
-            mutate_outputs(m, inds)
+            mutate_outputs(m, inds; inszero...)
             assertlayer(m.layer, Wexp, bexp)
         end
 
@@ -169,7 +171,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
 
         inds = [-1, 2, -1]
         Wexp, bexp = Float32[0, weights(m.layer)[2], 0], Float32[0, bias(m.layer)[2], 0]
-        mutate_outputs(m, inds)
+        mutate_outputs(m, inds; inszero...)
         assertlayer(m.layer, Wexp, bexp)
     end
 
@@ -195,7 +197,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
 
             inds = [-1, 2, -1]
             Wexp, bexp = Float32[0, weights(m.layer.diag)[2], 0], Float32[0, bias(m.layer.diag)[2], 0]
-            mutate_outputs(m, inds)
+            mutate_outputs(m, inds; inszero...)
             @test typeof(layer(m)) <: LayerNorm
             assertlayer(m.layer.diag, Wexp, bexp)
         end
@@ -294,7 +296,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             bexp = Float32[bias(layer(m))[1], 0, bias(layer(m))[2]]
             hexp = Float32[hiddenstate(layer(m))[1], 0, hiddenstate(layer(m))[2]]
             sexp = Float32[state(layer(m))[1], 0, state(layer(m))[2]]
-            mutate_outputs(m, inds)
+            mutate_outputs(m, inds; inszero...)
             assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
 
             #Sanity check that the layer still seems to work after mutation
@@ -330,7 +332,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             bexp = mapfoldl(offs -> Float32[bias(layer(m))[1+offs], 0, bias(layer(m))[2+offs]], vcat, scalerange)
             hexp = map(hs -> Float32[hs[1], 0, hs[2]], hiddenstate(layer(m)))
             sexp = map(hs -> Float32[hs[1], 0, hs[2]], state(layer(m)))
-            mutate_outputs(m, inds)
+            mutate_outputs(m, inds; inszero...)
             assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
 
             #Sanity check that the layer still seems to work after mutation
@@ -366,7 +368,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             bexp = mapfoldl(offs -> Float32[bias(layer(m))[1+offs], 0, bias(layer(m))[2+offs]], vcat, scalerange)
             hexp = Float32[hiddenstate(layer(m))[1], 0, hiddenstate(layer(m))[2]]
             sexp = Float32[state(layer(m))[1], 0, state(layer(m))[2]]
-            mutate_outputs(m, inds)
+            mutate_outputs(m, inds; inszero...)
             assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
 
             #Sanity check that the layer still seems to work after mutation
@@ -426,7 +428,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             mutate_inputs(mlazy, [1, 3])
             assertlayer(layer(m), Wexp, bexp)
 
-            mutate_outputs(mlazy, [2, 4, -1])
+            mutate_outputs(mlazy, [2, 4, -1]; inszero...)
             assertlayer(layer(m), Wexp, bexp)
 
             @test layer(m) == layer(mlazy)
@@ -504,7 +506,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             @test size(weights(layer(m))) == (3,4)
         end
 
-        @testset "forcemutation" begin
+        @testset "Force mutation" begin
             invertex = inputvertex("in", 3, FluxDense())
             hlayer = mutable("hlayer", Dense(3,4), invertex)
             outlayer = mutable("outlayer", Dense(4, 2), hlayer)

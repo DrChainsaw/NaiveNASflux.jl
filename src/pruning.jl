@@ -32,9 +32,9 @@ end
 
 actdim(nd::Integer) = nd - 1
 
-function NaiveNASlib.mutate_outputs(m::ActivationContribution, outputs::AbstractVector{<:Integer})
-    m.contribution = select(m.contribution, 1 => outputs)
-    mutate_outputs(wrapped(m), outputs)
+function NaiveNASlib.mutate_outputs(m::ActivationContribution, outputs::AbstractVector{<:Integer}; kwargs...)
+    m.contribution = select(m.contribution, 1 => outputs; newfun = (args...) -> 0)
+    mutate_outputs(wrapped(m), outputs; kwargs...)
 end
 
 """
