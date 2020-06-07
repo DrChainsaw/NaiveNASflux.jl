@@ -48,11 +48,12 @@ layertype(l::GroupNorm) = FluxGroupNorm()
 # Transparent layers, i.e nin == nout always and there are no parameters
 abstract type FluxNoParLayer <: FluxTransparentLayer end
 struct FluxPoolLayer <: FluxNoParLayer end
+struct FluxDropOut <: FluxNoParLayer end
 
 layertype(l::MaxPool) = FluxPoolLayer()
 layertype(l::MeanPool) = FluxPoolLayer()
-layertype(l::Dropout) = FluxNoParLayer()
-layertype(l::AlphaDropout) = FluxNoParLayer()
+layertype(l::Dropout) = FluxDropOut()
+layertype(l::AlphaDropout) = FluxDropOut()
 layertype(l::GlobalMaxPool) = FluxPoolLayer()
 layertype(l::GlobalMeanPool) = FluxPoolLayer()
 
