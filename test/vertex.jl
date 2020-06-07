@@ -12,6 +12,33 @@ import NaiveNASflux: weights, bias
     @test nout(c) == 3
 end
 
+
+@testset "$pt Vertex" for (pt, arg) in (
+    (MaxPool, ((4,4),)),
+    (MeanPool, ((4,4),)),
+    (GlobalMaxPool, ()),
+    (GlobalMeanPool, ()))
+    using Random
+    l = pt(arg...)
+    v = mutable(l, inputvertex("in", 3, FluxConv{2}()))
+
+    @test layertype(v) isa FluxPoolLayer
+    indata = randn(MersenneTwister(1), 6,6,3,2)
+
+    @test l(indata) == v(indata)
+end
+
+@testset "$dt Vertex" for dt in (Dropout, AlphaDropout)
+    using Random
+    l = dt(0.4)
+    v = mutable(l, inputvertex("in", 3, FluxConv{2}()))
+
+    @test layertype(v) isa FluxDropOut
+    indata = randn(MersenneTwister(1), 3,2)
+
+    @test l(indata) == v(indata)
+end
+
 @testset "Size mutations" begin
 
     @testset "Dense to Dense" begin

@@ -46,13 +46,16 @@ layertype(l::InstanceNorm) = FluxInstanceNorm()
 layertype(l::GroupNorm) = FluxGroupNorm()
 
 # Transparent layers, i.e nin == nout always and there are no parameters
-struct FluxNoParLayer <: FluxTransparentLayer end
-layertype(l::MaxPool) = FluxNoParLayer()
-layertype(l::MeanPool) = FluxNoParLayer()
-layertype(l::Dropout) = FluxNoParLayer()
-layertype(l::AlphaDropout) = FluxNoParLayer()
-layertype(l::GlobalMaxPool) = FluxNoParLayer()
-layertype(l::GlobalMeanPool) = FluxNoParLayer()
+abstract type FluxNoParLayer <: FluxTransparentLayer end
+struct FluxPoolLayer <: FluxNoParLayer end
+struct FluxDropOut <: FluxNoParLayer end
+
+layertype(l::MaxPool) = FluxPoolLayer()
+layertype(l::MeanPool) = FluxPoolLayer()
+layertype(l::Dropout) = FluxDropOut()
+layertype(l::AlphaDropout) = FluxDropOut()
+layertype(l::GlobalMaxPool) = FluxPoolLayer()
+layertype(l::GlobalMeanPool) = FluxPoolLayer()
 
 # Compositions? Might not have any common methods...
 # MaxOut, Chain?
