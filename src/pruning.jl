@@ -93,8 +93,12 @@ struct Ewma{R<:Real, M}
 end
 Ewma(α) = Ewma(α, NeuronValueTaylor())
 
-calc_neuron_value(m::Ewma, currval, act, grad) = m.α .* cpu(currval) .+ (1 - m.α) .* cpu(calc_neuron_value(m.method, currval, act, grad))
-calc_neuron_value(m::Ewma, ::Missing, act, grad) = cpu(calc_neuron_value(m.method, missing, act, grad))
+calc_neuron_value(m::Ewma, currval, act, grad) = agg(m, currval, calc_neuron_value(m.method, currval, act, grad))
+
+# Basically for backwards compatibility even though method is not exported
+agg(m::Ewma, x, y) = m.α .* cpu(x) .+ (1 - m.α) .* cpu(y)
+agg(m::Ewma, ::Missing, y) = cpu(y)
+
 
 """
     NeuronValueEvery{N,T}
