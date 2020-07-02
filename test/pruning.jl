@@ -17,27 +17,25 @@
 
 
     @testset "Utils" begin
-        import NaiveNASflux:calc_neuron_value
-        actonly = () -> ()
-        NaiveNASflux.calc_neuron_value(::typeof(actonly), cv, act, grad) = act
+        actonly(curr, act, grad) = act
 
         @testset "Ewma" begin
             m = Ewma(0.3, actonly)
-            @test calc_neuron_value(m, missing, [1,2,3,4], :ignored) == [1,2,3,4]
-            @test calc_neuron_value(m, [1,2,3,4], [5,6,7,8], :ignored) ≈ [3.8, 4.8, 5.8, 6.8]
+            @test m(missing, [1,2,3,4], :ignored) == [1,2,3,4]
+            @test m([1,2,3,4], [5,6,7,8], :ignored) ≈ [3.8, 4.8, 5.8, 6.8]
         end
 
         @testset "NeuronValueEvery{3}" begin
             m = NeuronValueEvery(3, actonly)
-            @test calc_neuron_value(m, :old, :new, :ignored) == :new
-            @test calc_neuron_value(m, :old, :new, :ignored) == :old
-            @test calc_neuron_value(m, :old, :new, :ignored) == :old
-            @test calc_neuron_value(m, :old, :new, :ignored) == :new
-            @test calc_neuron_value(m, :old, :new, :ignored) == :old
-            @test calc_neuron_value(m, :old, :new, :ignored) == :old
-            @test calc_neuron_value(m, :old, :new, :ignored) == :new
-            @test calc_neuron_value(m, :old, :new, :ignored) == :old
-            @test calc_neuron_value(m, :old, :new, :ignored) == :old
+            @test m(:old, :new, :ignored) == :new
+            @test m(:old, :new, :ignored) == :old
+            @test m(:old, :new, :ignored) == :old
+            @test m(:old, :new, :ignored) == :new
+            @test m(:old, :new, :ignored) == :old
+            @test m(:old, :new, :ignored) == :old
+            @test m(:old, :new, :ignored) == :new
+            @test m(:old, :new, :ignored) == :old
+            @test m(:old, :new, :ignored) == :old
         end
     end
 

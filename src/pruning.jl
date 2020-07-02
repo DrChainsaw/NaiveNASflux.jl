@@ -29,7 +29,7 @@ function(m::ActivationContribution)(x...)
 
     return hook(act) do grad
         grad === nothing && return grad
-        m.contribution = calc_neuron_value(m.method, m.contribution, act, grad)
+        m.contribution = m.method(m.contribution, act, grad)
         return grad
     end
 end
@@ -64,15 +64,13 @@ neuron_value(l) = neuron_value(layertype(l), l)
 neuron_value(::FluxParLayer, l) = mean_squeeze(abs.(weights(l)), outdim(l)) + abs.(bias(l))
 
 """
-    NeuronValueTaylor
+    neuronvaluetaylor(currval, act, grad)
 
 Calculate contribution of activations towards loss according to https://arxiv.org/abs/1611.06440.
 
 Short summary is that the first order taylor approximation of the optimization problem: "which neurons shall I remove to minimize impact on the loss function?" boils down to: "the ones which minimize abs(gradient * activation)" (assuming parameter independence).
 """
-struct NeuronValueTaylor end
-
-calc_neuron_value(::NeuronValueTaylor, currval, act, grad) = mean_squeeze(abs.(act .* grad), actdim(ndims(act)))
+neuronvaluetaylor(currval, act, grad) = mean_squeeze(abs.(act .* grad), actdim(ndims(act)))
 
 
 """
@@ -91,9 +89,9 @@ struct Ewma{R<:Real, M}
         new{R,M}(α, method)
     end
 end
-Ewma(α) = Ewma(α, NeuronValueTaylor())
+Ewma(α) = Ewma(α, neuronvaluetaylor)
 
-calc_neuron_value(m::Ewma, currval, act, grad) = agg(m, currval, calc_neuron_value(m.method, currval, act, grad))
+(m::Ewma)(currval, act, grad) = agg(m, currval, m.method(currval, act, grad))
 
 # Basically for backwards compatibility even though method is not exported
 agg(m::Ewma, x, y) = m.α .* cpu(x) .+ (1 - m.α) .* cpu(y)
@@ -115,8 +113,8 @@ mutable struct NeuronValueEvery{N,T}
 end
 NeuronValueEvery(n::Int) = NeuronValueEvery(n, Ewma(0.05))
 
-function calc_neuron_value(m::NeuronValueEvery{N}, currval, act, grad) where N
-    ret = m.cnt % N == 0 ? calc_neuron_value(m.method, currval, act, grad) : currval
+function (m::NeuronValueEvery{N})(currval, act, grad) where N
+    ret = m.cnt % N == 0 ? m.method(currval, act, grad) : currval
     m.cnt += 1
     return ret
 end
