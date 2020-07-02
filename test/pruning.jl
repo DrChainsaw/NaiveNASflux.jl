@@ -77,6 +77,23 @@
         @test length(params(l)) == length(params(layer(l)))
     end
 
+    @testset "Neuron value Dense act contrib every 4" begin
+        l = ml(Dense(3,5), l -> ActivationContribution(l, NeuronValueEvery(4)))
+        @test neuron_value(l) == zeros(5)
+        nvprev = copy(neuron_value(l))
+        tr(l, ones(Float32, 3, 4))
+        @test neuron_value(l) != nvprev
+        nvprev = copy(neuron_value(l))
+
+        tr(l, ones(Float32, 3, 4))
+        @test nvprev == neuron_value(l)
+
+        tr(l, ones(Float32, 3, 4))
+        tr(l, ones(Float32, 3, 4))
+        tr(l, ones(Float32, 3, 4))
+        @test nvprev != neuron_value(l)
+    end
+
     @testset "Neuron value RNN act contrib" begin
         l = ml(RNN(3,5), ActivationContribution)
         @test neuron_value(l) == zeros(5)
