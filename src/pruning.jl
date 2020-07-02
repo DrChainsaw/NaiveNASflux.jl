@@ -63,6 +63,9 @@ neuron_value(l) = neuron_value(layertype(l), l)
 # Maybe do something about state in recurrent layers as well, but CBA to do it right now
 neuron_value(::FluxParLayer, l) = mean_squeeze(abs.(weights(l)), outdim(l)) + abs.(bias(l))
 
+# Not possible to do anything since we don't know the size. Implementors can however use this to fallback to other ways if this is not an error
+neuron_value(lt, l) = missing
+
 """
     neuronvaluetaylor(currval, act, grad)
 

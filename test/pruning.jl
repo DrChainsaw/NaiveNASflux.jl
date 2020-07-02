@@ -54,6 +54,11 @@
         @test size(neuron_value(l)) == (5,)
     end
 
+    @testset "Neuron value unkown default" begin
+        l = ml(MeanPool((2,2)); insize = 3)
+        @test ismissing(neuron_value(l))
+    end
+
     @testset "ActivationContribution no grad" begin
         f(x) = 2 .* x .^ 2
         Flux.Zygote.@nograd f
