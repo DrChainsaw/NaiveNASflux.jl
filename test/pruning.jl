@@ -15,11 +15,28 @@
         Flux.train!((x,y) -> Flux.mse(l(x...), y), params(l), example, Descent(0.1))
     end
 
-    @testset "Ewma" begin
-        import NaiveNASflux:agg
-        m = Ewma(0.3)
-        @test agg(m, missing, [1,2,3,4]) == [1,2,3,4]
-        @test agg(m, [1,2,3,4], [5,6,7,8]) ≈ [3.8, 4.8, 5.8, 6.8]
+
+    @testset "Utils" begin
+        actonly(curr, act, grad) = act
+
+        @testset "Ewma" begin
+            m = Ewma(0.3, actonly)
+            @test m(missing, [1,2,3,4], :ignored) == [1,2,3,4]
+            @test m([1,2,3,4], [5,6,7,8], :ignored) ≈ [3.8, 4.8, 5.8, 6.8]
+        end
+
+        @testset "NeuronValueEvery{3}" begin
+            m = NeuronValueEvery(3, actonly)
+            @test m(:old, :new, :ignored) == :new
+            @test m(:old, :new, :ignored) == :old
+            @test m(:old, :new, :ignored) == :old
+            @test m(:old, :new, :ignored) == :new
+            @test m(:old, :new, :ignored) == :old
+            @test m(:old, :new, :ignored) == :old
+            @test m(:old, :new, :ignored) == :new
+            @test m(:old, :new, :ignored) == :old
+            @test m(:old, :new, :ignored) == :old
+        end
     end
 
     @testset "Neuron value Dense default" begin
@@ -35,6 +52,11 @@
     @testset "Neuron value Conv default" begin
         l = ml(Conv((2,3), 4=>5))
         @test size(neuron_value(l)) == (5,)
+    end
+
+    @testset "Neuron value unkown default" begin
+        l = ml(MeanPool((2,2)); insize = 3)
+        @test ismissing(neuron_value(l))
     end
 
     @testset "ActivationContribution no grad" begin
@@ -53,6 +75,23 @@
         tr(l, ones(Float32, 3, 4))
         @test size(neuron_value(l)) == (5,)
         @test length(params(l)) == length(params(layer(l)))
+    end
+
+    @testset "Neuron value Dense act contrib every 4" begin
+        l = ml(Dense(3,5), l -> ActivationContribution(l, NeuronValueEvery(4)))
+        @test neuron_value(l) == zeros(5)
+        nvprev = copy(neuron_value(l))
+        tr(l, ones(Float32, 3, 4))
+        @test neuron_value(l) != nvprev
+        nvprev = copy(neuron_value(l))
+
+        tr(l, ones(Float32, 3, 4))
+        @test nvprev == neuron_value(l)
+
+        tr(l, ones(Float32, 3, 4))
+        tr(l, ones(Float32, 3, 4))
+        tr(l, ones(Float32, 3, 4))
+        @test nvprev != neuron_value(l)
     end
 
     @testset "Neuron value RNN act contrib" begin
