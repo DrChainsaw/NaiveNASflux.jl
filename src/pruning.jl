@@ -11,7 +11,7 @@ Can be a performance bottleneck in cases with large activations. Use [`NeuronVal
 """
 mutable struct ActivationContribution{L,M} <: AbstractMutableComp
     layer::L
-    contribution::Union{Missing, Vector{<:Real}} # Type of activation not known yet :(
+    contribution # Type of activation not known yet :( Also leave some room for experimenting with things like storing the metric on the GPU
     method::M
 end
 ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05, neuronvaluetaylor)) = ActivationContribution(l, zeros(Float32, nout(l)), method)
