@@ -11,11 +11,11 @@ Can be a performance bottleneck in cases with large activations. Use [`NeuronVal
 """
 mutable struct ActivationContribution{L,M} <: AbstractMutableComp
     layer::L
-    contribution # Just because I CBA to guess type in case of missing :(
+    contribution::Union{Missing, Vector{<:Real}} # Type of activation not known yet :(
     method::M
 end
-ActivationContribution(l::AbstractMutableComp) = ActivationContribution(l, zeros(Float32, nout(l)), Ewma(0.05))
-ActivationContribution(l) = ActivationContribution(l, missing, Ewma(0.05))
+ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05, neuronvaluetaylor)) = ActivationContribution(l, zeros(Float32, nout(l)), method)
+ActivationContribution(l, method = Ewma(0.05, neuronvaluetaylor)) = ActivationContribution(l, missing, method)
 
 layer(m::ActivationContribution) = layer(m.layer)
 layertype(m::ActivationContribution) = layertype(m.layer)
