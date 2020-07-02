@@ -46,8 +46,8 @@ end
 
 Return mean value of `x` along all dimensions except `dimkeep` as a 1D array (singleton dimensions are removed).
 """
-function mean_squeeze(x, dimkeep)
-    dims = filter(i -> i != dimkeep, 1:ndims(x))
+function mean_squeeze(x, dimskeep)
+    dims = filter(i -> i ∉ dimskeep, 1:ndims(x))
     return dropdims(mean(x, dims=dims), dims=Tuple(dims))
 end
 
@@ -73,7 +73,7 @@ Calculate contribution of activations towards loss according to https://arxiv.or
 
 Short summary is that the first order taylor approximation of the optimization problem: "which neurons shall I remove to minimize impact on the loss function?" boils down to: "the ones which minimize abs(gradient * activation)" (assuming parameter independence).
 """
-neuronvaluetaylor(currval, act, grad) = mean_squeeze(abs.(act .* grad), actdim(ndims(act)))
+neuronvaluetaylor(currval, act, grad) = mean_squeeze(abs.(mean_squeeze(act .* grad, (actdim(ndims(act)), ndims(act)))), 1)
 
 
 """
