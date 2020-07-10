@@ -144,7 +144,9 @@
 
     @testset "Conv 2D xor example" begin
         using NaiveNASflux, Test
-        import Flux: train!, logitbinarycrossentropy, glorot_uniform
+        import Flux.Losses
+        import Flux.Losses: logitbinarycrossentropy
+        import Flux: train!, glorot_uniform
         using Statistics
         import Random
         Random.seed!(666)
@@ -166,7 +168,7 @@
                 l = mconv(l, 16, relu)
             end
             l = mavgpool(l, height, width)
-            l = invariantvertex(x -> x[1,1,:,:], l)
+            l = invariantvertex(Flux.flatten, l)
             l = mdense(l, 2, identity)
             return CompGraph(invertex, l)
         end
@@ -174,18 +176,19 @@
 
         # Training params, nothing to see here
         opt_org = ADAM(0.01)
-        loss(g) = (x, y) -> mean(logitbinarycrossentropy.(g(x), y))
+        loss(g) = (x, y) -> logitbinarycrossentropy(g(x), y, agg=mean)
 
         # Training data: 2D xor(-ish)
         # Class 1 are matrices A where A[n,m] ⊻ A[n+h÷2, m]) ⩓ A[n,m] ⊻ A[n, m+w÷2] ∀ n<h÷2, m<w÷2 is true, e.g. [1 0; 0, 1]
         function xy1(h,w)
             q1_3 = rand(Bool,h÷2,w÷2)
             q2_4 = .!q1_3
-            return (x = Float32.(vcat(hcat(q2_4, q1_3), hcat(q1_3, q2_4))), y = Float32[0, 1])
+            return (Float32.(vcat(hcat(q2_4, q1_3), hcat(q1_3, q2_4))), Float32[0, 1])
         end
-        xy0(h,w) = (x = rand(Float32[0,1], h,w), y = Float32[1, 0]) #Joke's on me when this generates false negatives :)
+        xy0(h,w) = (rand(Float32[0,1], h,w), Float32[1, 0]) #Joke's on me when this generates false negatives :)
         # Generate 50% class 1 and 50% class 0 examples in one batch
-        batch(h,w,batchsize) = mapfoldl(i -> i==0 ? xy0(h,w) : xy1(h,w), (ex1, ex2) -> (x = cat(ex1.x, ex2.x, dims=4), y = hcat(ex1.y,ex2.y)), (1:batchsize) .% 2)
+        catbatch((x1,y1)::Tuple, (x2,y2)::Tuple) = (cat(x1, x2, dims=4), hcat(y1,y2))
+        batch(h,w,batchsize) = mapfoldl(i -> i==0 ? xy0(h,w) : xy1(h,w), catbatch, (1:batchsize) .% 2)
 
         x_test, y_test = batch(height, width, 1024)
         startloss = loss(original)(x_test, y_test)

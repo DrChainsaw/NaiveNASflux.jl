@@ -388,7 +388,7 @@ end
 
         g = CompGraph(iv, v3)
 
-        indata = randn(2,2,2,8)
+        indata = randn(Float32, 2,2,2,8)
         expectedout = g(indata)
 
         Δnout(v1, 2)
@@ -398,7 +398,7 @@ end
 
         @test g(indata) == expectedout
 
-        Flux.train!((x,y) -> Flux.mse(g(x), y), params(g), [(randn(2,2,2,8), randn(2,2,2,8))], Descent(0.5))
+        Flux.train!((x,y) -> Flux.mse(g(x), y), params(g), [(randn(Float32,2,2,2,8), randn(Float32,2,2,2,8))], Descent(0.5))
 
         @test minimum(abs.(weights(layer(v1)))) > 0
         @test minimum(abs.(weights(layer(v3)))) > 0
@@ -413,7 +413,7 @@ end
 
         g = CompGraph(iv, v3)
 
-        indata = randn(2,2,2,8)
+        indata = randn(Float32, 2,2,2,8)
         expectedout = g(indata)
 
         Δnout(v1, 2)
@@ -425,7 +425,7 @@ end
 
         @test g(indata) == expectedout
 
-        Flux.train!((x,y) -> Flux.mse(g(x), y), params(g), [(randn(2,2,2,8), randn(2,2,2,8))], Descent(0.5))
+        Flux.train!((x,y) -> Flux.mse(g(x), y), params(g), [(randn(Float32,2,2,2,8), randn(Float32,2,2,2,8))], Descent(0.5))
 
         @test minimum(abs.(weights(layer(v1)))) > 0
         @test minimum(abs.(weights(layer(v2)))) > 0
