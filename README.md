@@ -178,7 +178,6 @@ Another toy example where the model has too few layers to efficiently fit the da
 Create model and train it just to have something to mutate:
 ```julia
 using NaiveNASflux, Test
-import Flux.Losses
 import Flux.Losses: logitbinarycrossentropy
 import Flux: train!, glorot_uniform
 using Statistics
