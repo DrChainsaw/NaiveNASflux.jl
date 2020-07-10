@@ -1,5 +1,6 @@
 
-select(::Missing, elements_per_dim...; newfun = 0) = missing
+select(::Missing, args...;kwargs...) = missing
+select(::Flux.Zeros, args...;kwargs...) = Flux.Zeros()
 
 """
     select(pars::AbstractArray{T,N}, elements_per_dim...; newfun = zeros) where {T, N}
