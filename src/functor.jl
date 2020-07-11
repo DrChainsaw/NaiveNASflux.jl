@@ -3,7 +3,7 @@
 # Modified version of Flux.functor for mutable structs which are mutable mainly because they are intended to be wrapped in MutationVertices which in turn are not easy to create in the manner which Flux.functor is designed.
 function mutable_makefunctor(m::Module, T, fs = functor_fields(T))
   @eval m begin
-    Flux.functor(x::$T) = ($([:($f=x.$f) for f in fs]...),),
+    Flux.functor(::Type{<:$T}, x) = ($([:($f=x.$f) for f in fs]...),),
     # Instead of creating a new T, we set all fields in fs of x to y (since y is the fields returned in line above)
     function(y)
       $([:(x.$f = y[$i]) for (i, f) in enumerate(fs)]...)

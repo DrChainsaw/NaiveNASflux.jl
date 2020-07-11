@@ -13,7 +13,12 @@
 
         @test select(ones(2,2), 1 => [-1, 1], 2 => [1 , -1], newfun=dfun) == [10 -10; 1 -10]
         @test select(ones(2,2), 2 => [1 , -1], 1 => [-1, 1], newfun=dfun) == [10 10; 1 -10]
+
+        @test select(Flux.Zeros(), 1 => [1,2,3]) == Flux.Zeros()
+
+        @test select(Flux.Zeros(2,3,4), 1 => [1, -1, -1, 2], 2 => [2]) == Flux.Zeros(4, 1, 4)
     end
+
 
     @testset "KernelSizeAligned" begin
         import NaiveNASflux: selectfilters

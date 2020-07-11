@@ -40,6 +40,19 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
         bexp = Float32[0, bias(m.layer)[1], 0, bias(m.layer)[3], 0]
         mutate_outputs(m, inds; inszero...)
         assertlayer(m.layer, Wexp, bexp)
+
+        @testset "No bias" begin
+            m = MutableLayer(Dense(rand(3,2), Flux.Zeros()))
+            @test bias(layer(m)) == Flux.Zeros()
+
+            @test nin(m) == 2
+            @test nout(m) == 3
+
+            inds = [2,3]
+            Wexp = weights(layer(m))[inds, :]
+            mutate_outputs(m, inds)
+            assertlayer(layer(m), Wexp, Flux.Zeros())
+        end
     end
     @testset "Convolutional layers" begin
 
@@ -89,6 +102,19 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             bexp = Float32[0, bias(m.layer)[1], 0, bias(m.layer)[3], 0]
             mutate_outputs(m, inds; inszero...)
             assertlayer(m.layer, Wexp, bexp)
+
+            @testset "No bias" begin
+                m = MutableLayer(Conv(Flux.convfilter((2,3), 4=>5), Flux.Zeros()))
+                @test bias(layer(m)) == Flux.Zeros()
+
+                @test nin(m) == 4
+                @test nout(m) == 5
+
+                inds = [2,3]
+                Wexp = weights(layer(m))[:,:,:,inds]
+                mutate_outputs(m, inds)
+                assertlayer(layer(m), Wexp, Flux.Zeros())
+            end
         end
 
         @testset "ConvTranspose MutableLayer" begin

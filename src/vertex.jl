@@ -38,9 +38,9 @@ Flux.@functor CompVertex
 # Problem with using Flux.@functor is that MutationVertices (OutputVertices really) can not be created by just copying their fields as this would create multiple copies of the same vertex if it is input to more than one vertex.
 # Instead, we rely in the internals of the vertices to be mutable (e.g MutableLayer).
 
-Flux.functor(a::AbstractVector{<:AbstractVertex}) = Tuple(a), y -> a
-Flux.functor(v::AbstractVertex) = (base(v),), y -> v
-Flux.functor(g::CompGraph) = Tuple(vertices(g)), y -> g
+Flux.functor(::Type{<:AbstractVector{<:AbstractVertex}}, a) = Tuple(a), y -> a
+Flux.functor(::Type{<:AbstractVertex}, v) = (base(v),), y -> v
+Flux.functor(::Type{<:CompGraph}, g) = Tuple(vertices(g)), y -> g
 
 """
     mutable(l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated())

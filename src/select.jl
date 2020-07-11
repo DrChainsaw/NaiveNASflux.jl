@@ -1,6 +1,4 @@
 
-select(::Missing, elements_per_dim...; newfun = 0) = missing
-
 """
     select(pars::AbstractArray{T,N}, elements_per_dim...; newfun = zeros) where {T, N}
 
@@ -53,6 +51,17 @@ function select(pars::AbstractArray{T,N}, elements_per_dim...; newfun = randoutz
 
     newpars[assign...] = pars[access...]
     return newpars
+end
+
+select(::Missing, args...;kwargs...) = missing
+select(::Flux.Zeros{T, 0}, args...;kwargs...) where T = Flux.Zeros()
+
+function select(pars::Flux.Zeros, elements_per_dim...; kwargs...)
+    psize = collect(size(pars))
+    for (dim, elements) in elements_per_dim
+        psize[dim] = length(elements)
+    end
+    return Flux.Zeros(psize...)
 end
 
 struct WeightParam end

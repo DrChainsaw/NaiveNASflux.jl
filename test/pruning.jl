@@ -44,6 +44,11 @@
         @test size(neuron_value(l)) == (5,)
     end
 
+    @testset "Neuron value Dense default no bias" begin
+        l = ml(Dense(ones(5, 3), Flux.Zeros()))
+        @test size(neuron_value(l)) == (5,)
+    end
+
     @testset "Neuron value RNN default" begin
         l = ml(RNN(3,5))
         @test size(neuron_value(l)) == (5,)
