@@ -54,15 +54,7 @@ function select(pars::AbstractArray{T,N}, elements_per_dim...; newfun = randoutz
 end
 
 select(::Missing, args...;kwargs...) = missing
-select(::Flux.Zeros{T, 0}, args...;kwargs...) where T = Flux.Zeros()
-
-function select(pars::Flux.Zeros, elements_per_dim...; kwargs...)
-    psize = collect(size(pars))
-    for (dim, elements) in elements_per_dim
-        psize[dim] = length(elements)
-    end
-    return Flux.Zeros(psize...)
-end
+select(::Flux.Zeros, args...;kwargs...) = Flux.Zeros()
 
 struct WeightParam end
 struct BiasParam end
