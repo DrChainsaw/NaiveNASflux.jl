@@ -4,7 +4,7 @@ platform:
   - x86
 environment:
   matrix:
-  - julia_version: 1.5
+  - julia_version: 1.6
   - julia_version: nightly
 matrix:
   fast_finish: true
