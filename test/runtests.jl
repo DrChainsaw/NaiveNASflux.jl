@@ -3,7 +3,11 @@ using Test
 
 function assertlayer(l, Wexp, bexp)
     @test size(Wexp) == size(weights(l))
-    @test size(bexp) == size(bias(l))
+    if bexp isa Flux.Zeros
+        @test bias(l) isa Flux.Zeros
+    else
+        @test size(bexp) == size(bias(l))
+    end
     @test Wexp == weights(l)
     @test bexp == bias(l)
 end

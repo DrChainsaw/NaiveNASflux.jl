@@ -15,7 +15,7 @@ NaiveNASlib.nin(::FluxParInvLayer, l) = nout(l)
 
 NaiveNASlib.nout(::FluxDiagonal, l) = length(weights(l))
 NaiveNASlib.nout(::FluxParInvLayer, l::LayerNorm) = nout(l.diag)
-NaiveNASlib.nout(::FluxParNorm, l) = length(l.β)
+NaiveNASlib.nout(::FluxParNorm, l) = l.chs
 
 NaiveNASlib.nout(::FluxRecurrent, l) = div(size(weights(l), outdim(l)), outscale(l))
 
@@ -62,8 +62,8 @@ outdim(::Union{FluxConv{N}, FluxCrossCor{N}}) where N = 2+N
 weights(l) = weights(layertype(l), l)
 bias(l) = bias(layertype(l), l)
 
-weights(::FluxDense, l) = l.W
-bias(::FluxDense, l) = l.b
+weights(::FluxDense, l) = l.weight
+bias(::FluxDense, l) = l.bias
 
 weights(::FluxConvolutional, l) = l.weight
 bias(::FluxConvolutional, l) = l.bias
@@ -77,8 +77,8 @@ bias(::FluxRecurrent, l) = l.cell.b
 hiddenweights(l) = hiddenweights(layertype(l), l)
 hiddenweights(::FluxRecurrent, l) = l.cell.Wh
 hiddenstate(l) = hiddenstate(layertype(l), l)
-hiddenstate(::FluxRecurrent, l) = Flux.hidden(l.cell)
-hiddenstate(::FluxLstm, l) = [h for h in Flux.hidden(l.cell)]
+hiddenstate(::FluxRecurrent, l) = l.cell.state0
+hiddenstate(::FluxLstm, l) = [h for h in l.cell.state0]
 state(l) = state(layertype(l), l)
 state(::FluxRecurrent, l) = l.state
 state(::FluxLstm, l) = [h for h in l.state]
