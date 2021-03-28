@@ -325,6 +325,7 @@ end
 
 @testset "Flux functor" begin
     import Flux:functor
+    import NaiveNASflux: weights, bias
     inpt = inputvertex("in", 2, FluxDense())
     v1 = mutable(Dense(2, 3), inpt)
     v2 = mutable(Dense(3, 4), v1)
@@ -333,10 +334,10 @@ end
     @test functor(g1)[1] == (inpt, v1, v2)
 
     pars1 = params(g1).order
-    @test pars1[1] == layer(v1).W
-    @test pars1[2] == layer(v1).b
-    @test pars1[3] == layer(v2).W
-    @test pars1[4] == layer(v2).b
+    @test pars1[1] == weights(layer(v1))
+    @test pars1[2] == bias(layer(v1))
+    @test pars1[3] == weights(layer(v2))
+    @test pars1[4] == bias(layer(v2))
 
     g2 = copy(g1)
     # Basically what Flux.gpu does except function is CuArrays.cu(x) instead of 2 .* x

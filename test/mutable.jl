@@ -204,7 +204,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
     @testset "Normalization layers" begin
 
         @testset "LayerNorm MutableLayer" begin
-            m = MutableLayer(LayerNorm(3))
+            m = MutableLayer(LayerNorm(3; affine=true))
 
             @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 3
             @test minΔninfactor(m) == 1
@@ -219,6 +219,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             mutate_inputs(m, inds)
             @test typeof(layer(m)) <: LayerNorm
             assertlayer(m.layer.diag, Wexp, bexp)
+            @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 2
 
 
             inds = [-1, 2, -1]
@@ -226,6 +227,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             mutate_outputs(m, inds; inszero...)
             @test typeof(layer(m)) <: LayerNorm
             assertlayer(m.layer.diag, Wexp, bexp)
+            @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 3
         end
 
         function assertnorm(l, meanexp, varexp)
@@ -238,8 +240,12 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
         setpar(x) = x
         setpar(x::AbstractArray) = reshape(collect(Float32, 1:length(x)), size(x))
 
-        @testset "$l MutableLayer" for l in (BatchNorm, InstanceNorm, n -> GroupNorm(n,n))
-            m = MutableLayer(l(5))
+        @testset "$lab MutableLayer" for (l, lab) in (
+                                (BatchNorm, BatchNorm),
+                                (InstanceNorm, InstanceNorm),
+                                ((n;kw...) -> GroupNorm(n,n; kw...), GroupNorm))
+
+            m = MutableLayer(l(5; affine=true, track_stats=true))
             l_orig = layer(m)
 
             @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 5
@@ -252,22 +258,24 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             expall = Float32.(inds)
             mutate_inputs(m, inds)
             assertnorm(m.layer, inds, inds)
+            @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 3
 
             mutate_outputs(m, [-1, 2, -1])
             assertnorm(m.layer, [0, 3, 0], [1, 3, 1])
+            @test nin(m) == nin(m.layer) == nout(m) == nout(m.layer) == 3
         end
 
         @testset "GroupNorm MutableLayer with groups" begin
 
             #Test with groups of 2
-            m = MutableLayer(GroupNorm(6,3))
+            m = MutableLayer(GroupNorm(6,3; affine=true, track_stats=true))
             m.layer = Flux.fmap(setpar, layer(m))
             mutate_inputs(m, [1,2,5,6])
-            @test layer(m).μ == reshape([1, 3],2,1)
-            @test layer(m).σ² == reshape([1, 3],2,1)
+            @test layer(m).μ == [1, 3]
+            @test layer(m).σ² == [1, 3]
 
             # Now when dimensions don't add up: size 8 becomes size 9
-            m = MutableLayer(GroupNorm(8,4))
+            m = MutableLayer(GroupNorm(8,4; affine=true, track_stats=true))
             mutate_inputs(m, [1,3,-1,-1,4,-1,7,-1,8])
             # Current alg for selecting which group to pick in this case is poor, don't wanna test it :)
             @test length(layer(m).μ) == 3
@@ -320,8 +328,8 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             wh = hiddenweights(layer(m))
             Whexp = [wh[1, 1] 0 wh[1, 2]; zeros(Float32, 1, 3); wh[2, 1] 0 wh[2, 2]]
             bexp = Float32[bias(layer(m))[1], 0, bias(layer(m))[2]]
-            hexp = Float32[hiddenstate(layer(m))[1], 0, hiddenstate(layer(m))[2]]
-            sexp = Float32[state(layer(m))[1], 0, state(layer(m))[2]]
+            hexp = Float32[hiddenstate(layer(m))[1], 0, hiddenstate(layer(m))[2]] |> hcat
+            sexp = Float32[state(layer(m))[1], 0, state(layer(m))[2]] |> hcat
             mutate_outputs(m, inds; inszero...)
             assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
 
@@ -356,8 +364,8 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             wh = hiddenweights(layer(m))
             Whexp = mapfoldl(offs -> [wh[1+offs, 1] 0 wh[1+offs, 2]; zeros(Float32, 1, 3); wh[2+offs, 1] 0 wh[2+offs, 2]], vcat, scalerange)
             bexp = mapfoldl(offs -> Float32[bias(layer(m))[1+offs], 0, bias(layer(m))[2+offs]], vcat, scalerange)
-            hexp = map(hs -> Float32[hs[1], 0, hs[2]], hiddenstate(layer(m)))
-            sexp = map(hs -> Float32[hs[1], 0, hs[2]], state(layer(m)))
+            hexp = map(hs -> Float32[hs[1], 0, hs[2]] |> hcat, hiddenstate(layer(m)))
+            sexp = map(hs -> Float32[hs[1], 0, hs[2]] |> hcat, state(layer(m)))
             mutate_outputs(m, inds; inszero...)
             assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
 
@@ -392,8 +400,8 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             wh = hiddenweights(layer(m))
             Whexp = mapfoldl(offs -> [wh[1+offs, 1] 0 wh[1+offs, 2]; zeros(Float32, 1, 3); wh[2+offs, 1] 0 wh[2+offs, 2]], vcat, scalerange)
             bexp = mapfoldl(offs -> Float32[bias(layer(m))[1+offs], 0, bias(layer(m))[2+offs]], vcat, scalerange)
-            hexp = Float32[hiddenstate(layer(m))[1], 0, hiddenstate(layer(m))[2]]
-            sexp = Float32[state(layer(m))[1], 0, state(layer(m))[2]]
+            hexp = Float32[hiddenstate(layer(m))[1], 0, hiddenstate(layer(m))[2]] |> hcat
+            sexp = Float32[state(layer(m))[1], 0, state(layer(m))[2]] |> hcat
             mutate_outputs(m, inds; inszero...)
             assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
 

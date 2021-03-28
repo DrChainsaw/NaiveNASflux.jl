@@ -90,25 +90,26 @@ end
 
 function mutate_recurrent_state(lt::FluxRecurrent, m::MutableLayer, outputs, wi, wh, b, insert)
     l = layer(m)
-    h = select(hiddenstate(l), 1 => outputs, newfun=insert(lt, RecurrentState()))
+    state0 = select(hiddenstate(l), 1 => outputs, newfun=insert(lt, RecurrentState()))
     s = select(state(l), 1 => outputs; newfun=insert(lt, RecurrentState()))
 
-    cellnew = setproperties(layer(m).cell, (Wi=wi, Wh=wh, b = b, h = h))
+    cellnew = setproperties(layer(m).cell, (Wi=wi, Wh=wh, b = b, state0 = state0))
     lnew = setproperties(layer(m), (cell=cellnew, state = s))
     m.layer = lnew
 end
 
 function mutate_recurrent_state(lt::FluxLstm, m::MutableLayer, outputs, wi, wh, b, insert)
     l = layer(m)
-    hcurr, scurr = hiddenstate(l), state(l)
-    hc = select.(hcurr, repeat([1 => outputs], length(hcurr)); newfun=insert(lt, RecurrentState()))
+    s0curr, scurr = hiddenstate(l), state(l)
+    s0 = select.(s0curr, repeat([1 => outputs], length(s0curr)); newfun=insert(lt, RecurrentState()))
     s = select.(scurr, repeat([1 => outputs], length(scurr)); newfun=insert(lt, RecurrentState()))
 
-    cellnew = setproperties(layer(m).cell, (Wi=wi, Wh=wh, b = b, h = hc[1], c = hc[2]))
-    lnew = setproperties(layer(m), (cell=cellnew, state = tuple(s...)))
+
+    cellnew = setproperties(layer(m).cell, (Wi=wi, Wh=wh, b = b, state0 = Tuple(s0)))
+    lnew = setproperties(layer(m), (cell=cellnew, state = Tuple(s)))
     m.layer = lnew
 
-    return (h = hc[1], c = hc[2]), tuple(s)
+    return (;state0 = Tuple(s0)), Tuple(s)
 end
 
 
@@ -129,7 +130,9 @@ function mutate(::FluxLayerNorm, m::MutableLayer, inds; insert=neuroninsert)
     # LayerNorm is only a wrapped Diagonal. Just mutate the Diagonal and make a new LayerNorm of it
     proxy = MutableLayer(layer(m).diag)
     mutate(proxy; inputs=inds, outputs=inds, other=l->(), insert=insert)
-    m.layer = LayerNorm(layer(proxy))
+
+    updatelayer = layer(m)
+    m.layer = @set updatelayer.diag = layer(proxy)
 end
 
 function mutate(lt::FluxParNorm, m::MutableLayer, inds; insert=neuroninsert)
@@ -140,7 +143,9 @@ function mutate(lt::FluxParNorm, m::MutableLayer, inds; insert=neuroninsert)
     parselect(pname, x) = x
 
     fs, re = Flux.functor(m.layer)
-    m.layer = re(map(parselect, pairs(fs) |> collect))
+    newlayer = re(map(parselect, pairs(fs) |> collect))
+    newlayer = @set newlayer.chs = length(inds)
+    m.layer = newlayer
 end
 
 function mutate(lt::FluxGroupNorm, m::MutableLayer, inds; insert=neuroninsert)
@@ -168,7 +173,10 @@ function mutate(lt::FluxGroupNorm, m::MutableLayer, inds; insert=neuroninsert)
     parselect(pname, x) = x
 
     fs, re = Flux.functor(m.layer)
-    m.layer = re(map(parselect, pairs(fs) |> collect))
+    newlayer = re(map(parselect, pairs(fs) |> collect))
+    newlayer.G = ngroups
+    newlayer = @set newlayer.chs = length(inds)
+    m.layer = newlayer
     m.layer.G = ngroups
 end
 

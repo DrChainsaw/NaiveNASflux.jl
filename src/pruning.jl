@@ -61,7 +61,9 @@ neuron_value(l) = neuron_value(layertype(l), l)
 
 # Default: highest mean of abs of weights + bias. Not a very good metric, but should be better than random
 # Maybe do something about state in recurrent layers as well, but CBA to do it right now
-neuron_value(::FluxParLayer, l) = mean_squeeze(abs.(weights(l)), outdim(l)) .+ abs.(bias(l))
+neuron_value(::FluxParLayer, l) = mean_squeeze(abs.(weights(l)), outdim(l)) .+ bcabsz(bias(l))
+bcabsz(x) = abs.(x)
+bcabsz(z::Flux.Zeros) = z
 
 # Not possible to do anything since we don't know the size. Implementors can however use this to fallback to other ways if this is not an error
 neuron_value(lt, l) = missing
