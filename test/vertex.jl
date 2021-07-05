@@ -92,10 +92,10 @@ end
         @test_logs (:warn, r"Could not change nout of") Δnout(dc1, -2)
         @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [8]
 
-        @test_logs (:warn, r"Could not change nout of") Δsize(ΔNoutExact(dc2, -2), all_in_graph(dc2))
+        @test_logs (:warn, r"Could not change nout of") Δsize!(ΔNoutExact(dc2, -2), all_in_graph(dc2))
         @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [4]
 
-        @test_logs (:warn, r"Could not change nout of") Δsize(ΔNoutExact(dc2, 2), all_in_graph(dc2))
+        @test_logs (:warn, r"Could not change nout of") Δsize!(ΔNoutExact(dc2, 2), all_in_graph(dc2))
         @test [2nout(dc1)] == 2 .* nin(dc2) == [nout(dc2)] == [8]
     end
 

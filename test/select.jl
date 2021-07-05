@@ -55,7 +55,7 @@
         @test size(weights(layer(m))) == (2,6,5,6)
 
         mutate_weights(m, KernelSizeAligned((2, -1), (1,2,2,2)))
-        mutate_outputs(m, [1,3,5])
+        NaiveNASlib.Δsize!(NaiveNASlib.NeuronIndices(), NaiveNASlib.OnlyFor(), m, [1:nin(m)[]], [1,3,5])
 
         @test size(m(indata)) == (size(indata,1), size(indata,2), 3, size(indata,4))
         @test size(weights(layer(m))) == (4,5,5,3)
@@ -63,6 +63,7 @@
 
     @testset "KernelSizeAligned Dense is Noop with layerfun $lfun" for lfun in (identity, LazyMutable)
         m = mutable(Dense(3,4), inputvertex("in", 3), layerfun = lfun)
+        @test nin(m) == [3]
         indata = ones(Float32, nin(m)[], 2)
 
         @test size(m(indata)) == (4,2)

@@ -49,7 +49,7 @@ Return a mutable vertex wrapping the layer `l` with input vertex `in`.
 
 Extra arguments `layerfun`, `mutation` and `traitfun` can be used to change mutation type and to add extra info about the vertex.
 """
-mutable(l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated()) = mutable(layertype(l), l, in, layerfun, mutation, traitfun)
+mutable(l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated()) = mutable(layertype(l), l, in, layerfun, traitfun)
 
 """
     mutable(name::String, l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated())
@@ -60,14 +60,14 @@ Name is only used when displaying or logging and does not have to be unique (alt
 
 Extra arguments `layerfun`, `mutation` and `traitfun` can be used to change mutation type and to add extra info about the vertex.
 """
-mutable(name::String, l, in::AbstractVertex; layerfun=LazyMutable, mutation=IoChange, traitfun=validated()) = mutable(layertype(l), l, in, layerfun, mutation, traitfun ∘ named(name))
+mutable(name::String, l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated()) = mutable(layertype(l), l, in, layerfun, traitfun ∘ named(name))
 
-mutable(::FluxParLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) = absorbvertex(layerfun(MutableLayer(l)), nout(l), in, mutation=mutation, traitdecoration = traitfun)
+mutable(::FluxParLayer, l, in::AbstractVertex, layerfun, traitfun) = absorbvertex(layerfun(MutableLayer(l)), in, traitdecoration = traitfun)
 
-mutable(::FluxParInvLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) =
-invariantvertex(layerfun(MutableLayer(l)), in, mutation=mutation, traitdecoration=traitfun)
+mutable(::FluxParInvLayer, l, in::AbstractVertex, layerfun, traitfun) =
+invariantvertex(layerfun(MutableLayer(l)), in, traitdecoration=traitfun)
 
-mutable(::FluxNoParLayer, l, in::AbstractVertex, layerfun, mutation, traitfun) = invariantvertex(layerfun(NoParams(l)), in, mutation=mutation, traitdecoration=traitfun)
+mutable(::FluxNoParLayer, l, in::AbstractVertex, layerfun, traitfun) = invariantvertex(layerfun(NoParams(l)), in, traitdecoration=traitfun)
 
 # Decorate trait with extra stuff like logging of size changes or validation.
 # Meant to be composable, e.g. using ∘
