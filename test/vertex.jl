@@ -81,17 +81,71 @@ end
     end
 
     @testset "DepthwiseConv" begin
-        # TODO: More testing, old implementation seems to have worked by accident
-        inpt = inputvertex("in", 4)
-        dc1 = mutable("dc1", DepthwiseConv((2,2), nout(inpt) => 2 * nout(inpt)), inpt)
-        dc2 = mutable("dc2", DepthwiseConv((2,2), nout(dc1) => nout(dc1)), dc1)
+        import NaiveNASflux: outdim, wrapped
+        lazymutable(v::AbstractVertex) = lazymutable(base(v))
+        lazymutable(v::CompVertex) = lazymutable(v.computation)
+        lazymutable(m::AbstractMutableComp) = lazymutable(wrapped(m)) 
+        lazymutable(m::LazyMutable) = m
+        lazyouts(v) = lazymutable(v).outputs
+        lazyins(v) = lazymutable(v).inputs
 
-        @test @test_logs (:warn, r"Could not change nout of") Δnout!(v -> 1, dc1, 2)
-        @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [12]
+        @testset "DepthwiseConv groupsize 2 into groupsize 1" begin
+            
+            inpt = inputvertex("in", 4)
+            dc1 = mutable("dc1", DepthwiseConv((2,2), nout(inpt) => 2 * nout(inpt)), inpt)
+            dc2 = mutable("dc2", DepthwiseConv((2,2), nout(dc1) => nout(dc1)), dc1)
 
-        # Add deterministic valuefunction which wants to do non-contiguous selection across groups
-        @test @test_logs (:warn, r"Could not change nout of") Δnout!(v -> repeat([1, 2], nout(v) ÷ 2), dc1, -2)
-        @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [8]
+            @test @test_logs (:warn, r"Could not change nout of") Δnout!(v -> 1, dc1, 2)
+            @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [12]
+
+            # Add deterministic valuefunction which wants to do non-contiguous selection across groups
+            @test @test_logs (:warn, r"Could not change nout of") Δnout!(v -> repeat([1, 2], nout(v) ÷ 2), dc1, -2)
+            @test [nout(dc1)] == nin(dc2) == [8]
+
+            @test lazyins(dc1) == [1:nout(inpt)]
+            @test [lazyouts(dc1)] == lazyins(dc2) == [1:nout(dc1)]
+
+            # We has a size of 12, and all neurons had a positive value, so NaiveNASlib should inrease to next valid size which is 16
+            @test lazyouts(dc2) == vcat(1:nout(dc1), fill(-1, nout(dc1)))
+
+            # Test that we actually succeeded in making a valid model
+            y1 = dc1(ones(Float32, 3,3, nout(inpt), 2))
+            @test size(y1, outdim(dc1)) == nout(dc1)
+            y2 = dc2(y1)
+            @test size(y2, outdim(dc2)) == nout(dc2)
+        end
+
+        @testset "DepthwiseConv groupsize 3 into groupsize 5" begin
+            import NaiveNASflux: outdim
+            # TODO: More testing, old implementation seems to have worked by accident
+            inpt = inputvertex("in", 4)
+            dc1 = mutable("dc1", DepthwiseConv((2,2), nout(inpt) => 3 * nout(inpt)), inpt)
+            dc2 = mutable("dc2", DepthwiseConv((2,2), nout(dc1) => 5 * nout(dc1)), dc1)
+            dc3 = mutable("dc3", DepthwiseConv((2,2), nout(dc2) => nout(dc2)), dc2)
+
+            @test @test_logs (:warn, r"Could not change nout of") Δnout!(v -> 1, dc1, 2)
+            @test [nout(dc1)] == nin(dc2) == [16]
+            @test [nout(dc2)] == nin(dc3) == [64]
+
+            # Add deterministic valuefunction which wants to do non-contiguous selection across groups
+            @test @test_logs (:warn, r"Could not change nout of") Δnout!(v -> repeat([1, 2], nout(v) ÷ 2), dc1, -2)
+            @test [nout(dc1)] == nin(dc2) == [12]
+            @test [nout(dc2)] == nin(dc3) == [72]
+
+            @test lazyins(dc1) == [1:nout(inpt)]
+            @test [lazyouts(dc1)] == lazyins(dc2) == [vcat(5:nout(dc1), fill(-1, 4))]
+
+            # All neurons had a positive value, so NaiveNASlib should inrease to next valid size
+            @test [lazyouts(dc2)] == lazyins(dc3) == [vcat(1:60, fill(-1, 12))]
+            
+            # Test that we actually succeeded in making a valid model
+            y1 = dc1(ones(Float32,5,5, nout(inpt), 2))
+            @test size(y1, outdim(dc1)) == nout(dc1)
+            y2 = dc2(y1)
+            @test size(y2, outdim(dc2)) == nout(dc2)
+            y3 = dc3(y2)
+            @test size(y3, outdim(dc3)) == nout(dc3)
+        end
     end
 
     @testset "Concatenate activations" begin
@@ -141,7 +195,6 @@ end
 
             convfun = (nin,nout) -> convtype((3,3), nin=>nout, pad = (1,1))
             @test size(testgraph(convfun, nin1, nin2)(indata1, indata2)) == (4,4,9,1)
-
         end
 
         @testset "Concatenate Pooled Conv" begin
@@ -235,9 +288,7 @@ end
             @test size(p1.activation) == (4, 4, 5, 1)
             @test size(p2.activation) == (4, 4, 5, 1)
 
-            Δnin!(out, -1)
-            Δoutputs(out, v -> 1:nout_org(v))
-            apply_mutation(graph)
+            Δnin!(v -> 1:nout(v), out => -1)
 
             @test size(graph(indata)) == (2, 2, 3, 1)
             @test size(p1.activation) == (4, 4, 4, 1)
@@ -269,9 +320,7 @@ end
             @test size(p1a.activation) == (4, 4, 3, 1)
             @test size(p1b.activation) == (4, 4, 2, 1)
 
-            Δnin!(out, -1)
-            Δoutputs(out, v -> 1:nout_org(v))
-            apply_mutation(graph)
+            Δnin!(v -> 1:nout(v), out => -1)
 
             @test size(graph(indata)) == (2, 2, 3, 1)
             @test size(p1.activation) == (4, 4, 4, 1)
@@ -294,21 +343,16 @@ end
             @test size(hcat(graph.(indata)...)) == (3,10)
             @test size(p.activation) == (5,)
 
-            Δnin!(dnn, 1)
-            Δoutputs(dnn, v -> 1:nout_org(v))
-            apply_mutation(graph)
+            Δnin!(v -> 1:nout(v), dnn, 1)
 
             @test size(hcat(graph.(indata)...)) == (3,10)
             @test size(p.activation) == (6,)
 
-            Δnout!(rnn, -2)
-            Δoutputs(rnn, v -> 1:nout_org(v))
-            apply_mutation(graph)
+            Δnout!(v -> 1:nout(v), rnn, -2)
 
             @test size(hcat(graph.(indata)...)) == (3,10)
             @test size(p.activation) == (4,)
         end
-
     end
 end
 
@@ -360,10 +404,7 @@ end
         indata = randn(3,4)
         expectedout = g(indata)
 
-        Δnout!(v1, 2)
-        #Δnout!(v2, 1)
-        Δoutputs(g, v -> ones(nout_org(v)))
-        apply_mutation(g)
+        Δnout!(v -> 1, v1 => 2)
         NaiveNASflux.forcemutation(g)
 
         @test g(indata) ≈ expectedout
@@ -387,9 +428,7 @@ end
         indata = randn(Float32, 2,2,2,8)
         expectedout = g(indata)
 
-        Δnout!(v1, 2)
-        Δoutputs(g, v -> ones(nout_org(v)))
-        apply_mutation(g)
+        Δnout!(v -> 1, v1 => 2)
         NaiveNASflux.forcemutation(g)
 
         @test g(indata) == expectedout
@@ -412,11 +451,7 @@ end
         indata = randn(Float32, 2,2,2,8)
         expectedout = g(indata)
 
-        Δnout!(v1, 2)
-        Δnout!(v2, 1)
-        Δoutputs(g, v -> ones(nout_org(v)))
-
-        apply_mutation(g)
+        Δnout!(v->1, v1 => 2, v2 => 1)
         NaiveNASflux.forcemutation(g)
 
         @test g(indata) == expectedout

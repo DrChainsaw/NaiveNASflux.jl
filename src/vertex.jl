@@ -1,5 +1,6 @@
 
 """
+    InputShapeVertex <: AbstractVertex
     InputShapeVertex(v::AbstractVertex, t::FluxLayer)
 
 Input type vertex which also has information about what type of layer the input is shaped for.
@@ -11,7 +12,8 @@ end
 """
     inputvertex(name, size, type::FluxLayer)
 
-Return an immutable input type vertex with the given `name` and `size` and a `type` which can be used to indicate what type of input is expected.
+Return an immutable input type vertex with the given `name` and `size` and a `type` which can be used to 
+indicate what type of input is expected.
 """
 NaiveNASlib.inputvertex(name, size, type::FluxLayer) = InputShapeVertex(inputvertex(name, size), type)
 layertype(v::InputShapeVertex) = v.t
@@ -21,7 +23,7 @@ NaiveNASlib.name(v::InputShapeVertex) = name(base(v))
 NaiveNASlib.nout(v::InputShapeVertex) = nout(base(v))
 NaiveNASlib.nin(v::InputShapeVertex) = nin(base(v))
 NaiveNASlib.outputs(v::InputShapeVertex) = outputs(base(v))
-NaiveNASlib.inputs(v::InputShapeVertex) = []
+NaiveNASlib.inputs(::InputShapeVertex) = []
 NaiveNASlib.clone(v::InputShapeVertex, ins::AbstractVertex...;cf=clone) = InputShapeVertex(cf(base(v), ins...;cf=cf), layertype(v))
 
 # Only to prevent stack overflow above
@@ -29,6 +31,27 @@ struct LayerTypeWrapper
     t::FluxLayer
 end
 layertype(l::LayerTypeWrapper) = l.t
+
+"""
+    SizeNinNoutConnected <: NaiveNASlib.DecoratingTrait
+    SizeNinNoutConnected(t)
+
+Trait for computations for which a change in output size results in a change in input size but which 
+is not fully `SizeTransparent`.
+
+Example of this is DepthWiseConv where output size must be an integer multiple of the input size.
+
+Does not create any constraints or objectives, only signals that vertices after a 
+`SizeNinNoutConnected` might need to change size if the size of the `SizeNinNoutConnected` vertex changes.
+"""
+struct SizeNinNoutConnected{T <: NaiveNASlib.MutationTrait} <: NaiveNASlib.DecoratingTrait
+    base::T
+end
+NaiveNASlib.base(t::SizeNinNoutConnected) = t.base
+
+
+NaiveNASlib.all_in_Δsize_graph(::SizeNinNoutConnected, d, v, visited) = all_in_Δsize_graph(SizeInvariant(), d, v, visited)
+
 
 Flux.@functor InputVertex
 Flux.@functor CompVertex
@@ -64,6 +87,8 @@ mutable(name::String, l, in::AbstractVertex; layerfun=LazyMutable, traitfun=vali
 
 mutable(::FluxParLayer, l, in::AbstractVertex, layerfun, traitfun) = absorbvertex(layerfun(MutableLayer(l)), in, traitdecoration = traitfun)
 
+mutable(::FluxDepthwiseConv, l, in::AbstractVertex, layerfun, traitfun) = absorbvertex(layerfun(MutableLayer(l)), in; traitdecoration=traitfun ∘ SizeNinNoutConnected)
+
 mutable(::FluxParInvLayer, l, in::AbstractVertex, layerfun, traitfun) = invariantvertex(layerfun(MutableLayer(l)), in, traitdecoration=traitfun)
 
 mutable(::FluxNoParLayer, l, in::AbstractVertex, layerfun, traitfun) = invariantvertex(layerfun(NoParams(l)), in, traitdecoration=traitfun)
@@ -86,10 +111,10 @@ Extra arguments `layerfun` and `traitfun` can be used to add extra info about th
 function concat(v::AbstractVertex, vs::AbstractVertex...; traitfun=identity, layerfun=identity)
     dim = actdim(v)
     if any(vx -> actdim(vx) != dim, vs)
-        throw(DimensionMismatch("Can not concatenate activations with different shapes! Got: $(join([dim, actdims.(vs)...], ", ", " and "))"))
+        throw(DimensionMismatch("Can not concatenate activations with different shapes! Got: $(join([dim, actdim.(vs)...], ", ", " and "))"))
     end
     rank = actrank(v)
-    if any(vx -> rank(vx) != rank, vs)
+    if any(vx -> actrank(vx) != rank, vs)
         throw(DimensionMismatch("Can not concatenate activations with different shapes! Got:  $(join([rank, actrank.(vs)...], ", ", " and "))"))
     end
 

@@ -23,9 +23,8 @@ end
     @info "Testing mutable"
     include("mutable.jl")
 
-    @warn "Testing vertex disabled"
-    #@info "Testing vertex"
-    #include("vertex.jl")
+    @info "Testing vertex"
+    include("vertex.jl")
 
     @warn "Testing pruning disabled"
     #@info "Testing pruning"

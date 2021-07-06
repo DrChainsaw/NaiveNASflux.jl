@@ -15,7 +15,7 @@ mutable struct ActivationContribution{L,M} <: AbstractMutableComp
     method::M
 end
 ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05)) = ActivationContribution(l, zeros(Float32, nout(l)), method)
-ActivationContribution(l, method = Ewma(0.05)) = ActivationContribution(l, neuron_value(l), method)
+ActivationContribution(l, method = Ewma(0.05)) = ActivationContribution(l, neuron_value_safe(l), method)
 
 layer(m::ActivationContribution) = layer(m.layer)
 layertype(m::ActivationContribution) = layertype(m.layer)
@@ -98,7 +98,7 @@ Calculate contribution of activations towards loss according to https://arxiv.or
 
 Short summary is that the first order taylor approximation of the optimization problem: "which neurons shall I remove to minimize impact on the loss function?" boils down to: "the ones which minimize abs(gradient * activation)" (assuming parameter independence).
 """
-neuronvaluetaylor(currval, act, grad) = mean_squeeze(abs.(mean_squeeze(act .* grad, (actdim(ndims(act)), ndims(act)))), 1)
+neuronvaluetaylor(currval, act, grad) = mean_squeeze(abs, (mean_squeeze(identity, act .* grad, (actdim(ndims(act)), ndims(act)))), 1)
 
 
 """

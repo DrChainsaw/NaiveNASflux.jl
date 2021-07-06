@@ -30,6 +30,7 @@ export KernelSizeAligned, mutate_weights
 
 include("types.jl")
 include("util.jl")
+include("constraints.jl")
 include("select.jl")
 include("mutable.jl")
 include("vertex.jl")

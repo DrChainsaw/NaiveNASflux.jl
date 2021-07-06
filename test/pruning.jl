@@ -3,6 +3,8 @@
 
     ml(l, lfun=LazyMutable; insize=nin(l)[]) = mutable(l, inputvertex("in", insize, layertype(l)), layerfun = lfun)
 
+    # TODO: test default and ActivationContribution with LazyMutable as size change makes this a bit non-trivial
+
     function tr(l, data; loss=Flux.mse)
         outshape = collect(size(data))
         outshape[[actdim(ndims(data))]] .= nout(l)
