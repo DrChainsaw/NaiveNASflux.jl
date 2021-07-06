@@ -175,7 +175,7 @@
 
     @testset "Mutate ActivationContribution" begin
         l = ml(Dense(3,5), ActivationContribution ∘ LazyMutable)
-        Δnout(l, -1)
+        Δnout!(l, -1)
         Δoutputs(l, v -> 1:nout_org(v))
         apply_mutation(l)
         @test size(l(ones(Float32, 3,2))) == (4, 2)
@@ -188,7 +188,7 @@
         g = CompGraph(inputs(l1), l2)
 
         # Mutate before activation contribution for l2 has been initialized
-        Δnout(l1, 1)
+        Δnout!(l1, 1)
         Δoutputs(l1, v -> 1:nout_org(v))
         apply_mutation(g)
         @test size(neuron_value(l1)) == (6,)
@@ -197,13 +197,13 @@
         # This will initialize it
         @test size(g(ones(Float32, 4,4,2,3))) == (2,2,6,3)
 
-        Δnout(l1, -2)
+        Δnout!(l1, -2)
         Δoutputs(l1, v -> 1:nout_org(v))
         apply_mutation(g)
         tr(g, ones(Float32, 2,2,4,3), ones(Float32, 4,4,2,3))
         @test size(neuron_value(l1)) == size(neuron_value(l2)) == (4,)
 
-        Δnin(l2, -1)
+        Δnin!(l2, -1)
         Δoutputs(l1, v -> 1:nout_org(v))
         apply_mutation(g)
         tr(g, ones(Float32, 2,2,3,3), ones(Float32, 4,4,2,3))

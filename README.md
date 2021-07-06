@@ -74,7 +74,7 @@ graphcopy = copy(graph)
 
 # Mutate number of neurons
 @test nout(add) == nout(residualconv) == nout(conv) + nout(namedconv) == 12
-Δnout(add, -3)
+Δnout!(add, -3)
 @test nout(add) == nout(residualconv) == nout(conv) + nout(namedconv) == 9
 
 # Remove layer
@@ -150,19 +150,19 @@ nprune = 16
 
 # Prune randomly selected neurons
 pruned_random = copy(original)
-Δnin(pruned_random.outputs[], -nprune)
+Δnin!(pruned_random.outputs[], -nprune)
 Δoutputs(pruned_random.outputs[], v -> rand(nout_org(v)))
 apply_mutation(pruned_random)
 
 # Prune the least valuable neurons according to the metric in ActivationContribution
 pruned_least = copy(original)
-Δnin(pruned_least.outputs[], -nprune)
+Δnin!(pruned_least.outputs[], -nprune)
 Δoutputs(pruned_least.outputs[], neuron_value)
 apply_mutation(pruned_least)
 
 # Prune the most valuable neurons according to the metric in ActivationContribution
 pruned_most = copy(original)
-Δnin(pruned_most.outputs[], -nprune)
+Δnin!(pruned_most.outputs[], -nprune)
 Δoutputs(pruned_most.outputs[], v -> -neuron_value(v))
 apply_mutation(pruned_most)
 

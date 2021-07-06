@@ -15,7 +15,7 @@ mutable struct ActivationContribution{L,M} <: AbstractMutableComp
     method::M
 end
 ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05)) = ActivationContribution(l, zeros(Float32, nout(l)), method)
-ActivationContribution(l, method = Ewma(0.05)) = ActivationContribution(l, missing, method)
+ActivationContribution(l, method = Ewma(0.05)) = ActivationContribution(l, neuron_value(l), method)
 
 layer(m::ActivationContribution) = layer(m.layer)
 layertype(m::ActivationContribution) = layertype(m.layer)
@@ -46,9 +46,9 @@ end
 
 Return mean value of `x` along all dimensions except `dimkeep` as a 1D array (singleton dimensions are removed).
 """
-function mean_squeeze(x, dimskeep)
+function mean_squeeze(f, x, dimskeep)
     dims = filter(i -> i ∉ dimskeep, 1:ndims(x))
-    return dropdims(mean(x, dims=dims), dims=Tuple(dims))
+    return dropdims(mean(f, x, dims=dims), dims=Tuple(dims))
 end
 
 # To peel the onion...
@@ -56,17 +56,40 @@ neuron_value(v::AbstractVertex) = neuron_value(base(v))
 neuron_value(v::InputSizeVertex) = ones(nout(v))
 neuron_value(v::CompVertex) = neuron_value(v.computation)
 neuron_value(m::AbstractMutableComp) = neuron_value(wrapped(m))
+function neuron_value(lm::LazyMutable)
+   forcemutation(lm)
+   neuron_value(wrapped(lm)) 
+end
 neuron_value(m::ActivationContribution) = m.contribution
 neuron_value(l) = neuron_value(layertype(l), l)
 
-# Default: highest mean of abs of weights + bias. Not a very good metric, but should be better than random
+# Default: mean of abs of weights + bias. Not a very good metric, but should be better than random
 # Maybe do something about state in recurrent layers as well, but CBA to do it right now
-neuron_value(::FluxParLayer, l) = mean_squeeze(abs.(weights(l)), outdim(l)) .+ bcabsz(bias(l))
+neuron_value(::FluxParLayer, l) = mean_squeeze(abs, weights(l), outdim(l)) .+ bcabsz(bias(l))
+function neuron_value(::FluxDepthwiseConv, l)
+    wm = mean_squeeze(abs, weights(l), outdim(l))
+    bm = bcabsz(bias(l))
+
+    (length(wm) == 1 || length(wm) == length(bm)) && return wm .+ bm
+    # use this to get insight on whether to repeat inner or outer:
+    # cc = DepthwiseConv(reshape([1 1 1 1;2 2 2 2], 1, 1, 2, 4), [0,0,0,0,1,1,1,1])
+    # cc(fill(10, (1,1,4,1)))
+    return repeat(wm, length(bm) ÷ length(wm)) .+ bm
+end
 bcabsz(x) = abs.(x)
 bcabsz(z::Flux.Zeros) = z
 
 # Not possible to do anything since we don't know the size. Implementors can however use this to fallback to other ways if this is not an error
 neuron_value(lt, l) = missing
+
+
+neuron_value_safe(t::DecoratingTrait, v) = neuron_value_safe(base(t), v)
+neuron_value_safe(::Immutable, v) = ones(nout(v))
+neuron_value_safe(::MutationSizeTrait, v) = clean_values(cpu(neuron_value(v)),v)
+neuron_value_safe(m::AbstractMutableComp) = clean_values(cpu(neuron_value(m)), m)
+
+clean_values(::Missing, v) = ones(nout(v))
+clean_values(a::AbstractArray, v) = replace(a, NaN => -100, Inf => -100, -Inf => -100)
 
 """
     neuronvaluetaylor(currval, act, grad)

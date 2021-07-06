@@ -84,19 +84,31 @@ state(::FluxRecurrent, l) = l.state
 state(::FluxLstm, l) = [h for h in l.state]
 
 
-function NaiveNASlib.compconstraint!(s, ::FluxLayer, data) end
+function NaiveNASlib.compconstraint!(case, s, ::FluxLayer, data) end
+NaiveNASlib.compconstraint!(case, s::NaiveNASlib.DecoratingJuMPΔSizeStrategy, lt::FluxLayer, data) = NaiveNASlib.compconstraint!(case, NaiveNASlib.base(s), lt, data)
+function NaiveNASlib.compconstraint!(case, ::NaiveNASlib.AbstractJuMPΔSizeStrategy, ::FluxDepthwiseConv, data)
 
-function NaiveNASlib.compconstraint!(s::NaiveNASlib.AbstractJuMPΔSizeStrategy, ::FluxDepthwiseConv, data)
+  # TODO: Constrain (or add to objective) that we need to select indices from groups. Sigh...
+
   # Add constraint that nout(l) == n * nin(l) where n is integer
-  fv_out = @variable(data.model, integer=true)
   ins = filter(vin -> vin in keys(data.noutdict), inputs(data.vertex))
 
-  # Would have preferred to have "data.noutdict[data.vertex] == data.noutdict[ins[i]] * fv_out", but it is not linear
-  @constraint(data.model, [i=1:length(ins)], data.noutdict[data.vertex] == data.noutdict[ins[i]] + nin(data.vertex)[] * fv_out)
-  @constraint(data.model, [i=1:length(ins)], data.noutdict[data.vertex] >= data.noutdict[ins[i]])
+   # "data.noutdict[data.vertex] == data.noutdict[ins[i]] * x" where x is an integer variable is not linear
+   # Instead we use the good old big-M strategy to set up a series of "or" constraints (exactly one of them must be true).
+   # This is combined with the abs value formulation to force equality.
+   # multiplier[j] is false if and only if data.noutdict[data.vertex] == j*data.noutdict[ins[i]]
+   # all but one of multiplier must be true
+   # Each constraint below is trivially true if multiplier[j] is true since 1e6 is way bigger than the difference between the two variables 
+  multipliers = @variable(data.model, [1:10], Bin)
+  @constraint(data.model, sum(multipliers) == length(multipliers)-1)
+  @constraint(data.model, [i=1:length(ins),j=1:length(multipliers)], data.noutdict[data.vertex] - j*data.noutdict[ins[i]] + multipliers[j] * 1e6 >= 0)
+  @constraint(data.model, [i=1:length(ins),j=1:length(multipliers)], data.noutdict[data.vertex] - j*data.noutdict[ins[i]] - multipliers[j] * 1e6 <= 0)
 
   # Inputs which does not have a variable, possibly because all_in_Δsize_graph did not consider it to be part of the set of vertices which may change
+  # We will constrain data.vertex to have integer multiple of its current size
   fixedins = filter(vin -> vin ∉ ins, inputs(data.vertex))
-  @constraint(data.model, [i=1:length(fixedins)], data.noutdict[data.vertex] == nout(fixedins[i]) + nin(data.vertex)[] * fv_out)
+  if !isempty(fixedins) 
+    fv_out = @variable(data.model, integer=true)
+    @constraint(data.model, [i=1:length(fixedins)], data.noutdict[data.vertex] == nout(fixedins[i]) * fv_out)
+  end
 end
-# compconstraint! for AbstractJuMPSelectionStrategy not needed as there currently is no strategy which allows size changes

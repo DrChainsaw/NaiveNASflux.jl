@@ -16,7 +16,9 @@ layertype(m::AbstractMutableComp) = layertype(layer(m))
 NaiveNASlib.nin(m::AbstractMutableComp) = nin(wrapped(m))
 NaiveNASlib.nout(m::AbstractMutableComp) = nout(wrapped(m))
 
-NaiveNASlib.Δsize!(m::AbstractMutableComp, inputs::AbstractVector, outputs::AbstractVector;kwargs...) = NaiveNASlib.Δsize!(wrapped(m), inputs, outputs;kwargs...)
+function NaiveNASlib.Δsize!(m::AbstractMutableComp, inputs::AbstractVector, outputs::AbstractVector;kwargs...) 
+     NaiveNASlib.Δsize!(wrapped(m), inputs, outputs;kwargs...)
+end
 
 # Leave some room to override clone. TODO: replace with fmap?
 NaiveNASlib.clone(m::T;cf=clone) where T <: AbstractMutableComp = T(map(cf, getfield.(m, fieldnames(T)))...)
@@ -26,7 +28,11 @@ mutate_weights(m::AbstractMutableComp, w) = mutate_weights(wrapped(m), w)
 NaiveNASlib.minΔninfactor(m::AbstractMutableComp) = minΔninfactor(layertype(m), layer(m))
 NaiveNASlib.minΔnoutfactor(m::AbstractMutableComp) = minΔnoutfactor(layertype(m), layer(m))
 
-NaiveNASlib.compconstraint!(s, m::AbstractMutableComp, data) = NaiveNASlib.compconstraint!(s, layertype(m), data)
+function NaiveNASlib.compconstraint!(case, s::NaiveNASlib.AbstractJuMPΔSizeStrategy, m::AbstractMutableComp, data) 
+     NaiveNASlib.compconstraint!(case, s, layertype(m), data)
+end
+
+NaiveNASlib.default_outvalue(m::AbstractMutableComp) = neuron_value_safe(m)
 
 """
     MutableLayer
@@ -65,6 +71,7 @@ otherpars(o, l) = ()
 function mutate(lt::FluxDepthwiseConv, m::MutableLayer; inputs=1:nin(m)[], outputs=1:nout(m), other= l -> (), insert=neuroninsert)
     l = layer(m)
     otherdims = other(l)
+
     weightouts = map(Iterators.partition(outputs, length(inputs))) do group
         all(group .< 0) && return group[1]
         return (maximum(group) - 1) ÷ length(inputs) + 1

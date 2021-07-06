@@ -37,9 +37,11 @@ end
         @test [nout(dense1)] == nin(dense2) == [5]
         @test nout(dense2) == 3
 
-        inds = [1, 2, 4, 5]
-        Δnin(NaiveNASlib.OnlyFor(), dense2, inds)
-        Δnout(NaiveNASlib.OnlyFor(), dense1, inds)
+        inds = Bool[1, 1, 0, 1, 1]
+        NaiveNASlib.Δsize!(dense1) do v
+            v == dense1 || return 1
+            return inds .- 0.5
+        end
 
         @test [nout(inpt)] == nin(dense1) == [4]
         @test [nout(dense1)] == nin(dense2) == [4]
@@ -47,7 +49,6 @@ end
 
         W2exp, b2exp = weights(dl2)[:, inds], bias(dl2)
         W1exp, b1exp = weights(dl1)[inds, :], bias(dl1)[inds]
-        apply_mutation.(NaiveNASlib.flatten(dense2))
 
         @test size(CompGraph([inpt], [dense2])(collect(Float32, 1:nout(inpt)))) == (3,)
 
@@ -62,8 +63,7 @@ end
 
         @test nin(bv) == [nout(cv)] == [4]
 
-        Δnin(bv, -1)
-        apply_mutation.(NaiveNASlib.flatten(bv))
+        Δnin!(v -> 1, bv, -1)
 
         @test nin(bv) == [nout(cv)] == [3]
     end
@@ -75,8 +75,7 @@ end
 
         @test nin(bv) == [nout(cv)] == [4]
 
-        Δnin(bv, -1)
-        apply_mutation.(NaiveNASlib.flatten(bv))
+        Δnin!(v -> 1, bv, -1)
 
         @test nin(bv) == [nout(cv)] == [3]
     end
@@ -86,17 +85,11 @@ end
         dc1 = mutable("dc1", DepthwiseConv((2,2), nout(inpt) => 2 * nout(inpt)), inpt)
         dc2 = mutable("dc2", DepthwiseConv((2,2), nout(dc1) => nout(dc1)), dc1)
 
-        @test_logs (:warn, r"Could not change nout of") Δnout(dc1, 2)
+        @test @test_logs (:warn, r"Could not change nout of") Δnout!(dc1, 2)
         @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [12]
 
-        @test_logs (:warn, r"Could not change nout of") Δnout(dc1, -2)
+        @test @test_logs (:warn, r"Could not change nout of") Δnout!(dc1, -2)
         @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [8]
-
-        @test_logs (:warn, r"Could not change nout of") Δsize!(ΔNoutExact(dc2, -2), all_in_graph(dc2))
-        @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [4]
-
-        @test_logs (:warn, r"Could not change nout of") Δsize!(ΔNoutExact(dc2, 2), all_in_graph(dc2))
-        @test [2nout(dc1)] == 2 .* nin(dc2) == [nout(dc2)] == [8]
     end
 
     @testset "Concatenate activations" begin
@@ -240,7 +233,7 @@ end
             @test size(p1.activation) == (4, 4, 5, 1)
             @test size(p2.activation) == (4, 4, 5, 1)
 
-            Δnin(out, -1)
+            Δnin!(out, -1)
             Δoutputs(out, v -> 1:nout_org(v))
             apply_mutation(graph)
 
@@ -274,7 +267,7 @@ end
             @test size(p1a.activation) == (4, 4, 3, 1)
             @test size(p1b.activation) == (4, 4, 2, 1)
 
-            Δnin(out, -1)
+            Δnin!(out, -1)
             Δoutputs(out, v -> 1:nout_org(v))
             apply_mutation(graph)
 
@@ -299,14 +292,14 @@ end
             @test size(hcat(graph.(indata)...)) == (3,10)
             @test size(p.activation) == (5,)
 
-            Δnin(dnn, 1)
+            Δnin!(dnn, 1)
             Δoutputs(dnn, v -> 1:nout_org(v))
             apply_mutation(graph)
 
             @test size(hcat(graph.(indata)...)) == (3,10)
             @test size(p.activation) == (6,)
 
-            Δnout(rnn, -2)
+            Δnout!(rnn, -2)
             Δoutputs(rnn, v -> 1:nout_org(v))
             apply_mutation(graph)
 
@@ -365,8 +358,8 @@ end
         indata = randn(3,4)
         expectedout = g(indata)
 
-        Δnout(v1, 2)
-        #Δnout(v2, 1)
+        Δnout!(v1, 2)
+        #Δnout!(v2, 1)
         Δoutputs(g, v -> ones(nout_org(v)))
         apply_mutation(g)
         NaiveNASflux.forcemutation(g)
@@ -392,7 +385,7 @@ end
         indata = randn(Float32, 2,2,2,8)
         expectedout = g(indata)
 
-        Δnout(v1, 2)
+        Δnout!(v1, 2)
         Δoutputs(g, v -> ones(nout_org(v)))
         apply_mutation(g)
         NaiveNASflux.forcemutation(g)
@@ -417,8 +410,8 @@ end
         indata = randn(Float32, 2,2,2,8)
         expectedout = g(indata)
 
-        Δnout(v1, 2)
-        Δnout(v2, 1)
+        Δnout!(v1, 2)
+        Δnout!(v2, 1)
         Δoutputs(g, v -> ones(nout_org(v)))
 
         apply_mutation(g)
