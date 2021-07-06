@@ -1,10 +1,7 @@
 module NaiveNASflux
 
-using LinearAlgebra: length
-using Base: IteratorEltype, @var
 using Reexport
 using NaiveNASlib
-import NaiveNASlib: DecoratingJuMPΔSizeStrategy
 using Flux
 import Flux.Zygote: hook
 using Statistics
