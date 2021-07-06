@@ -250,6 +250,18 @@ function LazyMutable(m, nins::AbstractVector{<:Integer}, nout::Integer)
     LazyMutable(m, inputs, outputs, m -> (), neuroninsert)
 end
 
+function Base.show(io::IO, lm::LazyMutable)
+    print(io, "LazyMutable(")
+    show(io, lm.mutable)
+    print(io, '[')
+    for inpt in lm.inputs
+        print(io, NaiveNASlib.compressed_string(inpt))
+    end
+    print(io, ']', NaiveNASlib.compressed_string(lm.outputs))
+    show(io, lm.other)
+    show(io, lm.insert)
+end
+
 wrapped(m::LazyMutable) = m.mutable
 layer(m::LazyMutable) = layer(wrapped(m))
 

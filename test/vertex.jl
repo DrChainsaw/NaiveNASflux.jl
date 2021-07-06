@@ -81,14 +81,16 @@ end
     end
 
     @testset "DepthwiseConv" begin
+        # TODO: More testing, old implementation seems to have worked by accident
         inpt = inputvertex("in", 4)
         dc1 = mutable("dc1", DepthwiseConv((2,2), nout(inpt) => 2 * nout(inpt)), inpt)
         dc2 = mutable("dc2", DepthwiseConv((2,2), nout(dc1) => nout(dc1)), dc1)
 
-        @test @test_logs (:warn, r"Could not change nout of") Δnout!(dc1, 2)
+        @test @test_logs (:warn, r"Could not change nout of") Δnout!(v -> 1, dc1, 2)
         @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [12]
 
-        @test @test_logs (:warn, r"Could not change nout of") Δnout!(dc1, -2)
+        # Add deterministic valuefunction which wants to do non-contiguous selection across groups
+        @test @test_logs (:warn, r"Could not change nout of") Δnout!(v -> repeat([1, 2], nout(v) ÷ 2), dc1, -2)
         @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [8]
     end
 

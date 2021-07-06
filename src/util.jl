@@ -88,8 +88,6 @@ function NaiveNASlib.compconstraint!(case, s, ::FluxLayer, data) end
 NaiveNASlib.compconstraint!(case, s::NaiveNASlib.DecoratingJuMPΔSizeStrategy, lt::FluxLayer, data) = NaiveNASlib.compconstraint!(case, NaiveNASlib.base(s), lt, data)
 function NaiveNASlib.compconstraint!(case, ::NaiveNASlib.AbstractJuMPΔSizeStrategy, ::FluxDepthwiseConv, data)
 
-  # TODO: Constrain (or add to objective) that we need to select indices from groups. Sigh...
-
   # Add constraint that nout(l) == n * nin(l) where n is integer
   ins = filter(vin -> vin in keys(data.noutdict), inputs(data.vertex))
 
@@ -111,4 +109,18 @@ function NaiveNASlib.compconstraint!(case, ::NaiveNASlib.AbstractJuMPΔSizeStrat
     fv_out = @variable(data.model, integer=true)
     @constraint(data.model, [i=1:length(fixedins)], data.noutdict[data.vertex] == nout(fixedins[i]) * fv_out)
   end
+end
+
+function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::NaiveNASlib.AbstractJuMPΔSizeStrategy, t::FluxDepthwiseConv, data)
+  model = data.model
+  v = data.vertex
+  select = data.outselectvars[v]
+
+  groupsize = div(nout(v), div(nout(v), nin(v)[]))
+  for neurons_in_group in Iterators.partition(select, groupsize)
+    @constraint(model, neurons_in_group[1] == neurons_in_group[end])
+    @constraint(model, [i=2:groupsize], neurons_in_group[i] >= neurons_in_group[i-1])
+  end
+
+  NaiveNASlib.compconstraint!(NaiveNASlib.ScalarSize(), s, t, data)
 end
