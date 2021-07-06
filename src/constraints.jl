@@ -31,11 +31,20 @@ function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::NaiveNASlib
   model = data.model
   v = data.vertex
   select = data.outselectvars[v]
+  insert = data.outinsertvars[v]
 
-  groupsize = div(nout(v), div(nout(v), nin(v)[]))
-  for neurons_in_group in Iterators.partition(select, groupsize)
+  nin(v)[] == 1 && return # Special case, no restrictions as we only need to be an integer multple of 1
+
+  ngroups = div(nout(v), nin(v)[])
+  # Neurons mapped to the same weight are interleaved, i.e layer.weight[:,:,1,:] maps to y[1:ngroups:end] where y = layer(x)
+  for group in 1:ngroups
+    neurons_in_group = select[group : ngroups : end]
     @constraint(model, neurons_in_group[1] == neurons_in_group[end])
-    @constraint(model, [i=2:groupsize], neurons_in_group[i] >= neurons_in_group[i-1])
+    @constraint(model, [i=2:length(neurons_in_group)], neurons_in_group[i] == neurons_in_group[i-1])
+
+    insert_in_group = insert[group : ngroups : end]
+    @constraint(model, insert_in_group[1] == insert_in_group[end])
+    @constraint(model, [i=2:length(insert_in_group)], insert_in_group[i] == insert_in_group[i-1])
   end
 
   NaiveNASlib.compconstraint!(NaiveNASlib.ScalarSize(), s, t, data)

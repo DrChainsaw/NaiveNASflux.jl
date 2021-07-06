@@ -82,7 +82,7 @@ bcabsz(z::Flux.Zeros) = z
 # Not possible to do anything since we don't know the size. Implementors can however use this to fallback to other ways if this is not an error
 neuron_value(lt, l) = missing
 
-
+neuron_value_safe(v) = neuron_value_safe(trait(v), v) 
 neuron_value_safe(t::DecoratingTrait, v) = neuron_value_safe(base(t), v)
 neuron_value_safe(::Immutable, v) = ones(nout(v))
 neuron_value_safe(::MutationSizeTrait, v) = clean_values(cpu(neuron_value(v)),v)

@@ -1,9 +1,8 @@
 
 @testset "Neuron value tests" begin
+    import NaiveNASflux: neuron_value_safe
 
     ml(l, lfun=LazyMutable; insize=nin(l)[]) = mutable(l, inputvertex("in", insize, layertype(l)), layerfun = lfun)
-
-    # TODO: test default and ActivationContribution with LazyMutable as size change makes this a bit non-trivial
 
     function tr(l, data; loss=Flux.mse)
         outshape = collect(size(data))
@@ -44,26 +43,35 @@
     @testset "Neuron value Dense default" begin
         l = ml(Dense(3,5))
         @test size(neuron_value(l)) == (5,)
+        Δnout!(v -> 1, l => 3)
+        @test size(neuron_value(l)) == (8,)
+        Δnout!(v -> 1, l => -4)
+        @test size(neuron_value(l)) == (4,)
+        @test neuron_value(l) ≈ neuron_value_safe(l)
     end
 
     @testset "Neuron value Dense default no bias" begin
         l = ml(Dense(ones(5, 3), Flux.Zeros()))
         @test size(neuron_value(l)) == (5,)
+        @test neuron_value(l) ≈ neuron_value_safe(l)
     end
 
     @testset "Neuron value RNN default" begin
         l = ml(RNN(3,5))
         @test size(neuron_value(l)) == (5,)
+        @test neuron_value(l) ≈ neuron_value_safe(l)
     end
 
     @testset "Neuron value Conv default" begin
         l = ml(Conv((2,3), 4=>5))
         @test size(neuron_value(l)) == (5,)
+        @test neuron_value(l) ≈ neuron_value_safe(l)
     end
 
     @testset "Neuron value unkown default" begin
         l = ml(MeanPool((2,2)); insize = 3)
         @test ismissing(neuron_value(l))
+        @test neuron_value_safe(l) == ones(nout(l)) 
     end
 
     @testset "ActivationContribution no grad" begin

@@ -72,10 +72,8 @@ function mutate(lt::FluxDepthwiseConv, m::MutableLayer; inputs=1:nin(m)[], outpu
     l = layer(m)
     otherdims = other(l)
 
-    weightouts = map(Iterators.partition(outputs, length(inputs))) do group
-        all(group .< 0) && return group[1]
-        return (maximum(group) - 1) ÷ length(inputs) + 1
-    end
+    ngroups = div(length(outputs), length(inputs))
+    weightouts = outputs[1:ngroups]
 
     w = select(weights(l), indim(l) => inputs, outdim(l) => weightouts, otherdims...; newfun=insert(lt, WeightParam()))
     b = select(bias(l), 1 => outputs; newfun=insert(lt, BiasParam()))
