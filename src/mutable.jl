@@ -72,8 +72,13 @@ function mutate(lt::FluxDepthwiseConv, m::MutableLayer; inputs=1:nin(m)[], outpu
     l = layer(m)
     otherdims = other(l)
 
+    prevngroups = div(nout(m), nin(m)[])
     ngroups = div(length(outputs), length(inputs))
-    weightouts = outputs[1:ngroups]
+
+    weightouts = map(1:ngroups) do group
+        outputs[group] < 1 && return outputs[group]
+        return mod1(outputs[group], prevngroups)
+    end
 
     w = select(weights(l), indim(l) => inputs, outdim(l) => weightouts, otherdims...; newfun=insert(lt, WeightParam()))
     b = select(bias(l), 1 => outputs; newfun=insert(lt, BiasParam()))
