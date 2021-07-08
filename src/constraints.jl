@@ -106,11 +106,5 @@ function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthWiseAl
     end
   end
 
-  ins = filter(vin -> vin in keys(data.noutdict), inputs(data.vertex))
-  inmultipliers = @variable(model, [1:maxgroupsize], Int)
-  @constraint(model, 1 .<= inmultipliers .<= 100)
-  @constraint(data.model, [i=1:length(ins),j=1:maxgroupsize], data.noutdict[ins[i]] - j * inmultipliers[j] + groupsizes[j] * 1e6 >= 0)
-  @constraint(data.model, [i=1:length(ins),j=1:maxgroupsize], data.noutdict[ins[i]] - j * inmultipliers[j] - groupsizes[j] * 1e6 <= 0)
-
   NaiveNASlib.compconstraint!(NaiveNASlib.ScalarSize(), base(s), t, data)
 end

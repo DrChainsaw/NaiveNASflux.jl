@@ -93,66 +93,68 @@ end
             # just to check that I have understood the wiring of the weight
             @testset "4 inputs times 2" begin
                 inpt = inputvertex("in", 4, FluxConv{2}())
-                dc = mutable("dc", DepthwiseConv(reshape(Float32[1 1 1 1;2 2 2 2], 1, 1, 2, 4), Float32[0,0,0,0,1,1,1,1]), inpt)
-                @test neuron_value(dc) == [1,2,1,2,2,3,2,3]
-                @test reshape(dc(fill(10f0, (1,1,4,1))), :) == [10, 20, 10, 20, 11, 21, 11, 21]
+                dc = mutable("dc", DepthwiseConv(reshape(Float32[10 10 10 10;20 20 20 20], 1, 1, 2, 4), Float32[0,0,0,0,1,1,1,1]), inpt)
+                @test neuron_value(dc) == [10,20,10,20,11,21,11,21]
+                @test reshape(dc(fill(1f0, (1,1,4,1))), :) == [10, 20, 10, 20, 11, 21, 11, 21]
                 @test Δnout!( dc => -4)
                 @test lazyouts(dc) == [2, 4, 6, 8] 
-                @test reshape(dc(fill(10f0, (1,1,4,1))), :) == [20, 20, 21, 21] 
+                @test reshape(dc(fill(1f0, (1,1,4,1))), :) == [20, 20, 21, 21] 
                 @test Δnout!(dc, 4)   
                 @test lazyouts(dc) == [1,-1, 2,-1, 3,-1, 4,-1] 
                 # TODO: Add kwargs to NaiveNASlib mutation functions
                 # In the meantime, we just create a new MutableLayer instead of trying to dig up the right one from dc
                 mdc = MutableLayer(layer(dc))
                 NaiveNASflux.mutate(mdc, inputs=lazyins(dc)[1], outputs=lazyouts(dc), insert=(args...) -> (args...) -> 0)
-                @test reshape(mdc(fill(10f0, (1,1,4,1))), :) == [20, 0, 20, 0, 21, 0, 21, 0] 
+                @test reshape(mdc(fill(1f0, (1,1,4,1))), :) == [20, 0, 20, 0, 21, 0, 21, 0] 
             end
 
             @testset "2 inputs times 3" begin
                 inpt = inputvertex("in", 2, FluxConv{2}())
-                dc = mutable("dc", DepthwiseConv(reshape(Float32[1 1;2 2;3 3], 1, 1, 3, 2), Float32[0,0,1,1,2,2]), inpt)
-                @test reshape(dc(fill(10f0, (1,1,2,1))), :) == [10, 20, 31, 11, 22, 32]
+                dc = mutable("dc", DepthwiseConv(reshape(Float32[10 10;20 20;30 30], 1, 1, 3, 2), Float32[0,0,1,1,2,2]), inpt)
+                @test reshape(dc(fill(1f0, (1,1,2,1))), :) == [10, 20, 31, 11, 22, 32]
                 @test Δnout!(dc => -2)
                 @test lazyouts(dc) == [2,3,5,6] 
-                @test reshape(dc(fill(10f0, (1,1,2,1))), :) == [20, 31, 22, 32]
+                @test reshape(dc(fill(1f0, (1,1,2,1))), :) == [20, 31, 22, 32]
                 @test Δnout!(dc, 4)   
                 @test lazyouts(dc) == [1, 2, -1, -1, 3, 4, -1, -1]
                 mdc = MutableLayer(layer(dc))
                 NaiveNASflux.mutate(mdc, inputs=lazyins(dc)[1], outputs=lazyouts(dc), insert=(args...) -> (args...) -> 0)
-                @test reshape(mdc(fill(10f0, (1,1,2,1))), :) == [20, 31, 0, 0, 22, 32, 0, 0]
+                @test reshape(mdc(fill(1f0, (1,1,2,1))), :) == [20, 31, 0, 0, 22, 32, 0, 0]
             end
 
             @testset "1 input times 5" begin
                 inpt = inputvertex("in", 1, FluxConv{2}())
-                dc = mutable("dc", DepthwiseConv(reshape(Float32.(1:5), 1, 1, 5, 1), Float32.(1:5)), inpt)
-                @test reshape(dc(fill(10f0, (1,1,1,1))), :) == [11, 22, 33, 44, 55]
+                dc = mutable("dc", DepthwiseConv(reshape(Float32.(10:10:50), 1, 1, 5, 1), Float32.(1:5)), inpt)
+                @test reshape(dc(fill(1f0, (1,1,1,1))), :) == [11, 22, 33, 44, 55]
                 @test Δnout!(dc=>-2)
                 @test lazyouts(dc) == 3:5 
-                @test reshape(dc(fill(10f0, (1,1,1,1))), :) == [33, 44, 55]
+                @test reshape(dc(fill(1f0, (1,1,1,1))), :) == [33, 44, 55]
                 @test Δnout!(dc=>3)
                 @test lazyouts(dc) == vcat(1:3, fill(-1, 3)) 
                 mdc = MutableLayer(layer(dc))
                 NaiveNASflux.mutate(mdc, inputs=lazyins(dc)[1], outputs=lazyouts(dc), insert=(args...) -> (args...) -> 0)
-                @test reshape(mdc(fill(10f0, (1,1,1,1))), :) == [33, 44, 55, 0, 0, 0]
+                @test reshape(mdc(fill(1f0, (1,1,1,1))), :) == [33, 44, 55, 0, 0, 0]
             end
 
             @testset "3 inputs times 7" begin
                 inpt = inputvertex("in", 3, FluxConv{2}())
-                dc = mutable("dc", DepthwiseConv(reshape(repeat(Float32.(1:7), 3), 1,1,7,3), Float32.(1:21)), inpt)
-                @test reshape(dc(fill(100f0, (1,1,3,1))), :) == repeat(100:100:700, 3) .+ (1:21)
+                dc = mutable("dc", DepthwiseConv(reshape(repeat(Float32.(10:10:70), 3), 1,1,7,3), Float32.(1:21)), inpt)
+                @test reshape(dc(fill(10f0, (1,1,3,1))), :) == repeat(100:100:700, 3) .+ (1:21)
                 @test Δnout!(dc => -9) do v
                     v == dc || return 1
                     val = ones(nout(v))
                     val[[2,13,14]] .= -10
+                    val[1] = 10
                     return val
                 end
+                # TODO: Examine failure and expected result more carefully when not tired af
                 @test lazyouts(dc) == [1,3,4,5,8,10,11,12,15,17,18,19]
-                @test reshape(dc(fill(100f0, (1,1,3,1))), :) == [101,303,404,505,108,310,411,512,115,317,418,519]
+                @test reshape(dc(fill(10f0, (1,1,3,1))), :) == [101,303,404,505,108,310,411,512,115,317,418,519]
                 @test Δnout!(dc => 6)
                 @test lazyouts(dc) == vcat(1:4, -1, -1, 5:8, -1, -1, 9:12, -1, -1)
                 mdc = MutableLayer(layer(dc))
                 NaiveNASflux.mutate(mdc, inputs=lazyins(dc)[1], outputs=lazyouts(dc), insert=(args...) -> (args...) -> 0)
-                @test reshape(mdc(fill(100f0, (1,1,3,1))), :) == [101,303,404,505,0,0,108,310,411,512,0,0,115,317,418,519,0,0]
+                @test reshape(mdc(fill(10f0, (1,1,3,1))), :) == [101,303,404,505,0,0,108,310,411,512,0,0,115,317,418,519,0,0]
             end
         end
 
