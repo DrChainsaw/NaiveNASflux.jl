@@ -82,7 +82,7 @@ function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthWiseAl
   # Now, if we were to change nin to 3, we would still have ngroups = 3 but with groupsize 3 and thus nout = 9
   # 
   ngroups = div(nout(v), nin(v)[])
-  maxgroupsize = nin(v)[]
+  maxgroupsize = max(10, nin(v)[])
   groupsizes = @variable(model, [1:maxgroupsize], Bin)
 
   @constraint(model, sum(groupsizes) == length(groupsizes)-1)
@@ -93,18 +93,26 @@ function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthWiseAl
 
     insert_in_group = insert[group : ngroups : end]
     for j in 1:length(groupsizes)
-      @constraint(model, sum(select_in_group) + (groupsizes[j] + select_none_in_group) * 1e6 >= j) 
-      @constraint(model, sum(select_in_group) - (groupsizes[j] + select_none_in_group) * 1e6 <= j)    
-      
-      @constraint(model, [i=2:j], insert_in_group[i] - insert_in_group[i-1] - groupsizes[j] * 1e6 <= 0)
-      @constraint(model, [i=2:j], insert_in_group[i] - insert_in_group[i-1] + groupsizes[j] * 1e6 >= 0)
-      @constraint(model, insert_in_group[1] - insert_in_group[j] - groupsizes[j] * 1e6 <= 0)
-      @constraint(model, insert_in_group[1] - insert_in_group[j] + groupsizes[j] * 1e6 >= 0)
+      jlim = min(j, length(select_in_group))
 
-      @constraint(model, [i=j+1:maxgroupsize], insert_in_group[i] - groupsizes[j] * 1e6 <= 0)
-      @constraint(model, [i=j+1:maxgroupsize], insert_in_group[i] + groupsizes[j] * 1e6 >= 0)  
+      @constraint(model, sum(select_in_group) + (groupsizes[j] + select_none_in_group) * 1e6 >= jlim) 
+      @constraint(model, sum(select_in_group) - (groupsizes[j] + select_none_in_group) * 1e6 <= jlim)       
+
+      @constraint(model, [i=2:jlim], insert_in_group[i] - insert_in_group[i-1] - groupsizes[j] * 1e6 <= 0)
+      @constraint(model, [i=2:jlim], insert_in_group[i] - insert_in_group[i-1] + groupsizes[j] * 1e6 >= 0)
+      @constraint(model, insert_in_group[1] - insert_in_group[jlim] - groupsizes[j] * 1e6 <= 0)
+      @constraint(model, insert_in_group[1] - insert_in_group[jlim] + groupsizes[j] * 1e6 >= 0)
+
+      @constraint(model, [i=j+1:length(insert_in_group)], insert_in_group[i] - groupsizes[j] * 1e6 <= 0)
+      @constraint(model, [i=j+1:length(insert_in_group)], insert_in_group[i] + groupsizes[j] * 1e6 >= 0)  
     end
   end
+
+  ins = filter(vin -> vin in keys(data.noutdict), inputs(data.vertex))
+  inmultipliers = @variable(model, [1:maxgroupsize], Int)
+  @constraint(model, 0 .<= inmultipliers .<= 100)
+  @constraint(model, [i=1:length(ins), j=1:maxgroupsize], data.noutdict[ins[i]] - j * inmultipliers[j] + groupsizes[j] * 1e6 >= 0)
+  @constraint(model, [i=1:length(ins), j=1:maxgroupsize], data.noutdict[ins[i]] - j * inmultipliers[j] - groupsizes[j] * 1e6 <= 0)
 
   NaiveNASlib.compconstraint!(NaiveNASlib.ScalarSize(), base(s), t, data)
 end

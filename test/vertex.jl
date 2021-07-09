@@ -174,8 +174,7 @@ end
             @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [8]
 
             @test lazyins(dc1) == [1:nout(inpt)]
-            # The value function above did this. Typically we would get higher weigths for non-zero parameters
-            @test [lazyouts(dc1)] == lazyins(dc2) == [[1, -1, 3, -1, 5, -1, 7, -1]]
+            @test [lazyouts(dc1)] == lazyins(dc2) == [1:8]
 
             # Test that we actually succeeded in making a valid model
             y1 = dc1(ones(Float32, 3,3, nout(inpt), 2))
