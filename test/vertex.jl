@@ -170,12 +170,14 @@ end
             @test [lazyouts(dc1)] == lazyins(dc2) == [[1, 2, -1, 3, 4, -1, 5, 6, -1, 7, 8, -1]]
 
             # Add deterministic valuefunction which wants to do non-contiguous selection across groups
-            @test  @test_logs (:warn, r"Could not change nout of") Δnout!(v -> repeat([1, 2], nout(v) ÷ 2), dc1 => -2)
+            @test  @test_logs (:warn, r"Could not change nout of") Δnout!(dc1 => -2) do v
+                vals = repeat([1, 2], nout(v) ÷ 2)
+                vals[3] = -10 # don't want group 3 to make testcase stable
+                return vals
+            end
             @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [8]
 
             @test lazyins(dc1) == [1:nout(inpt)]
-            # NaiveNASlib might not pick 1:8 due to our artificial weight function above
-            # default neuron value function would give zero value to new neurons 
             @test [lazyouts(dc1)] == lazyins(dc2) == [1:8]
 
             # Test that we actually succeeded in making a valid model
@@ -199,11 +201,15 @@ end
             @test [nout(dc2)] == nin(dc3) == [96] # TODO: Why so big??
 
            # Add deterministic valuefunction which wants to do non-contiguous selection across groups
-            @test @test_logs (:warn, r"Could not change nout of") Δnout!(v -> repeat([1, 2], nout(v) ÷ 2), dc1, -2)
+            @test @test_logs (:warn, r"Could not change nout of") Δnout!(dc1 => -2) do v
+                repeat([1, 2], nout(v) ÷ 2)
+            end
             @test [nout(dc1)] == nin(dc2) == [12]
             @test [nout(dc2)] == nin(dc3) == [96]
 
             @test lazyins(dc1) == [1:nout(inpt)]
+                        # NaiveNASlib might not pick non-new indices (i.e not -1) due to our artificial weight function above
+            # default neuron value function would give zero value to new neurons 
             @test [lazyouts(dc1)] == lazyins(dc2) == [[2, 3, -1, 5, 6, -1, 8, 9, -1, 11, 12, -1]]
 
             # All neurons had a positive value, so NaiveNASlib should inrease to next valid size
