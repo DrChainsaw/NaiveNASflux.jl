@@ -68,19 +68,16 @@ function mutate(lt::FluxParLayer, m::MutableLayer; inputs=1:nin(m)[], outputs=1:
 end
 otherpars(o, l) = ()
 
-function mutate(lt::FluxDepthwiseConv, m::MutableLayer; inputs=1:nin(m)[], outputs=1:nout(m), other= l -> (), insert=neuroninsert)
+function mutate(lt::FluxDepthwiseConv{N}, m::MutableLayer; inputs=1:nin(m)[], outputs=1:nout(m), other= l -> (), insert=neuroninsert) where N
     l = layer(m)
     otherdims = other(l)
 
-    prevngroups = div(nout(m), nin(m)[])
     ngroups = div(length(outputs), length(inputs))
 
-    weightouts = map(1:ngroups) do group
-        outputs[group] < 1 && return outputs[group]
-        return mod1(outputs[group], prevngroups)
-    end
-
-    w = select(weights(l), indim(l) => inputs, outdim(l) => weightouts, otherdims...; newfun=insert(lt, WeightParam()))
+    # inputs and outputs are coupled through the constraints (which hopefully were enforced) so we only need to consider outputs
+    currsize =size(weights(l))
+    wo = select(reshape(weights(l), currsize[1:N]...,:), N+1 => outputs, otherdims...; newfun=(args...) -> 0)
+    w = collect(reshape(wo, currsize[1:N]...,ngroups, :))
     b = select(bias(l), 1 => outputs; newfun=insert(lt, BiasParam()))
     newlayer(m, w, b, otherpars(other, l))
 end

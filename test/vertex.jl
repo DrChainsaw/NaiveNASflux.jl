@@ -174,6 +174,8 @@ end
             @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [8]
 
             @test lazyins(dc1) == [1:nout(inpt)]
+            # NaiveNASlib might not pick 1:8 due to our artificial weight function above
+            # default neuron value function would give zero value to new neurons 
             @test [lazyouts(dc1)] == lazyins(dc2) == [1:8]
 
             # Test that we actually succeeded in making a valid model
@@ -217,12 +219,48 @@ end
         end
 
         @testset "Depthwise conv change input size from Conv" begin
+            import NaiveNASflux: weights
             inpt = inputvertex("in", 4, FluxConv{2}())
             v1 = mutable("v1", Conv((1,1), nout(inpt) => 3), inpt)
             v2 = mutable("v2", DepthwiseConv((1,1), nout(v1) => 2 * nout(v1)), v1)
-            v3 = mutable("v3", Conv((1,1), nout(v2) => 3 * nout(inpt)), inpt)
+            v3 = mutable("v3", Conv((1,1), nout(v2) => 3), v2)
 
-            Δnout!(v1 => 1)
+            graph = CompGraph(inpt, v3)
+            indata = randn(Float32, 1,1,4,1)
+            expout = graph(indata)
+
+            @test Δnout!(v -> 1, v1 => 1, v2 => 2)
+            @test [nout(v1)] == nin(v2) == [4]
+            @test [nout(v2)] == nin(v3) == [8]
+            @test lazyouts(v2) == [1, 2, 3, 4, 5, 6, -1, -1] 
+
+            @test graph(indata) == expout
+
+            @test Δnout!(v -> 1, v2 => -2)
+            @test [nout(v1)] == nin(v2) == [3]
+            @test [nout(v2)] == nin(v3) == [6]
+            @test lazyouts(v2) == [2, 3, 4, 6, 7, 8]
+
+            @test size(v2(ones(Float32, 1,1,nout(v1),1))) == (1,1,nin(v3)[],1)
+        end
+
+        @testset "Depthwise conv change output size" begin
+            import NaiveNASflux: weights
+            inpt = inputvertex("in", 4, FluxConv{2}())
+            v1 = mutable("v1", Conv((1,1), nout(inpt) => 3), inpt)
+            v2 = mutable("v2", DepthwiseConv((1,1), nout(v1) => 2 * nout(v1)), v1)
+            v3 = mutable("v3", Conv((1,1), nout(v2) => 3), v2)
+
+            graph = CompGraph(inpt, v3)
+            indata = randn(Float32, 1,1,4,1)
+            expout = graph(indata)
+
+            @test Δnout!(v -> 1, v2 => 3 * nin(v1)[])
+            @test [nout(v1)] == nin(v2) == [3]
+            @test [nout(v2)] == nin(v3) == [18]
+            @test lazyouts(v2) == [1, 2, -1, -1, -1, -1, 3, 4, -1, -1, -1, -1, 5, 6, -1, -1, -1, -1] 
+
+            @test graph(indata) == expout
         end
     end
 
