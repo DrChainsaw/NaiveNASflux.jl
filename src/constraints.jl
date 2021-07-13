@@ -152,48 +152,66 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   noutgroups = div(length(select), ningroups)
 
   # select_none_in_group[g] == 1 if we drop group g
+  # TODO: Replace by just sum(select_in_group[g,:]) below?
   select_none_in_group = @variable(model, [1:noutgroups], Bin)
   select_in_group = reshape(select, noutgroups, ningroups)
   @constraint(model, sum(select_in_group, dims=2) .<= 1e6 .* (1 .- select_none_in_group))
-
 
   # Tie selected input indices to selected output indices. If we are to drop any layer output indices, we need to drop the whole group
   # as one whole group is tied to a single element in the output element dimension of the weight array.
   # TODO: Redundant, or at least replace with constraint that all select_in_group[:, j] must be the same (unless select_none_in_group)?
   #   - No, I think it is correct. We have all selects mapped to an inselect except the dropped outgroups?
-  @constraint(model, [i=1:length(select)], inselect[mod1(i, ningroups)] - select[i] + (select_none_in_group[mod1(i, noutgroups)]) * 1e6 >= 0)
-  @constraint(model, [i=1:length(select)], inselect[mod1(i, ningroups)] - select[i] - (select_none_in_group[mod1(i, noutgroups)]) * 1e6 <= 0)
+  @constraint(model, [g=1:noutgroups, i=1:ningroups], inselect[i] - select_in_group[g, i] + (select_none_in_group[g]) * 1e6 >= 0)
+  @constraint(model, [g=1:noutgroups, i=1:ningroups], inselect[i] - select_in_group[g, i] - (select_none_in_group[g]) * 1e6 <= 0)
 
   # This variable handles the constraint that if we add a new input, we need to add noutgroups new outputs
   # Note that for now, it is only connected to the insert variable through the sum constraint below.
-  insert_new_inoutgroups = @variable(model, [1, 1:ningroups], Int)
-  @constraint(model, 0 .<= insert_new_inoutgroups .<= ningroups * maxinsertmultiplier) # maxinsertmultiplier is really not used here, but upper bound should not matter much
+  insert_new_inoutgroups = @variable(model, [1, 1:ningroups], Int, lower_bound=0, upper_bound=ningroups * maxinsertmultiplier)
 
-  # TODO: Are we here constrained to not change the number of noutgroups when adding a new input?
-  #    - If so, consider if the multipliers strategy can be applied here too?
-  @constraint(model,[i=1:length(ininsert)], noutgroups * ininsert[i] == insert_new_inoutgroups[1, i])
+  insize = @expression(model, sum(inselect) + sum(ininsert))
+  outsize = @expression(model, sum(select) + sum(insert))
 
-  # This variable handles the constraint that if we want to increase the output size without changing 
+  # inmultipliers[j] == 1 if nout(v) == j * nin(v)[]
+  inmultipliers = @variable(model, [1:maxinsertmultiplier], Bin)
+  #SOS1 == Only one can be non-zero
+  @constraint(model, inmultipliers in JuMP.SOS1(1:length(inmultipliers)))
+  @constraint(model, sum(inmultipliers) == 1)
+
+  @constraint(model,[i=1:length(ininsert), j=1:length(inmultipliers)], j * ininsert[i] - insert_new_inoutgroups[1, i] + (1-inmultipliers[j]) * 1e6 >= 0)
+  @constraint(model,[i=1:length(ininsert), j=1:length(inmultipliers)], j * ininsert[i] - insert_new_inoutgroups[1, i] - (1-inmultipliers[j]) * 1e6 <= 0)
+
+  @constraint(model, [j=1:length(inmultipliers)], j * insize - outsize + (1-inmultipliers[j]) * 1e6 >= 0)
+  @constraint(model, [j=1:length(inmultipliers)], j * insize - outsize - (1-inmultipliers[j]) * 1e6 <= 0)
+
+  insert_new_inoutgroups_all_inds = vcat(zeros(noutgroups-1,ningroups), insert_new_inoutgroups)
+
+    # This variable handles the constraint that if we want to increase the output size without changing 
   # the input size, we need to insert whole outgroups since all noutgroup outputs are tied to a single 
   # output element in the weight array.
-  insert_new_outgroups = @variable(model, [1:noutgroups, 1:ningroups], Int)
-  @constraint(model, 0 .<= insert_new_outgroups .<= noutgroups * maxinsertmultiplier)
- 
+  insert_new_outgroups = @variable(model, [1:noutgroups, 1:ningroups], Int, lower_bound = 0, upper_bound=noutgroups * maxinsertmultiplier)
+
+  # insert_no_outgroup[g] == 1 if we don't insert a new output group after group g
+  # TODO: Replace by just sum(insert_new_outgroups[g,:]) below?
+  insert_no_outgroup = @variable(model, [1:noutgroups], Bin)
+  @constraint(model, sum(insert_new_outgroups, dims=2) .<= 1e6 .* (1 .- insert_no_outgroup))
+
   # When adding a new output group, all inserts must be identical 
   # If we don't add any, all inserts are just 0
   @constraint(model,[g=1:noutgroups, i=2:ningroups], insert_new_outgroups[g,i] == insert_new_outgroups[g,i-1])
   @constraint(model, [g=1:noutgroups], insert_new_outgroups[g,1] == insert_new_outgroups[g,end])
 
-  # multipliers[j] == 0 if we are inserting j-1 new output groups
+  # multipliers[g,j] == 1 if we are inserting j-1 new output groups after output group g
   multipliers = @variable(model, [1:noutgroups, 1:maxinsertmultiplier], Bin)
-  @constraint(model,[g=1:noutgroups], sum(multipliers[g,:]) == length(multipliers[g,:]) - 1)
+  #SOS1 == Only one can be non-zero
+  @constraint(model,[g=1:noutgroups], multipliers[g,:] in JuMP.SOS1(1:maxinsertmultiplier))
+  @constraint(model,[g=1:noutgroups], sum(multipliers[g,:]) == 1)
 
-  insize = @expression(model, sum(inselect) + sum(ininsert))
-  @constraint(model, [g=1:noutgroups, j=1:maxinsertmultiplier], sum(insert_new_outgroups[g,:]) - (j-1)*insize + multipliers[g,j] * 1e6 >= 0)
-  @constraint(model, [g=1:noutgroups, j=1:maxinsertmultiplier], sum(insert_new_outgroups[g,:]) - (j-1)*insize - multipliers[g,j] * 1e6 <= 0)
+  @constraint(model, [g=1:noutgroups, j=1:maxinsertmultiplier], sum(insert_new_outgroups[g,:]) - sum(insert_new_inoutgroups_all_inds[g,:]) - (j-1)*insize + (1-multipliers[g,j] + insert_no_outgroup[g]) * 1e6 >= 0)
+  @constraint(model, [g=1:noutgroups, j=1:maxinsertmultiplier], sum(insert_new_outgroups[g,:]) - sum(insert_new_inoutgroups_all_inds[g,:]) - (j-1)*insize - (1-multipliers[g,j] + insert_no_outgroup[g]) * 1e6 <= 0)
 
   # Finally, we say what the insers shall be: the sum of inserts from new inputs and new outputs
   # I think this allows for them to be somewhat independent, but there are still cases when they
   # can't change simultaneously. TODO: Check those cases
-  @constraint(model, insert .== reshape(insert_new_outgroups, :) .+ reshape(vcat(zeros(noutgroups-1,ningroups), insert_new_inoutgroups), :))
+  @constraint(model, insert .== reshape(insert_new_outgroups, :) .+ reshape(insert_new_inoutgroups_all_inds,:))
+
 end

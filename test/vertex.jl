@@ -242,10 +242,15 @@ end
 
             @test graph(indata) == expout
 
-            @test Δnout!(v -> 1, v2 => -2)
+            @test Δnout!(v2 => -2) do v
+                v == v2 || return 1
+                return vcat(1:6, -10, -10) # Prefer to drop the last two inds
+            end
             @test [nout(v1)] == nin(v2) == [3]
             @test [nout(v2)] == nin(v3) == [6]
-            @test lazyouts(v2) == [2, 3, 4, 6, 7, 8]
+            @test lazyouts(v2) == 1:6
+
+            @test graph(indata) == expout
 
             @test size(v2(ones(Float32, 1,1,nout(v1),1))) == (1,1,nin(v3)[],1)
         end
