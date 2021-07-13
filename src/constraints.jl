@@ -1,4 +1,25 @@
 
+"""
+  
+  DepthWiseAllowNinChangeStrategy(newoutputsmax::Integer, multipliersmax::Integer, base, [fallback])  
+  DepthWiseAllowNinChangeStrategy(allowed_new_outgroups::AbstractVector{<:Integer}, allowed_multipliers::AbstractVector{<:Integer}, base, [fallback])
+  
+`DecoratingJuMPΔSizeStrategy` which allows both nin and nout of `DepthwiseConv` layers to change independently.
+
+Might cause optimization to take very long time so use with care! Use [`DepthWiseSimpleΔSizeStrategy`](@ref)
+if `DepthWiseAllowNinChangeStrategy` takes too long.
+
+The elements of `allowed_new_outgroups` determine how many extra elements in the output dimension of the weight 
+shall be tried for each existing output element. For example, for a `DepthwiseConv((k1,k2), nin=>nout))` there 
+are `nout / nin` elements in the output dimension. With `allowed_new_outgroups = 0:3` it is allowed to insert
+0, 1, 2 or 3 new elements in the output dimension between each already existing element (so with `nout / nin` 
+elements the maximum increase is `3 * nout / nin`). 
+
+The elements of `allowed_multipliers` determine the total number of allowed output elements, i.e the allowed 
+ratios of `nout / nin`.
+
+If `fallback` is not provided, it will be derived from `base`.
+"""
 struct DepthWiseAllowNinChangeStrategy{S,F} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
   allowed_new_outgroups::Vector{Int}
   allowed_multipliers::Vector{Int}
@@ -19,6 +40,13 @@ end
 NaiveNASlib.base(s::DepthWiseAllowNinChangeStrategy) = s.base
 NaiveNASlib.fallback(s::DepthWiseAllowNinChangeStrategy) = s.fallback
 
+"""
+  DepthWiseSimpleΔSizeStrategy(base, [fallback])
+
+`DecoratingJuMPΔSizeStrategy` which only allows nout of `DepthwiseConv` layers to change.
+
+Use if [`DepthWiseAllowNinChangeStrategy`](@ref) takes too long to solve.
+"""
 struct DepthWiseSimpleΔSizeStrategy{S, F} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
   base::S
   fallback::F
@@ -76,7 +104,7 @@ function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::NaiveNA
   if count(lt -> lt isa FluxDepthwiseConv, layertype.(keys(data.outselectvars))) > 2
     return NaiveNASlib.compconstraint!(case, DepthWiseSimpleΔSizeStrategy(s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
   end
-  return NaiveNASlib.compconstraint!(case, DepthWiseAllowNinChangeStrategy(10,10, s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
+  return NaiveNASlib.compconstraint!(case, DepthWiseAllowNinChangeStrategy(10, 10, s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
 end
 
 function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthWiseSimpleΔSizeStrategy, t::FluxDepthwiseConv, data)
@@ -151,7 +179,7 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   # 1×9 adjoint(::Vector{Float32}) with eltype Float32:
   #  0.315234  0.267166  -0.227757  0.03523  0.0516438  -0.124007  -0.63409  0.0273361  -0.457146
 
-  # Inserting zeros instead of removing makes it easier to see the effect.
+  # Inserting zeros instead of adding/removing just as it is less verbose to do so.
   # dc.weight[:,:,:,2] .= 0;
 
   # reshape(dc(indata),:)'
@@ -181,7 +209,7 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   # One thing which makes this a bit tricky is that while noutgruops and ningroups can change
   # we are here stuck with the select and insert arrays that correspond to the original sizes
   # As such, keep in mind that noutgroups and ningroups in this function always relate to the
-  # arrays of JuMP variables that we have right now.  
+  # lengths of the arrays of JuMP variables that we have right now.  
 
   noutgroups = div(length(select), ningroups)
 
