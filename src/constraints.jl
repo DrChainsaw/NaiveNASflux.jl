@@ -19,23 +19,32 @@ end
 NaiveNASlib.base(s::DepthWiseAllowNinChangeStrategy) = s.base
 NaiveNASlib.fallback(s::DepthWiseAllowNinChangeStrategy) = s.fallback
 
-recurse_fallback(f, s::NaiveNASlib.AbstractJuMPΔSizeStrategy) = f(NaiveNASlib.fallback(s))
+struct DepthWiseSimpleΔSizeStrategy{S, F} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
+  base::S
+  fallback::F
+end
+DepthWiseSimpleΔSizeStrategy(base) = DepthWiseSimpleΔSizeStrategy(base, recurse_fallback(DepthWiseSimpleΔSizeStrategy, base))
+NaiveNASlib.base(s::DepthWiseSimpleΔSizeStrategy) = s.base
+NaiveNASlib.fallback(s::DepthWiseSimpleΔSizeStrategy) = s.fallback
+
+recurse_fallback(f, s::NaiveNASlib.AbstractJuMPΔSizeStrategy) = wrap_fallback(f, NaiveNASlib.fallback(s))
 recurse_fallback(f, s::NaiveNASlib.DefaultJuMPΔSizeStrategy) = s
 recurse_fallback(f, s::NaiveNASlib.ThrowΔSizeFailError) = s
 recurse_fallback(f, s::NaiveNASlib.ΔSizeFailNoOp) = s
 recurse_fallback(f, s::NaiveNASlib.LogΔSizeExec) = NaiveNASlib.LogΔSizeExec(s.msgfun, s.level, f(s.andthen))
 
-
-struct DepthWiseSimpleΔSizeStrategy{S, F} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
-  base::S
-  fallback::F
-end
-DepthWiseSimpleΔSizeStrategy(base) = DepthWiseSimpleΔSizeStrategy(base, fallback(base))
-NaiveNASlib.base(s::DepthWiseSimpleΔSizeStrategy) = s.base
+wrap_fallback(f, s) = f(s)
+wrap_fallback(f, s::NaiveNASlib.LogΔSizeExec) = NaiveNASlib.LogΔSizeExec(s.msgfun, s.level, f(s.andthen))
 
 
 function NaiveNASlib.compconstraint!(case, s, ::FluxLayer, data) end
-NaiveNASlib.compconstraint!(case, s::NaiveNASlib.DecoratingJuMPΔSizeStrategy, lt::FluxLayer, data) = NaiveNASlib.compconstraint!(case, NaiveNASlib.base(s), lt, data)
+function NaiveNASlib.compconstraint!(case, s::NaiveNASlib.DecoratingJuMPΔSizeStrategy, lt::FluxLayer, data) 
+   NaiveNASlib.compconstraint!(case, NaiveNASlib.base(s), lt, data)
+end
+# To avoid ambiguity
+function NaiveNASlib.compconstraint!(case::NaiveNASlib.ScalarSize, s::NaiveNASlib.DecoratingJuMPΔSizeStrategy, lt::FluxDepthwiseConv, data)
+  NaiveNASlib.compconstraint!(case, NaiveNASlib.base(s), lt, data)
+end
 function NaiveNASlib.compconstraint!(::NaiveNASlib.ScalarSize, ::NaiveNASlib.AbstractJuMPΔSizeStrategy, ::FluxDepthwiseConv, data)
 
   # Add constraint that nout(l) == n * nin(l) where n is integer

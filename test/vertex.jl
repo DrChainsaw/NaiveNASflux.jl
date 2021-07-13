@@ -172,6 +172,23 @@ end
                 failstrat = DepthWiseAllowNinChangeStrategy([10], [0], ΔNout(dc => 2))
                 @test_logs (:warn, r"Could not change nout of dc") @test_throws NaiveNASlib.ΔSizeFailError Δsize!(failstrat, dc)
             end
+
+            @testset "DepthWiseSimpleΔSizeStrategy" begin
+                import NaiveNASflux: DepthWiseSimpleΔSizeStrategy
+                import NaiveNASlib: ΔNout
+                inpt = inputvertex("in", 2, FluxConv{2}())
+                dc = mutable("dc", DepthwiseConv((1,1), nout(inpt) => 3*nout(inpt)), inpt)
+                
+                okstrat = DepthWiseSimpleΔSizeStrategy(ΔNout(dc => 2))
+                @test Δsize!(okstrat, dc)
+                @test nout(dc) == 8
+                @test nin(dc) == [2]
+
+                failstrat = DepthWiseSimpleΔSizeStrategy(ΔNout(dc => 3))
+                @test_logs (:warn, r"Could not change nout of dc") Δsize!(failstrat, dc)
+                @test nout(dc) == 10
+                @test nin(dc) == [2]
+            end
         end
 
         @testset "DepthwiseConv groupsize 2 into groupsize 1" begin
