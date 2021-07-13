@@ -241,7 +241,7 @@ end
             @test [nout(dc2)] == nin(dc3) == [96]
 
             @test lazyins(dc1) == [1:nout(inpt)]
-                        # NaiveNASlib might not pick non-new indices (i.e not -1) due to our artificial weight function above
+            # NaiveNASlib might not pick non-new indices (i.e not -1) due to our artificial weight function above
             # default neuron value function would give zero value to new neurons 
             @test [lazyouts(dc1)] == lazyins(dc2) == [[2, 3, -1, 5, 6, -1, 8, 9, -1, 11, 12, -1]]
 

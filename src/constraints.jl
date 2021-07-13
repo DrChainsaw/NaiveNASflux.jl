@@ -101,10 +101,31 @@ end
 function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::NaiveNASlib.AbstractJuMPΔSizeStrategy, t::FluxDepthwiseConv, data)
   # Fallbacks don't matter here since we won't call it from below here, just add default so we don't accidentally crash due to some
   # strategy which hasn't defined a fallback
-  if count(lt -> lt isa FluxDepthwiseConv, layertype.(keys(data.outselectvars))) > 2
+  if 15 < sum(keys(data.outselectvars)) do v
+      layertype(v) isa FluxDepthwiseConv || return 0
+      return log2(nout(v)) # Very roughly determined...
+  end
     return NaiveNASlib.compconstraint!(case, DepthWiseSimpleΔSizeStrategy(s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
   end
   return NaiveNASlib.compconstraint!(case, DepthWiseAllowNinChangeStrategy(10, 10, s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
+  #=
+  For benchmarking:
+    function timedwc(ds, ws)
+      for w in ws
+        for d in ds
+          iv = inputvertex("in", w, FluxConv{2}())
+          dv = reduce((v, i) -> mutable("dv$i", DepthwiseConv((1,1), nout(v) => fld1(i, 3) * nout(v)), v), 1:d; init=iv)   
+          metric = sum(NaiveNASlib.flatten(dv)) do v
+            layertype(v) isa FluxDepthwiseConv || return 0
+            return log2(nout(v))
+          end
+          res = @timed Δnout!(outputs(iv)[1] => w)
+          println((width=w, depth = d, metric=metric, time=res.time))
+          res.time < 5 || break
+        end
+      end
+    end
+  =#
 end
 
 function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthWiseSimpleΔSizeStrategy, t::FluxDepthwiseConv, data)
