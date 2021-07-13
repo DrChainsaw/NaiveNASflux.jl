@@ -8,7 +8,7 @@ using Statistics
 using Setfield
 using LinearAlgebra
 import InteractiveUtils: subtypes
-import JuMP: @variable, @constraint, @expression
+import JuMP: @variable, @constraint, @expression, SOS1
 
 export FluxLayer, FluxParLayer, FluxDense, FluxRecurrent, FluxRnn, FluxGru, FluxLstm, FluxConvolutional, FluxConv, FluxConvTranspose, FluxDepthwiseConv, FluxCrossCor, FluxTransparentLayer, FluxParInvLayer, FluxDiagonal, FluxLayerNorm, FluxParNorm, FluxBatchNorm, FluxInstanceNorm, FluxGroupNorm, FluxNoParLayer
 

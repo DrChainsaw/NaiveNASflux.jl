@@ -156,6 +156,22 @@ end
                 NaiveNASflux.mutate(mdc, inputs=lazyins(dc)[1], outputs=lazyouts(dc), insert=(args...) -> (args...) -> 0)
                 @test reshape(mdc(fill(10f0, (1,1,3,1))), :) == [101,303,404,505,0,0,108,310,411,512,0,0,115,317,418,519,0,0]
             end
+
+            @testset "DepthWiseAllowNinChangeStrategy" begin
+                import NaiveNASflux: DepthWiseAllowNinChangeStrategy
+                import NaiveNASlib: ΔNout
+                inpt = inputvertex("in", 2, FluxConv{2}())
+                dc = mutable("dc", DepthwiseConv((1,1), nout(inpt) => 3*nout(inpt)), inpt)
+                
+                # Get output multiplier == 4 (nout = 4 * nin) by adding one more outgroup (4 = 3 + 1)
+                okstrat = DepthWiseAllowNinChangeStrategy([1], [4], ΔNout(dc => 2))
+                @test Δsize!(okstrat, dc)
+                @test nout(dc) == 8
+                @test nin(dc) == [2]
+
+                failstrat = DepthWiseAllowNinChangeStrategy([10], [0], ΔNout(dc => 2))
+                @test_logs (:warn, r"Could not change nout of dc") @test_throws NaiveNASlib.ΔSizeFailError Δsize!(failstrat, dc)
+            end
         end
 
         @testset "DepthwiseConv groupsize 2 into groupsize 1" begin
@@ -270,6 +286,16 @@ end
             @test [nout(v1)] == nin(v2) == [3]
             @test [nout(v2)] == nin(v3) == [18]
             @test lazyouts(v2) == [1, 2, -1, -1, -1, -1, 3, 4, -1, -1, -1, -1, 5, 6, -1, -1, -1, -1] 
+
+            @test graph(indata) == expout
+
+            @test Δnout!(v2 => -6) do v
+                v == v2 || return 1
+                repeat(vcat(ones(4), -1, -1), 3)
+            end
+            @test [nout(v1)] == nin(v2) == [3]
+            @test [nout(v2)] == nin(v3) == [12]
+            @test lazyouts(v2) ==  [1, 2, 3, 4, 7, 8, 9, 10, 13, 14, 15, 16]
 
             @test graph(indata) == expout
         end

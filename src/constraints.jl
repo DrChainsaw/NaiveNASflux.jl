@@ -1,13 +1,36 @@
 
-struct DepthWiseAllowNinChangeStrategy{S} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
-  maxinsertmultiplier::Int
+struct DepthWiseAllowNinChangeStrategy{S,F} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
+  allowed_new_outgroups::Vector{Int}
+  allowed_multipliers::Vector{Int}
   base::S
+  fallback::F
 end
-NaiveNASlib.base(s::DepthWiseAllowNinChangeStrategy) = s.base
+DepthWiseAllowNinChangeStrategy(newoutputsmax::Integer, multipliersmax::Integer,base,fb...) = DepthWiseAllowNinChangeStrategy(0:newoutputsmax, 1:multipliersmax, base, fb...)
 
-struct DepthWiseSimpleΔSizeStrategy{S} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
-  base::S
+
+function DepthWiseAllowNinChangeStrategy(
+  allowed_new_outgroups::AbstractVector{<:Integer},
+  allowed_multipliers::AbstractVector{<:Integer}, 
+  base, fb= recurse_fallback(s -> DepthWiseAllowNinChangeStrategy(allowed_new_outgroups, allowed_multipliers, s), base)) 
+  return DepthWiseAllowNinChangeStrategy(collect(Int, allowed_new_outgroups), collect(Int, allowed_multipliers), base, fb)
 end
+
+
+NaiveNASlib.base(s::DepthWiseAllowNinChangeStrategy) = s.base
+NaiveNASlib.fallback(s::DepthWiseAllowNinChangeStrategy) = s.fallback
+
+recurse_fallback(f, s::NaiveNASlib.AbstractJuMPΔSizeStrategy) = f(NaiveNASlib.fallback(s))
+recurse_fallback(f, s::NaiveNASlib.DefaultJuMPΔSizeStrategy) = s
+recurse_fallback(f, s::NaiveNASlib.ThrowΔSizeFailError) = s
+recurse_fallback(f, s::NaiveNASlib.ΔSizeFailNoOp) = s
+recurse_fallback(f, s::NaiveNASlib.LogΔSizeExec) = NaiveNASlib.LogΔSizeExec(s.msgfun, s.level, f(s.andthen))
+
+
+struct DepthWiseSimpleΔSizeStrategy{S, F} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
+  base::S
+  fallback::F
+end
+DepthWiseSimpleΔSizeStrategy(base) = DepthWiseSimpleΔSizeStrategy(base, fallback(base))
 NaiveNASlib.base(s::DepthWiseSimpleΔSizeStrategy) = s.base
 
 
@@ -39,10 +62,12 @@ function NaiveNASlib.compconstraint!(::NaiveNASlib.ScalarSize, ::NaiveNASlib.Abs
 end
 
 function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::NaiveNASlib.AbstractJuMPΔSizeStrategy, t::FluxDepthwiseConv, data)
+  # Fallbacks don't matter here since we won't call it from below here, just add default so we don't accidentally crash due to some
+  # strategy which hasn't defined a fallback
   if count(lt -> lt isa FluxDepthwiseConv, layertype.(keys(data.outselectvars))) > 2
-    return NaiveNASlib.compconstraint!(case, DepthWiseSimpleΔSizeStrategy(s), t, data)
+    return NaiveNASlib.compconstraint!(case, DepthWiseSimpleΔSizeStrategy(s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
   end
-  return NaiveNASlib.compconstraint!(case, DepthWiseAllowNinChangeStrategy(10, s), t, data)
+  return NaiveNASlib.compconstraint!(case, DepthWiseAllowNinChangeStrategy(10,10, s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
 end
 
 function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthWiseSimpleΔSizeStrategy, t::FluxDepthwiseConv, data)
@@ -91,10 +116,10 @@ function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::DepthWi
 
   #ngroups = div(nout(v), nin(v)[])
   ningroups = nin(v)[]
-  add_depthwise_constraints(model, inselect, ininsert, select, insert, ningroups, s.maxinsertmultiplier)
+  add_depthwise_constraints(model, inselect, ininsert, select, insert, ningroups, s.allowed_new_outgroups, s.allowed_multipliers)
 end
 
-function add_depthwise_constraints(model, inselect, ininsert, select, insert, ningroups, maxinsertmultiplier)
+function add_depthwise_constraints(model, inselect, ininsert, select, insert, ningroups, allowed_new_outgroups, allowed_multipliers)
 
   # ningroups is the number of "input elements" in the weight array, last dimension at the time of writing
   # noutgroups is the number of "output elements" in the weight array, second to last dimension at time of writing
@@ -166,29 +191,29 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
 
   # This variable handles the constraint that if we add a new input, we need to add noutgroups new outputs
   # Note that for now, it is only connected to the insert variable through the sum constraint below.
-  insert_new_inoutgroups = @variable(model, [1, 1:ningroups], Int, lower_bound=0, upper_bound=ningroups * maxinsertmultiplier)
+  insert_new_inoutgroups = @variable(model, [1, 1:ningroups], Int, lower_bound=0, upper_bound=ningroups * maximum(allowed_multipliers))
 
   insize = @expression(model, sum(inselect) + sum(ininsert))
   outsize = @expression(model, sum(select) + sum(insert))
 
-  # inmultipliers[j] == 1 if nout(v) == j * nin(v)[]
-  inmultipliers = @variable(model, [1:maxinsertmultiplier], Bin)
+  # inmultipliers[j] == 1 if nout(v) == allowed_multipliers[j] * nin(v)[]
+  inmultipliers = @variable(model, [1:length(allowed_multipliers)], Bin)
   #SOS1 == Only one can be non-zero
-  @constraint(model, inmultipliers in JuMP.SOS1(1:length(inmultipliers)))
+  @constraint(model, inmultipliers in SOS1(1:length(inmultipliers)))
   @constraint(model, sum(inmultipliers) == 1)
 
-  @constraint(model,[i=1:length(ininsert), j=1:length(inmultipliers)], j * ininsert[i] - insert_new_inoutgroups[1, i] + (1-inmultipliers[j]) * 1e6 >= 0)
-  @constraint(model,[i=1:length(ininsert), j=1:length(inmultipliers)], j * ininsert[i] - insert_new_inoutgroups[1, i] - (1-inmultipliers[j]) * 1e6 <= 0)
+  @constraint(model,[i=1:length(ininsert), j=1:length(inmultipliers)], allowed_multipliers[j] * ininsert[i] - insert_new_inoutgroups[1, i] + (1-inmultipliers[j]) * 1e6 >= 0)
+  @constraint(model,[i=1:length(ininsert), j=1:length(inmultipliers)], allowed_multipliers[j] * ininsert[i] - insert_new_inoutgroups[1, i] - (1-inmultipliers[j]) * 1e6 <= 0)
 
-  @constraint(model, [j=1:length(inmultipliers)], j * insize - outsize + (1-inmultipliers[j]) * 1e6 >= 0)
-  @constraint(model, [j=1:length(inmultipliers)], j * insize - outsize - (1-inmultipliers[j]) * 1e6 <= 0)
+  @constraint(model, [j=1:length(inmultipliers)], allowed_multipliers[j] * insize - outsize + (1-inmultipliers[j]) * 1e6 >= 0)
+  @constraint(model, [j=1:length(inmultipliers)], allowed_multipliers[j] * insize - outsize - (1-inmultipliers[j]) * 1e6 <= 0)
 
   insert_new_inoutgroups_all_inds = vcat(zeros(noutgroups-1,ningroups), insert_new_inoutgroups)
 
-    # This variable handles the constraint that if we want to increase the output size without changing 
+  # This variable handles the constraint that if we want to increase the output size without changing 
   # the input size, we need to insert whole outgroups since all noutgroup outputs are tied to a single 
   # output element in the weight array.
-  insert_new_outgroups = @variable(model, [1:noutgroups, 1:ningroups], Int, lower_bound = 0, upper_bound=noutgroups * maxinsertmultiplier)
+  insert_new_outgroups = @variable(model, [1:noutgroups, 1:ningroups], Int, lower_bound = 0, upper_bound=noutgroups * maximum(allowed_new_outgroups))
 
   # insert_no_outgroup[g] == 1 if we don't insert a new output group after group g
   # TODO: Replace by just sum(insert_new_outgroups[g,:]) below?
@@ -200,14 +225,16 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   @constraint(model,[g=1:noutgroups, i=2:ningroups], insert_new_outgroups[g,i] == insert_new_outgroups[g,i-1])
   @constraint(model, [g=1:noutgroups], insert_new_outgroups[g,1] == insert_new_outgroups[g,end])
 
-  # multipliers[g,j] == 1 if we are inserting j-1 new output groups after output group g
-  multipliers = @variable(model, [1:noutgroups, 1:maxinsertmultiplier], Bin)
+  # new_outgroup[g,j] == 1 if we are inserting allowed_new_outgroups[j] new output groups after output group g
+  noutmults = 1:length(allowed_new_outgroups)
+  new_outgroup = @variable(model, [1:noutgroups, noutmults], Bin)
   #SOS1 == Only one can be non-zero
-  @constraint(model,[g=1:noutgroups], multipliers[g,:] in JuMP.SOS1(1:maxinsertmultiplier))
-  @constraint(model,[g=1:noutgroups], sum(multipliers[g,:]) == 1)
+  @constraint(model,[g=1:noutgroups], new_outgroup[g,:] in SOS1(1:length(allowed_new_outgroups)))
+  @constraint(model,[g=1:noutgroups], sum(new_outgroup[g,:]) == 1)
 
-  @constraint(model, [g=1:noutgroups, j=1:maxinsertmultiplier], sum(insert_new_outgroups[g,:]) - sum(insert_new_inoutgroups_all_inds[g,:]) - (j-1)*insize + (1-multipliers[g,j] + insert_no_outgroup[g]) * 1e6 >= 0)
-  @constraint(model, [g=1:noutgroups, j=1:maxinsertmultiplier], sum(insert_new_outgroups[g,:]) - sum(insert_new_inoutgroups_all_inds[g,:]) - (j-1)*insize - (1-multipliers[g,j] + insert_no_outgroup[g]) * 1e6 <= 0)
+  groupsum = @expression(model, [g=1:noutgroups], sum(insert_new_outgroups[g,:]) - sum(insert_new_inoutgroups_all_inds[g,:]))
+  @constraint(model, [g=1:noutgroups, j=noutmults], groupsum[g] - allowed_new_outgroups[j]*insize + (1-new_outgroup[g,j] + insert_no_outgroup[g]) * 1e6 >= 0)
+  @constraint(model, [g=1:noutgroups, j=noutmults], groupsum[g] - allowed_new_outgroups[j]*insize - (1-new_outgroup[g,j] + insert_no_outgroup[g]) * 1e6 <= 0)
 
   # Finally, we say what the insers shall be: the sum of inserts from new inputs and new outputs
   # I think this allows for them to be somewhat independent, but there are still cases when they
