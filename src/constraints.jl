@@ -232,20 +232,19 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   # As such, keep in mind that noutgroups and ningroups in this function always relate to the
   # lengths of the arrays of JuMP variables that we have right now.  
 
+  M = 1e6
   noutgroups = div(length(select), ningroups)
-
+  
   # select_none_in_group[g] == 1 if we drop group g
   # TODO: Replace by just sum(select_in_group[g,:]) below?
   select_none_in_group = @variable(model, [1:noutgroups], Bin)
   select_in_group = reshape(select, noutgroups, ningroups)
-  @constraint(model, sum(select_in_group, dims=2) .<= 1e6 .* (1 .- select_none_in_group))
+  @constraint(model, sum(select_in_group, dims=2) .<= M .* (1 .- select_none_in_group))
 
   # Tie selected input indices to selected output indices. If we are to drop any layer output indices, we need to drop the whole group
   # as one whole group is tied to a single element in the output element dimension of the weight array.
-  # TODO: Redundant, or at least replace with constraint that all select_in_group[:, j] must be the same (unless select_none_in_group)?
-  #   - No, I think it is correct. We have all selects mapped to an inselect except the dropped outgroups?
-  @constraint(model, [g=1:noutgroups, i=1:ningroups], inselect[i] - select_in_group[g, i] + (select_none_in_group[g]) * 1e6 >= 0)
-  @constraint(model, [g=1:noutgroups, i=1:ningroups], inselect[i] - select_in_group[g, i] - (select_none_in_group[g]) * 1e6 <= 0)
+  @constraint(model, [g=1:noutgroups, i=1:ningroups], inselect[i] - select_in_group[g, i] + select_none_in_group[g] * M >= 0)
+  @constraint(model, [g=1:noutgroups, i=1:ningroups], inselect[i] - select_in_group[g, i] - select_none_in_group[g] * M <= 0)
 
   # This variable handles the constraint that if we add a new input, we need to add noutgroups new outputs
   # Note that for now, it is only connected to the insert variable through the sum constraint below.
@@ -260,11 +259,11 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   @constraint(model, inmultipliers in SOS1(1:length(inmultipliers)))
   @constraint(model, sum(inmultipliers) == 1)
 
-  @constraint(model,[i=1:length(ininsert), j=1:length(inmultipliers)], allowed_multipliers[j] * ininsert[i] - insert_new_inoutgroups[1, i] + (1-inmultipliers[j]) * 1e6 >= 0)
-  @constraint(model,[i=1:length(ininsert), j=1:length(inmultipliers)], allowed_multipliers[j] * ininsert[i] - insert_new_inoutgroups[1, i] - (1-inmultipliers[j]) * 1e6 <= 0)
+  @constraint(model,[i=1:length(ininsert), j=1:length(inmultipliers)], allowed_multipliers[j] * ininsert[i] - insert_new_inoutgroups[1, i] + (1-inmultipliers[j]) * M >= 0)
+  @constraint(model,[i=1:length(ininsert), j=1:length(inmultipliers)], allowed_multipliers[j] * ininsert[i] - insert_new_inoutgroups[1, i] - (1-inmultipliers[j]) * M <= 0)
 
-  @constraint(model, [j=1:length(inmultipliers)], allowed_multipliers[j] * insize - outsize + (1-inmultipliers[j]) * 1e6 >= 0)
-  @constraint(model, [j=1:length(inmultipliers)], allowed_multipliers[j] * insize - outsize - (1-inmultipliers[j]) * 1e6 <= 0)
+  @constraint(model, [j=1:length(inmultipliers)], allowed_multipliers[j] * insize - outsize + (1-inmultipliers[j]) * M >= 0)
+  @constraint(model, [j=1:length(inmultipliers)], allowed_multipliers[j] * insize - outsize - (1-inmultipliers[j]) * M <= 0)
 
   insert_new_inoutgroups_all_inds = vcat(zeros(noutgroups-1,ningroups), insert_new_inoutgroups)
 
@@ -276,7 +275,7 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   # insert_no_outgroup[g] == 1 if we don't insert a new output group after group g
   # TODO: Replace by just sum(insert_new_outgroups[g,:]) below?
   insert_no_outgroup = @variable(model, [1:noutgroups], Bin)
-  @constraint(model, sum(insert_new_outgroups, dims=2) .<= 1e6 .* (1 .- insert_no_outgroup))
+  @constraint(model, sum(insert_new_outgroups, dims=2) .<= M .* (1 .- insert_no_outgroup))
 
   # When adding a new output group, all inserts must be identical 
   # If we don't add any, all inserts are just 0
@@ -291,8 +290,8 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   @constraint(model,[g=1:noutgroups], sum(new_outgroup[g,:]) == 1)
 
   groupsum = @expression(model, [g=1:noutgroups], sum(insert_new_outgroups[g,:]) - sum(insert_new_inoutgroups_all_inds[g,:]))
-  @constraint(model, [g=1:noutgroups, j=noutmults], groupsum[g] - allowed_new_outgroups[j]*insize + (1-new_outgroup[g,j] + insert_no_outgroup[g]) * 1e6 >= 0)
-  @constraint(model, [g=1:noutgroups, j=noutmults], groupsum[g] - allowed_new_outgroups[j]*insize - (1-new_outgroup[g,j] + insert_no_outgroup[g]) * 1e6 <= 0)
+  @constraint(model, [g=1:noutgroups, j=noutmults], groupsum[g] - allowed_new_outgroups[j]*insize + (1-new_outgroup[g,j] + insert_no_outgroup[g]) * M >= 0)
+  @constraint(model, [g=1:noutgroups, j=noutmults], groupsum[g] - allowed_new_outgroups[j]*insize - (1-new_outgroup[g,j] + insert_no_outgroup[g]) * M <= 0)
 
   # Finally, we say what the insers shall be: the sum of inserts from new inputs and new outputs
   # I think this allows for them to be somewhat independent, but there are still cases when they
