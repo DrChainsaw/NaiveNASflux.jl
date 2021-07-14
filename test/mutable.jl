@@ -163,11 +163,11 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             @test m(input) == m.layer(input)
 
             @testset "Select params" begin
-                inputs = [1, 3]
+                wins = [1, 3]
                 wouts = [1, 2, 5, 6]
-                outputs = mapfoldl(i -> 2 * i .+ [-1, -0] ,vcat, wouts)
-                Wexp, bexp = weights(m.layer)[:,:,wouts,inputs], bias(m.layer)[outputs]
-                NaiveNASlib.Δsize!(m, [inputs], outputs)
+                outputs = mapreduce(i -> wouts .+ (i-1) .* 6, vcat, wins)
+                Wexp, bexp = weights(m.layer)[:,:,wouts,wins], bias(m.layer)[outputs]
+                NaiveNASlib.Δsize!(m, [wins], outputs)
                 assertlayer(m.layer, Wexp, bexp)
                 @test size(m(ones(Float32, 3,3,2,2)))[3:4] == (8, 2)
             end
@@ -508,12 +508,12 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
             input = reshape(collect(Float32, 1:3*3*3), 3, 3, 3, 1)
             @test m(input) == layer(m)(input)
 
-            ins = [1, 3]
+            wins = [1, 3]
             wouts = [1, 2, 5, 6]
-            outs = mapfoldl(i -> 2 * i .+ [-1, -0] ,vcat, wouts)
-            Wexp, bexp = weights(layer(m))[:,:,wouts,ins], bias(layer(m))[outs]
+            outs = mapreduce(i -> wouts .+ (i-1) .* 6, vcat, wins)
+            Wexp, bexp = weights(layer(m))[:,:,wouts,wins], bias(layer(m))[outs]
 
-            NaiveNASlib.Δsize!(m, [ins], outs)
+            NaiveNASlib.Δsize!(m, [wins], outs)
             @test size(m(ones(Float32, 3,3,2,2)))[3:4] == (8, 2)
 
             assertlayer(layer(m), Wexp, bexp)
