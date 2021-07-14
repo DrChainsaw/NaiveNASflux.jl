@@ -74,6 +74,9 @@ neuroninsert(lt::FluxParNorm, t::Val) = norminsert(lt, t)
 norminsert(::FluxParNorm, ::Union{Val{:β},Val{:μ}}) = (args...) -> 0
 norminsert(::FluxParNorm, ::Union{Val{:γ},Val{:σ²}}) = (args...) -> 1
 
+# Coupling between input and output weights make it difficult to do anything else?
+neuroninsert(::FluxDepthwiseConv, partype) = (args...) -> 0
+
 randoutzeroin(T, d, s...) = _randoutzeroin(T,d,s)
 _randoutzeroin(T, d, s) = 0
 _randoutzeroin(T, d, s::NTuple{2, Int}) = d == indim(FluxDense()) ? 0 : randn(T, s) ./ prod(s)

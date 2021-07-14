@@ -76,7 +76,7 @@ function mutate(lt::FluxDepthwiseConv{N}, m::MutableLayer; inputs=1:nin(m)[], ou
 
     # inputs and outputs are coupled through the constraints (which hopefully were enforced) so we only need to consider outputs
     currsize =size(weights(l))
-    wo = select(reshape(weights(l), currsize[1:N]...,:), N+1 => outputs, otherdims...; newfun=(args...) -> 0)
+    wo = select(reshape(weights(l), currsize[1:N]...,:), N+1 => outputs, otherdims...; newfun=insert(lt, WeightParam()))
     newks = size(wo)[1:N]
     w = collect(reshape(wo, newks...,ngroups, :))
     b = select(bias(l), 1 => outputs; newfun=insert(lt, BiasParam()))
