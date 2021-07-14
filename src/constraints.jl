@@ -1,13 +1,13 @@
 
 """
   
-  DepthWiseAllowNinChangeStrategy(newoutputsmax::Integer, multipliersmax::Integer, base, [fallback])  
-  DepthWiseAllowNinChangeStrategy(allowed_new_outgroups::AbstractVector{<:Integer}, allowed_multipliers::AbstractVector{<:Integer}, base, [fallback])
+  DepthwiseConvAllowNinChangeStrategy(newoutputsmax::Integer, multipliersmax::Integer, base, [fallback])  
+  DepthwiseConvAllowNinChangeStrategy(allowed_new_outgroups::AbstractVector{<:Integer}, allowed_multipliers::AbstractVector{<:Integer}, base, [fallback])
   
 `DecoratingJuMPΔSizeStrategy` which allows both nin and nout of `DepthwiseConv` layers to change independently.
 
-Might cause optimization to take very long time so use with care! Use [`DepthWiseSimpleΔSizeStrategy`](@ref)
-if `DepthWiseAllowNinChangeStrategy` takes too long.
+Might cause optimization to take very long time so use with care! Use [`DepthwiseConvSimpleΔSizeStrategy`](@ref)
+if `DepthwiseConvAllowNinChangeStrategy` takes too long.
 
 The elements of `allowed_new_outgroups` determine how many extra elements in the output dimension of the weight 
 shall be tried for each existing output element. For example, for a `DepthwiseConv((k1,k2), nin=>nout))` there 
@@ -20,40 +20,51 @@ ratios of `nout / nin`.
 
 If `fallback` is not provided, it will be derived from `base`.
 """
-struct DepthWiseAllowNinChangeStrategy{S,F} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
+struct DepthwiseConvAllowNinChangeStrategy{S,F} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
   allowed_new_outgroups::Vector{Int}
   allowed_multipliers::Vector{Int}
   base::S
   fallback::F
 end
-DepthWiseAllowNinChangeStrategy(newoutputsmax::Integer, multipliersmax::Integer,base,fb...) = DepthWiseAllowNinChangeStrategy(0:newoutputsmax, 1:multipliersmax, base, fb...)
+DepthwiseConvAllowNinChangeStrategy(newoutputsmax::Integer, multipliersmax::Integer,base,fb...) = DepthwiseConvAllowNinChangeStrategy(0:newoutputsmax, 1:multipliersmax, base, fb...)
 
 
-function DepthWiseAllowNinChangeStrategy(
+function DepthwiseConvAllowNinChangeStrategy(
   allowed_new_outgroups::AbstractVector{<:Integer},
   allowed_multipliers::AbstractVector{<:Integer}, 
-  base, fb= recurse_fallback(s -> DepthWiseAllowNinChangeStrategy(allowed_new_outgroups, allowed_multipliers, s), base)) 
-  return DepthWiseAllowNinChangeStrategy(collect(Int, allowed_new_outgroups), collect(Int, allowed_multipliers), base, fb)
+  base, fb= recurse_fallback(s -> DepthwiseConvAllowNinChangeStrategy(allowed_new_outgroups, allowed_multipliers, s), base)) 
+  return DepthwiseConvAllowNinChangeStrategy(collect(Int, allowed_new_outgroups), collect(Int, allowed_multipliers), base, fb)
 end
 
 
-NaiveNASlib.base(s::DepthWiseAllowNinChangeStrategy) = s.base
-NaiveNASlib.fallback(s::DepthWiseAllowNinChangeStrategy) = s.fallback
+NaiveNASlib.base(s::DepthwiseConvAllowNinChangeStrategy) = s.base
+NaiveNASlib.fallback(s::DepthwiseConvAllowNinChangeStrategy) = s.fallback
 
 """
-  DepthWiseSimpleΔSizeStrategy(base, [fallback])
+  DepthwiseConvSimpleΔSizeStrategy(base, [fallback])
 
 `DecoratingJuMPΔSizeStrategy` which only allows nout of `DepthwiseConv` layers to change.
 
-Use if [`DepthWiseAllowNinChangeStrategy`](@ref) takes too long to solve.
+Use if [`DepthwiseConvAllowNinChangeStrategy`](@ref) takes too long to solve.
+
+The elements of `allowed_multipliers` determine the total number of allowed output elements, i.e the allowed 
+ratios of `nout / nin`.
+
+If `fallback` is not provided, it will be derived from `base`.
 """
-struct DepthWiseSimpleΔSizeStrategy{S, F} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
+struct DepthwiseConvSimpleΔSizeStrategy{S, F} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
+  allowed_multipliers::Vector{Int}
   base::S
   fallback::F
 end
-DepthWiseSimpleΔSizeStrategy(base) = DepthWiseSimpleΔSizeStrategy(base, recurse_fallback(DepthWiseSimpleΔSizeStrategy, base))
-NaiveNASlib.base(s::DepthWiseSimpleΔSizeStrategy) = s.base
-NaiveNASlib.fallback(s::DepthWiseSimpleΔSizeStrategy) = s.fallback
+
+DepthwiseConvSimpleΔSizeStrategy(maxms::Integer, base, fb...) = DepthwiseConvSimpleΔSizeStrategy(1:maxms, base, fb...)
+function DepthwiseConvSimpleΔSizeStrategy(ms::AbstractVector{<:Integer}, base, fb=recurse_fallback(s -> DepthwiseConvSimpleΔSizeStrategy(ms, s), base)) 
+  return DepthwiseConvSimpleΔSizeStrategy(collect(Int, ms), base, fb)
+end
+NaiveNASlib.base(s::DepthwiseConvSimpleΔSizeStrategy) = s.base
+NaiveNASlib.fallback(s::DepthwiseConvSimpleΔSizeStrategy) = s.fallback
+
 
 recurse_fallback(f, s::NaiveNASlib.AbstractJuMPΔSizeStrategy) = wrap_fallback(f, NaiveNASlib.fallback(s))
 recurse_fallback(f, s::NaiveNASlib.DefaultJuMPΔSizeStrategy) = s
@@ -73,7 +84,7 @@ end
 function NaiveNASlib.compconstraint!(case::NaiveNASlib.ScalarSize, s::NaiveNASlib.DecoratingJuMPΔSizeStrategy, lt::FluxDepthwiseConv, data)
   NaiveNASlib.compconstraint!(case, NaiveNASlib.base(s), lt, data)
 end
-function NaiveNASlib.compconstraint!(::NaiveNASlib.ScalarSize, ::NaiveNASlib.AbstractJuMPΔSizeStrategy, ::FluxDepthwiseConv, data)
+function NaiveNASlib.compconstraint!(::NaiveNASlib.ScalarSize, s::NaiveNASlib.AbstractJuMPΔSizeStrategy, ::FluxDepthwiseConv, data, ms=allowed_multipliers(s))
 
   # Add constraint that nout(l) == n * nin(l) where n is integer
   ins = filter(vin -> vin in keys(data.noutdict), inputs(data.vertex))
@@ -81,13 +92,13 @@ function NaiveNASlib.compconstraint!(::NaiveNASlib.ScalarSize, ::NaiveNASlib.Abs
    # "data.noutdict[data.vertex] == data.noutdict[ins[i]] * x" where x is an integer variable is not linear
    # Instead we use the good old big-M strategy to set up a series of "or" constraints (exactly one of them must be true).
    # This is combined with the abs value formulation to force equality.
-   # multiplier[j] is false if and only if data.noutdict[data.vertex] == j*data.noutdict[ins[i]]
+   # multiplier[j] is false if and only if data.noutdict[data.vertex] == ms[j]*data.noutdict[ins[i]]
    # all but one of multiplier must be true
    # Each constraint below is trivially true if multiplier[j] is true since 1e6 is way bigger than the difference between the two variables 
-  multipliers = @variable(data.model, [1:10], Bin)
+  multipliers = @variable(data.model, [1:length(ms)], Bin)
   @constraint(data.model, sum(multipliers) == length(multipliers)-1)
-  @constraint(data.model, [i=1:length(ins),j=1:length(multipliers)], data.noutdict[data.vertex] - j*data.noutdict[ins[i]] + multipliers[j] * 1e6 >= 0)
-  @constraint(data.model, [i=1:length(ins),j=1:length(multipliers)], data.noutdict[data.vertex] - j*data.noutdict[ins[i]] - multipliers[j] * 1e6 <= 0)
+  @constraint(data.model, [i=1:length(ins),j=1:length(ms)], data.noutdict[data.vertex] - ms[j]*data.noutdict[ins[i]] + multipliers[j] * 1e6 >= 0)
+  @constraint(data.model, [i=1:length(ins),j=1:length(ms)], data.noutdict[data.vertex] - ms[j]*data.noutdict[ins[i]] - multipliers[j] * 1e6 <= 0)
 
   # Inputs which does not have a variable, possibly because all_in_Δsize_graph did not consider it to be part of the set of vertices which may change
   # We will constrain data.vertex to have integer multiple of its current size
@@ -98,6 +109,11 @@ function NaiveNASlib.compconstraint!(::NaiveNASlib.ScalarSize, ::NaiveNASlib.Abs
   end
 end
 
+allowed_multipliers(s::DepthwiseConvAllowNinChangeStrategy) = s.allowed_multipliers
+allowed_multipliers(s::DepthwiseConvSimpleΔSizeStrategy) = s.allowed_multipliers
+allowed_multipliers(::AbstractJuMPΔSizeStrategy) = 1:10
+
+
 function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::NaiveNASlib.AbstractJuMPΔSizeStrategy, t::FluxDepthwiseConv, data)
   # Fallbacks don't matter here since we won't call it from below here, just add default so we don't accidentally crash due to some
   # strategy which hasn't defined a fallback
@@ -105,9 +121,10 @@ function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::NaiveNA
       layertype(v) isa FluxDepthwiseConv || return 0
       return log2(nout(v)) # Very roughly determined...
   end
-    return NaiveNASlib.compconstraint!(case, DepthWiseSimpleΔSizeStrategy(s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
+    return NaiveNASlib.compconstraint!(case, DepthwiseConvSimpleΔSizeStrategy(10, s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
   end
-  return NaiveNASlib.compconstraint!(case, DepthWiseAllowNinChangeStrategy(10, 10, s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
+  # The number of allowed multipliers can probably be better tuned, perhaps based on current size.
+  return NaiveNASlib.compconstraint!(case, DepthwiseConvAllowNinChangeStrategy(10, 10, s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
   #=
   For benchmarking:
     function timedwc(ds, ws)
@@ -128,7 +145,7 @@ function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::NaiveNA
   =#
 end
 
-function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthWiseSimpleΔSizeStrategy, t::FluxDepthwiseConv, data)
+function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthwiseConvSimpleΔSizeStrategy, t::FluxDepthwiseConv, data)
   model = data.model
   v = data.vertex
   select = data.outselectvars[v]
@@ -148,10 +165,10 @@ function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthWiseSi
     @constraint(model, [i=2:length(insert_in_group)], insert_in_group[i] == insert_in_group[i-1])
   end
 
-  NaiveNASlib.compconstraint!(NaiveNASlib.ScalarSize(), base(s), t, data)
+  NaiveNASlib.compconstraint!(NaiveNASlib.ScalarSize(), s, t, data, allowed_multipliers(s))
 end
 
-function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::DepthWiseAllowNinChangeStrategy, t::FluxDepthwiseConv, data)
+function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::DepthwiseConvAllowNinChangeStrategy, t::FluxDepthwiseConv, data)
   model = data.model
   v = data.vertex
   select = data.outselectvars[v]
@@ -167,7 +184,7 @@ function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::DepthWi
   # 
   ins = filter(vin -> vin in keys(data.noutdict), inputs(v))
   # If inputs to v are not part of problem we have to keep nin(v) fixed!
-  isempty(ins) && return NaiveNASlib.compconstraint!(case, DepthWiseSimpleΔSizeStrategy(base(s)), t, data)
+  isempty(ins) && return NaiveNASlib.compconstraint!(case, DepthwiseConvSimpleΔSizeStrategy(base(s)), t, data)
   # TODO: Check if input is immutable and do simple strat then too?
   inselect = data.outselectvars[ins[]]
   ininsert = data.outinsertvars[ins[]]
