@@ -40,6 +40,9 @@
         # Computation graph for evaluation
         graph = CompGraph(invertex, add)
 
+        # Access the vertices of the graph
+        @test vertices(graph) == [invertex, namedconv, conv, batchnorm, conc, residualconv, add]
+
         # Can be evaluated just like any function
         x = ones(Float32, 7, 7, nout(invertex), 2)
         @test size(graph(x)) == (7, 7, nout(add), 2) == (7 ,7, 12 ,2)
@@ -49,7 +52,7 @@
 
         # Mutate number of neurons
         @test nout(add) == nout(residualconv) == nout(conv) + nout(namedconv) == 12
-        Δnout!(add, -3)
+        Δnout!(add => -3)
         @test nout(add) == nout(residualconv) == nout(conv) + nout(namedconv) == 9
 
         # Remove layer
@@ -61,26 +64,21 @@
         insert!(residualconv, v -> mutable(BatchNorm(nout(v), relu), v))
         @test nv(graph) == 7
 
-
         # Change kernel size (and supply new padding)
         let Δsize = (-2, -2), pad = (1,1)
             mutate_weights(namedconv, KernelSizeAligned(Δsize, pad))
         end
 
-        # Apply all mutations
-        apply_mutation(graph)
-
         # Note: Parameters not changed yet...
-        size(NaiveNASflux.weights(layer(namedconv))) == (5, 5, 3, 7)
+        @test size(NaiveNASflux.weights(layer(namedconv))) == (5, 5, 3, 7)
 
         @test size(graph(x)) == (7, 7, nout(add), 2) == (7, 7, 9, 2)
 
         # ... because mutations are lazy by default so that no new layers are created until the graph is evaluated
-        size(NaiveNASflux.weights(layer(namedconv))) == (3, 3, 3, 7)
+        @test size(NaiveNASflux.weights(layer(namedconv))) == (3, 3, 3, 4)
 
         # Btw, the copy we made above is of course unaffected
         @test size(graphcopy(x)) == (7, 7, 12, 2)
-
     end
 
     @testset "Pruning xor example" begin
@@ -92,11 +90,11 @@
 
         # First lets create a simple model
         # layerfun=ActivationContribution will wrap the layer and compute a pruning metric for it while the model trains
-        mdense(in, outsize, act) = mutable(Dense(nout(in),outsize, act), in, layerfun=ActivationContribution)
+        densevertex(in, outsize, act) = mutable(Dense(nout(in),outsize, act), in, layerfun=ActivationContribution)
 
         invertex = inputvertex("input", 2, FluxDense())
-        layer1 = mdense(invertex, 32, relu)
-        layer2 = mdense(layer1, 1, sigmoid)
+        layer1 = densevertex(invertex, 32, relu)
+        layer2 = densevertex(layer1, 1, sigmoid)
         original = CompGraph(invertex, layer2)
 
         # Training params, nothing to see here
@@ -117,26 +115,23 @@
         # Now, lets try three different ways to prune the network
         nprune = 16
 
-        # Prune randomly selected neurons
-        pruned_random = copy(original)
-        Δnin!(pruned_random.outputs[], -nprune)
-        Δoutputs(pruned_random.outputs[], v -> rand(nout_org(v)))
-        apply_mutation(pruned_random)
-
         # Prune the least valuable neurons according to the metric in ActivationContribution
+        # This is the default if no value function is provided.
         pruned_least = copy(original)
-        Δnin!(pruned_least.outputs[], -nprune)
-        Δoutputs(pruned_least.outputs[], neuron_value)
-        apply_mutation(pruned_least)
-
+        Δnout!(vertices(pruned_least)[2] => -nprune)
+        
         # Prune the most valuable neurons according to the metric in ActivationContribution
         pruned_most = copy(original)
-        Δnin!(pruned_most.outputs[], -nprune)
-        Δoutputs(pruned_most.outputs[], v -> -neuron_value(v))
-        apply_mutation(pruned_most)
+        Δnout!(vertices(pruned_most)[2] => -nprune) do v
+            min.(100, 1. / NaiveNASlib.default_outvalue(v))
+        end
+        
+        # Prune randomly selected neurons
+        pruned_random = copy(original)
+        Δnout!(v -> rand(nout(v)), vertices(pruned_random)[2] => -nprune)
 
         # Can I have my free lunch now please?!
-        @test loss(pruned_most)(x, y) > loss(pruned_random)(x, y) > loss(pruned_least)(x, y) > loss(original)(x, y)
+        @test loss(pruned_most)(x, y) > loss(pruned_random)(x, y) > loss(pruned_least)(x, y) >= loss(original)(x, y)
 
         # The metric calculated by ActivationContribution is actually quite good (in this case).
         @test loss(pruned_least)(x, y) ≈ loss(original)(x, y) atol = 1e-5
@@ -152,9 +147,9 @@
         niters = 20
 
         # Layers used in this example
-        mconv(in, outsize, act; init=glorot_uniform) = mutable(Conv((3,3),nout(in)=>outsize, act, pad=(1,1), init=init), in)
-        mavgpool(in, h, w) = mutable(MeanPool((h, w)), in)
-        mdense(in, outsize, act) = mutable(Dense(nout(in),outsize, act), in)
+        convvertex(in, outsize, act; init=glorot_uniform) = mutable(Conv((3,3),nout(in)=>outsize, act, pad=(1,1), init=init), in)
+        avgpoolvertex(in, h, w) = mutable(MeanPool((h, w)), in)
+        densevertex(in, outsize, act) = mutable(Dense(nout(in),outsize, act), in)
 
         # Size of the input
         height = 4
@@ -164,11 +159,11 @@
             invertex = inputvertex("in", 1, FluxConv{2}())
             l = invertex
             for i in 1:nconv
-                l = mconv(l, 16, relu)
+                l = convvertex(l, 16, relu)
             end
-            l = mavgpool(l, height, width)
+            l = avgpoolvertex(l, height, width)
             l = invariantvertex(Flux.flatten, l)
-            l = mdense(l, 2, identity)
+            l = densevertex(l, 2, identity)
             return CompGraph(invertex, l)
         end
         original = model(1)
@@ -211,8 +206,8 @@
         # Add two layers after the conv layer
         add_layers = copy(original)
         function add2conv(in)
-            l = mconv(in, nout(in), relu, init=idmapping)
-            return mconv(l, nout(in), relu, init=idmapping)
+            l = convvertex(in, nout(in), relu, init=idmapping)
+            return convvertex(l, nout(in), relu, init=idmapping)
         end
         insert!(vertices(add_layers)[2], add2conv)
 

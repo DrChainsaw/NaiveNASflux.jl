@@ -29,7 +29,6 @@ end
     @info "Testing pruning"
     include("pruning.jl")
 
-    @warn "Testing examples disabled"
-    #@info "Testing examples"
-    #include("examples.jl")
+    @info "Testing examples"
+    include("examples.jl")
 end

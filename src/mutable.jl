@@ -51,13 +51,19 @@ NaiveNASlib.nout(m::MutableLayer) = nout(layertype(m), layer(m))
 
 function NaiveNASlib.Δsize!(m::MutableLayer, inputs::AbstractVector, outputs::AbstractVector; insert=neuroninsert, kwargs...) 
     @assert length(inputs) == 1 "Only one input per layer!"
-    mutate(layertype(m), m; inputs=inputs[1], outputs=outputs, insert=insert, kwargs...)
+    mutate(m; inputs=inputs[1], outputs=outputs, insert=insert, kwargs...)
     nothing
 end
 
 mutate_weights(m::MutableLayer, w) = mutate(layertype(m), m, other=w)
 
-mutate(m::MutableLayer; inputs, outputs, other = l -> (), insert=neuroninsert) = mutate(layertype(m), m; inputs, outputs, other, insert)
+function mutate(m::MutableLayer; inputs, outputs, other = l -> (), insert=neuroninsert) 
+    if inputs === missing
+        mutate(layertype(m), m; outputs, other, insert)
+    else
+        mutate(layertype(m), m; inputs, outputs, other, insert)
+    end
+end
 
 function mutate(lt::FluxParLayer, m::MutableLayer; inputs=1:nin(m)[], outputs=1:nout(m), other= l -> (), insert=neuroninsert)
     l = layer(m)
