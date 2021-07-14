@@ -26,9 +26,8 @@ end
     @info "Testing vertex"
     include("vertex.jl")
 
-    @warn "Testing pruning disabled"
-    #@info "Testing pruning"
-    #include("pruning.jl")
+    @info "Testing pruning"
+    include("pruning.jl")
 
     @warn "Testing examples disabled"
     #@info "Testing examples"

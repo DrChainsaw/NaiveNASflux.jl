@@ -172,7 +172,7 @@
 
     @testset "Function ActivationContribution" begin
         # Not really an absorbvertex, but ActivationContribution should work on stuff which is not FLux layers.
-        v = absorbvertex(ActivationContribution(x -> 2x), 3, ml(Dense(2,3)))
+        v = invariantvertex(ActivationContribution(x -> 2x), ml(Dense(2,3)))
         tr(v, ones(nout(v), 1))
         @test size(neuron_value(v)) == (nout(v),)
 
@@ -185,9 +185,7 @@
 
     @testset "Mutate ActivationContribution" begin
         l = ml(Dense(3,5), ActivationContribution ∘ LazyMutable)
-        Δnout!(l, -1)
-        Δoutputs(l, v -> 1:nout_org(v))
-        apply_mutation(l)
+        Δnout!(v -> 1:nout(v), l, -1)
         @test size(l(ones(Float32, 3,2))) == (4, 2)
         @test size(neuron_value(l)) == (4,)
     end
@@ -198,24 +196,18 @@
         g = CompGraph(inputs(l1), l2)
 
         # Mutate before activation contribution for l2 has been initialized
-        Δnout!(l1, 1)
-        Δoutputs(l1, v -> 1:nout_org(v))
-        apply_mutation(g)
+        Δnout!(v -> 1:nout(v), l1 => 1)
         @test size(neuron_value(l1)) == (6,)
         @test ismissing(neuron_value(l2))
 
         # This will initialize it
         @test size(g(ones(Float32, 4,4,2,3))) == (2,2,6,3)
 
-        Δnout!(l1, -2)
-        Δoutputs(l1, v -> 1:nout_org(v))
-        apply_mutation(g)
+        Δnout!(v -> 1:nout(v), l1 => -2)
         tr(g, ones(Float32, 2,2,4,3), ones(Float32, 4,4,2,3))
         @test size(neuron_value(l1)) == size(neuron_value(l2)) == (4,)
 
-        Δnin!(l2, -1)
-        Δoutputs(l1, v -> 1:nout_org(v))
-        apply_mutation(g)
+        Δnin!(v -> 1:nout(v), l2 => -1)
         tr(g, ones(Float32, 2,2,3,3), ones(Float32, 4,4,2,3))
         @test size(neuron_value(l1)) == size(neuron_value(l2)) == (3,)
     end

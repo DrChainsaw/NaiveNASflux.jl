@@ -15,7 +15,7 @@ mutable struct ActivationContribution{L,M} <: AbstractMutableComp
     method::M
 end
 ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05)) = ActivationContribution(l, zeros(Float32, nout(l)), method)
-ActivationContribution(l, method = Ewma(0.05)) = ActivationContribution(l, neuron_value_safe(l), method)
+ActivationContribution(l, method = Ewma(0.05)) = ActivationContribution(l, missing, method)
 
 layer(m::ActivationContribution) = layer(m.layer)
 layertype(m::ActivationContribution) = layertype(m.layer)
