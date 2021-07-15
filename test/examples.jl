@@ -121,9 +121,11 @@
         Δnout!(vertices(pruned_least)[2] => -nprune)
         
         # Prune the most valuable neurons according to the metric in ActivationContribution
+        # This is obviously not a good idea if you want to preserve the accuracy
         pruned_most = copy(original)
         Δnout!(vertices(pruned_most)[2] => -nprune) do v
-            min.(100, 1. / NaiveNASlib.default_outvalue(v))
+            vals = NaiveNASlib.default_outvalue(v)
+            return 2*sum(vals) .- vals # Ensure all values are still > 0, even for last vertex
         end
         
         # Prune randomly selected neurons

@@ -141,7 +141,7 @@ for iter in 1:niters
 end
 @test loss(original)(x, y) < 0.001
 ```
-With that out of the way, lets try three different ways to prune the hidden layer:
+With that out of the way, lets try three different ways to prune the hidden layer (vertex nr 2 in the graph):
 ```julia
 nprune = 16
 
@@ -151,9 +151,11 @@ pruned_least = copy(original)
 Δnout!(vertices(pruned_least)[2] => -nprune)
 
 # Prune the most valuable neurons according to the metric in ActivationContribution
+# This is obviously not a good idea if you want to preserve the accuracy
 pruned_most = copy(original)
 Δnout!(vertices(pruned_most)[2] => -nprune) do v
-    min.(100, 1. / NaiveNASlib.default_outvalue(v))
+    vals = NaiveNASlib.default_outvalue(v)
+    return 2*sum(vals) .- vals
 end
 
 # Prune randomly selected neurons
