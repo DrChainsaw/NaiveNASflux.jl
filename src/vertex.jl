@@ -109,16 +109,17 @@ Inputs must have compatible activation shapes or an exception will be thrown.
 Extra arguments `layerfun` and `traitfun` can be used to add extra info about the vertex.
 """
 function concat(v::AbstractVertex, vs::AbstractVertex...; traitfun=identity, layerfun=identity)
-    dim = actdim(v)
-    if any(vx -> actdim(vx) != dim, vs)
-        throw(DimensionMismatch("Can not concatenate activations with different shapes! Got: $(join([dim, actdim.(vs)...], ", ", " and "))"))
-    end
-    rank = actrank(v)
-    if any(vx -> actrank(vx) != rank, vs)
-        throw(DimensionMismatch("Can not concatenate activations with different shapes! Got:  $(join([rank, actrank.(vs)...], ", ", " and "))"))
+    allactdims = unique(mapreduce(actdim, vcat, [v, vs...]))
+    if length(allactdims) != 1
+        throw(DimensionMismatch("Can not concatenate activations with different shapes! Got: $(join(allactdims, ", ", " and "))"))
     end
 
-    conc(v, vs...; dims=dim, traitdecoration=traitfun, outwrap=layerfun)
+    allactranks = unique(mapreduce(actrank, vcat, [v, vs...]))
+    if length(allactranks) != 1
+        throw(DimensionMismatch("Can not concatenate activations with different shapes! Got:  $(join(allactranks, ", ", " and "))"))
+    end
+
+    conc(v, vs...; dims=allactdims[], traitdecoration=traitfun, outwrap=layerfun)
 end
 
 """

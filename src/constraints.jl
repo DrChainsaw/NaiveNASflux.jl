@@ -296,7 +296,7 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
 
   # When adding a new output group, all inserts must be identical 
   # If we don't add any, all inserts are just 0
-  @constraint(model,[g=1:noutgroups, i=2:ningroups], insert_new_outgroups[g,i] == insert_new_outgroups[g,i-1])
+  @constraint(model, [g=1:noutgroups, i=2:ningroups], insert_new_outgroups[g,i] == insert_new_outgroups[g,i-1])
   @constraint(model, [g=1:noutgroups], insert_new_outgroups[g,1] == insert_new_outgroups[g,end])
 
   # new_outgroup[g,j] == 1 if we are inserting allowed_new_outgroups[j] new output groups after output group g
@@ -310,7 +310,7 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   @constraint(model, [g=1:noutgroups, j=noutmults], groupsum[g] - allowed_new_outgroups[j]*insize + (1-new_outgroup[g,j] + insert_no_outgroup[g]) * M >= 0)
   @constraint(model, [g=1:noutgroups, j=noutmults], groupsum[g] - allowed_new_outgroups[j]*insize - (1-new_outgroup[g,j] + insert_no_outgroup[g]) * M <= 0)
 
-  # Finally, we say what the insers shall be: the sum of inserts from new inputs and new outputs
+  # Finally, we say what the inserts shall be: the sum of inserts from new inputs and new outputs
   # I think this allows for them to be somewhat independent, but there are still cases when they
   # can't change simultaneously. TODO: Check those cases
   @constraint(model, insert .== reshape(insert_new_outgroups, :) .+ reshape(insert_new_inoutgroups_all_inds,:))

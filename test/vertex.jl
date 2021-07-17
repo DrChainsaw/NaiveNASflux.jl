@@ -400,6 +400,21 @@ end
             @test size(testgraph_vfun(vfun, in1, in2)(indata1, indata2)) == (4,4,10,1)
         end
 
+        @testset "Concatenate elementwise and concatenated" begin
+            in1 = inputvertex("in1", 3, FluxDense())
+            in2 = inputvertex("in2", 3, FluxDense())
+
+            v1 = "v1" >> in1 + in2
+            v2 = concat("v2", in1, in2)
+            v3 = concat("v3", v1, v1)
+            v4 = "v4" >> v2 + v3
+            v5 = "v5" >> v2 + v3
+            v6 = concat("v6", v4, v5, in1)
+
+            @test nin(v6) == [nout(v4), nout(v5), nout(in1)] == [6, 6, 3]
+            @test nout(v6) == 15
+        end
+
         @testset "Concatentate dimension mismatch fail" begin
             d1 = mutable(Dense(2,3), inputvertex("in1", 2))
             c1 = mutable(Conv((3,3), 4=>5), inputvertex("in2", 4))
