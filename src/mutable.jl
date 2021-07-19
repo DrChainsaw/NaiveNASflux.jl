@@ -16,6 +16,9 @@ layertype(m::AbstractMutableComp) = layertype(layer(m))
 NaiveNASlib.nin(m::AbstractMutableComp) = nin(wrapped(m))
 NaiveNASlib.nout(m::AbstractMutableComp) = nout(wrapped(m))
 
+# This handles both nin and nout for SizeInvariant layers with params, like BatchNorm
+NaiveNASlib.nin(m::AbstractMutableComp, t::SizeInvariant, v::AbstractVertex) = nin(wrapped(m), t, v)
+
 function NaiveNASlib.Δsize!(m::AbstractMutableComp, inputs::AbstractVector, outputs::AbstractVector;kwargs...) 
      NaiveNASlib.Δsize!(wrapped(m), inputs, outputs;kwargs...)
 end
@@ -48,6 +51,11 @@ layer(m::MutableLayer) = wrapped(m)
 layertype(m::MutableLayer) = layertype(layer(m))
 NaiveNASlib.nin(m::MutableLayer) = [nin(layertype(m), layer(m))]
 NaiveNASlib.nout(m::MutableLayer) = nout(layertype(m), layer(m))
+
+# This handles both nin and nout for SizeInvariant layers with params, like BatchNorm
+NaiveNASlib.nin(m::MutableLayer, t::SizeInvariant, v::AbstractVertex) = layernin(layertype(m), layer(m), t, v)
+layernin(lt::FluxParInvLayer, l, t, ::AbstractVertex) = [nin(lt, l)]
+layernin(lt, l, t, v::AbstractVertex) = nin(l, t, v) # Default implentation in NaiveNASlib: calculate from inputs
 
 function NaiveNASlib.Δsize!(m::MutableLayer, inputs::AbstractVector, outputs::AbstractVector; insert=neuroninsert, kwargs...) 
     @assert length(inputs) == 1 "Only one input per layer!"
@@ -286,6 +294,7 @@ dispatch!(::LazyMutable, mutable::AbstractMutableComp, x...) = mutable(x...)
 
 NaiveNASlib.nin(m::LazyMutable) = length.(m.inputs)
 NaiveNASlib.nout(m::LazyMutable) = length(m.outputs)
+NaiveNASlib.nin(m::LazyMutable, ::SizeInvariant, ::AbstractVertex) = nin(m)
 
 function NaiveNASlib.Δsize!(m::LazyMutable, inputs::AbstractVector, outputs::AbstractVector; insert=neuroninsert)
     (all((i,k)::Tuple -> ismissing(i) || i == 1:k, zip(inputs, nin(m))) && outputs == 1:nout(m)) && return
