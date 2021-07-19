@@ -71,7 +71,7 @@
     @testset "Neuron value unkown default" begin
         l = ml(MeanPool((2,2)); insize = 3)
         @test ismissing(neuron_value(l))
-        @test neuron_value_safe(l) == ones(nout(l)) 
+        @test neuron_value_safe(l) == 1 
     end
 
     @testset "ActivationContribution no grad" begin

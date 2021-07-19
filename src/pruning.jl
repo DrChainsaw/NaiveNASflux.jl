@@ -84,11 +84,11 @@ neuron_value(lt, l) = missing
 
 neuron_value_safe(v) = neuron_value_safe(trait(v), v) 
 neuron_value_safe(t::DecoratingTrait, v) = neuron_value_safe(base(t), v)
-neuron_value_safe(::Immutable, v) = ones(nout(v))
+neuron_value_safe(::Immutable, v) = 1
 neuron_value_safe(::MutationSizeTrait, v) = clean_values(cpu(neuron_value(v)),v)
 neuron_value_safe(m::AbstractMutableComp) = clean_values(cpu(neuron_value(m)), m)
 
-clean_values(::Missing, v) = ones(nout(v))
+clean_values(::Missing, v) = 1 # Not sure if 1 is appropriate since other neuron values are typically much smaller
 clean_values(a::AbstractArray, v) = replace(a, NaN => -100, Inf => -100, -Inf => -100)
 
 """
