@@ -6,8 +6,8 @@
         invertex = inputvertex("in", 3, FluxConv{2}())
 
         # Mutable layers
-        conv = mutable(Conv((3,3), 3 => 5, pad=(1,1)), invertex)
-        batchnorm = mutable(BatchNorm(nout(conv), relu), conv)
+        conv = fluxvertex(Conv((3,3), 3 => 5, pad=(1,1)), invertex)
+        batchnorm = fluxvertex(BatchNorm(nout(conv), relu), conv)
 
         # Explore graph
         @test inputs(conv) == [invertex]
@@ -20,7 +20,7 @@
         @test layertype(batchnorm) isa FluxBatchNorm
 
         # naming vertices is a good idea for debugging and logging purposes
-        namedconv = mutable("namedconv", Conv((5,5), 3=>7, pad=(2,2)), invertex)
+        namedconv = fluxvertex("namedconv", Conv((5,5), 3=>7, pad=(2,2)), invertex)
 
         @test name(namedconv) == "namedconv"
 
@@ -29,7 +29,7 @@
 
         @test nout(conc) == nout(namedconv) + nout(batchnorm)
 
-        residualconv = mutable("residualconv", Conv((3,3), nout(conc) => nout(conc), pad=(1,1)), conc)
+        residualconv = fluxvertex("residualconv", Conv((3,3), nout(conc) => nout(conc), pad=(1,1)), conc)
 
         # Elementwise addition. '>>' operation can be used to add metadata, such as a name in this case
         add = "add" >> conc + residualconv
@@ -61,7 +61,7 @@
         @test nv(graph) == 6
 
         # Add layer
-        insert!(residualconv, v -> mutable(BatchNorm(nout(v), relu), v))
+        insert!(residualconv, v -> fluxvertex(BatchNorm(nout(v), relu), v))
         @test nv(graph) == 7
 
         # Change kernel size (and supply new padding)
@@ -90,7 +90,7 @@
 
         # First lets create a simple model
         # layerfun=ActivationContribution will wrap the layer and compute a pruning metric for it while the model trains
-        densevertex(in, outsize, act) = mutable(Dense(nout(in),outsize, act), in, layerfun=ActivationContribution)
+        densevertex(in, outsize, act) = fluxvertex(Dense(nout(in),outsize, act), in, layerfun=ActivationContribution)
 
         invertex = inputvertex("input", 2, FluxDense())
         layer1 = densevertex(invertex, 32, relu)
@@ -149,9 +149,9 @@
         niters = 20
 
         # Layers used in this example
-        convvertex(in, outsize, act; init=glorot_uniform) = mutable(Conv((3,3),nout(in)=>outsize, act, pad=(1,1), init=init), in)
-        avgpoolvertex(in, h, w) = mutable(MeanPool((h, w)), in)
-        densevertex(in, outsize, act) = mutable(Dense(nout(in),outsize, act), in)
+        convvertex(in, outsize, act; init=glorot_uniform) = fluxvertex(Conv((3,3),nout(in)=>outsize, act, pad=(1,1), init=init), in)
+        avgpoolvertex(in, h, w) = fluxvertex(MeanPool((h, w)), in)
+        densevertex(in, outsize, act) = fluxvertex(Dense(nout(in),outsize, act), in)
 
         # Size of the input
         height = 4

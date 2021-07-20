@@ -566,8 +566,8 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
 
         @testset "Force mutation" begin
             invertex = inputvertex("in", 3, FluxDense())
-            hlayer = mutable("hlayer", Dense(3,4), invertex)
-            outlayer = mutable("outlayer", Dense(4, 2), hlayer)
+            hlayer = fluxvertex("hlayer", Dense(3,4), invertex)
+            outlayer = fluxvertex("outlayer", Dense(4, 2), hlayer)
             graph = CompGraph(invertex, outlayer)
 
             Δnout!(hlayer, 2)

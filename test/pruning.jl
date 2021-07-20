@@ -2,12 +2,10 @@
 @testset "Neuron value tests" begin
     import NaiveNASflux: neuron_value_safe
 
-    ml(l, lfun=LazyMutable; insize=nin(l)[]) = mutable(l, inputvertex("in", insize, layertype(l)), layerfun = lfun)
+    ml(l, lfun=LazyMutable; insize=nin(l)[]) = fluxvertex(l, inputvertex("in", insize, layertype(l)), layerfun = lfun)
 
     function tr(l, data; loss=Flux.mse)
-        outshape = collect(size(data))
-        outshape[[actdim(ndims(data))]] .= nout(l)
-        example = [(data, ones(Float32, outshape...))];
+        example = [(data, 1)];
         Flux.train!((x,y) -> loss(l(x), y), params(l), example, Descent(0.1))
     end
 
@@ -192,7 +190,7 @@
 
     @testset "Mutate ActivationContribution MaxPool" begin
         l1 = ml(Conv((3,3), 2=>5, pad=(1,1)), ActivationContribution ∘ LazyMutable)
-        l2 = mutable(MaxPool((3,3), pad=(1,1)), l1, layerfun = ActivationContribution ∘ LazyMutable)
+        l2 = fluxvertex(MaxPool((3,3), pad=(1,1)), l1, layerfun = ActivationContribution ∘ LazyMutable)
         g = CompGraph(inputs(l1), l2)
 
         # Mutate before activation contribution for l2 has been initialized

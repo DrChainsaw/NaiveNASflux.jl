@@ -20,8 +20,8 @@ end
         dl2 = Dense(5, 3)
         bias(dl1)[1:end] = 1:5
         bias(dl2)[1:end] = 1:3
-        dense1 = mutable(dl1, inpt)
-        dense2 = mutable(dl2, dense1)
+        dense1 = fluxvertex(dl1, inpt)
+        dense2 = fluxvertex(dl2, dense1)
 
         @test inputs(dense2) == [dense1]
         @test outputs(dense1) == [dense2]
@@ -58,8 +58,8 @@ end
 
     @testset "Invariant parametric layer" begin
         inpt = inputvertex("in", 3)
-        cv = mutable(Conv((1,1), nout(inpt) => 4), inpt)
-        bv = mutable(BatchNorm(nout(cv)), cv)
+        cv = fluxvertex(Conv((1,1), nout(inpt) => 4), inpt)
+        bv = fluxvertex(BatchNorm(nout(cv)), cv)
 
         @test nin(bv) == [nout(cv)] == [4]
 
@@ -70,8 +70,8 @@ end
 
     @testset "Invariant non-parametric layer" begin
         inpt = inputvertex("in", 3)
-        cv = mutable(Conv((1,1), nout(inpt) => 4), inpt)
-        bv = mutable(MeanPool((2,2)), cv)
+        cv = fluxvertex(Conv((1,1), nout(inpt) => 4), inpt)
+        bv = fluxvertex(MeanPool((2,2)), cv)
 
         @test nin(bv) == [nout(cv)] == [4]
 
@@ -93,7 +93,7 @@ end
             # just to check that I have understood the wiring of the weight
             @testset "4 inputs times 2" begin
                 inpt = inputvertex("in", 4, FluxConv{2}())
-                dc = mutable("dc", DepthwiseConv(reshape(Float32[10 10 10 10;20 20 20 20], 1, 1, 2, 4), Float32[0,0,0,0,1,1,1,1]), inpt)
+                dc = fluxvertex("dc", DepthwiseConv(reshape(Float32[10 10 10 10;20 20 20 20], 1, 1, 2, 4), Float32[0,0,0,0,1,1,1,1]), inpt)
                 @test neuron_value(dc) == [10,20,10,20,11,21,11,21]
                 @test reshape(dc(fill(1f0, (1,1,4,1))), :) == [10, 20, 10, 20, 11, 21, 11, 21]
                 @test Δnout!( dc => -4)
@@ -110,7 +110,7 @@ end
 
             @testset "2 inputs times 3" begin
                 inpt = inputvertex("in", 2, FluxConv{2}())
-                dc = mutable("dc", DepthwiseConv(reshape(Float32[10 10;20 20;30 30], 1, 1, 3, 2), Float32[0,0,1,1,2,2]), inpt)
+                dc = fluxvertex("dc", DepthwiseConv(reshape(Float32[10 10;20 20;30 30], 1, 1, 3, 2), Float32[0,0,1,1,2,2]), inpt)
                 @test reshape(dc(fill(1f0, (1,1,2,1))), :) == [10, 20, 31, 11, 22, 32]
                 @test Δnout!(dc => -2)
                 @test lazyouts(dc) == [2,3,5,6] 
@@ -124,7 +124,7 @@ end
 
             @testset "1 input times 5" begin
                 inpt = inputvertex("in", 1, FluxConv{2}())
-                dc = mutable("dc", DepthwiseConv(reshape(Float32.(10:10:50), 1, 1, 5, 1), Float32.(1:5)), inpt)
+                dc = fluxvertex("dc", DepthwiseConv(reshape(Float32.(10:10:50), 1, 1, 5, 1), Float32.(1:5)), inpt)
                 @test reshape(dc(fill(1f0, (1,1,1,1))), :) == [11, 22, 33, 44, 55]
                 @test Δnout!(dc=>-2)
                 @test lazyouts(dc) == 3:5 
@@ -138,7 +138,7 @@ end
 
             @testset "3 inputs times 7" begin
                 inpt = inputvertex("in", 3, FluxConv{2}())
-                dc = mutable("dc", DepthwiseConv(reshape(repeat(Float32.(10:10:70), 3), 1,1,7,3), Float32.(1:21)), inpt)
+                dc = fluxvertex("dc", DepthwiseConv(reshape(repeat(Float32.(10:10:70), 3), 1,1,7,3), Float32.(1:21)), inpt)
                 @test reshape(dc(fill(10f0, (1,1,3,1))), :) == repeat(100:100:700, 3) .+ (1:21)
                 @test Δnout!(dc => -9) do v
                     v == dc || return 1
@@ -161,7 +161,7 @@ end
                 import NaiveNASflux: DepthwiseConvAllowNinChangeStrategy
                 import NaiveNASlib: ΔNout
                 inpt = inputvertex("in", 2, FluxConv{2}())
-                dc = mutable("dc", DepthwiseConv((1,1), nout(inpt) => 3*nout(inpt)), inpt)
+                dc = fluxvertex("dc", DepthwiseConv((1,1), nout(inpt) => 3*nout(inpt)), inpt)
                 
                 # Get output multiplier == 4 (nout = 4 * nin) by adding one more outgroup (4 = 3 + 1)
                 okstrat = DepthwiseConvAllowNinChangeStrategy([1], [4], ΔNout(dc => 2))
@@ -177,7 +177,7 @@ end
                 import NaiveNASflux: DepthwiseConvSimpleΔSizeStrategy
                 import NaiveNASlib: ΔNout
                 inpt = inputvertex("in", 2, FluxConv{2}())
-                dc = mutable("dc", DepthwiseConv((1,1), nout(inpt) => 3*nout(inpt)), inpt)
+                dc = fluxvertex("dc", DepthwiseConv((1,1), nout(inpt) => 3*nout(inpt)), inpt)
                 
                 okstrat = DepthwiseConvSimpleΔSizeStrategy(4, ΔNout(dc => 2))
                 @test Δsize!(okstrat, dc)
@@ -195,8 +195,8 @@ end
         @testset "DepthwiseConv groupsize 2 into groupsize 1" begin
             
             inpt = inputvertex("in", 4, FluxConv{2}())
-            dc1 = mutable("dc1", DepthwiseConv((2,2), nout(inpt) => 2 * nout(inpt)), inpt)
-            dc2 = mutable("dc2", DepthwiseConv((2,2), nout(dc1) => nout(dc1)), dc1)
+            dc1 = fluxvertex("dc1", DepthwiseConv((2,2), nout(inpt) => 2 * nout(inpt)), inpt)
+            dc2 = fluxvertex("dc2", DepthwiseConv((2,2), nout(dc1) => nout(dc1)), dc1)
 
             @test @test_logs (:warn, r"Could not change nout of") Δnout!(v -> 1, dc1 => 2)
             @test [nout(dc1)] == nin(dc2) == [nout(dc2) ]== [12]
@@ -223,9 +223,9 @@ end
 
         @testset "DepthwiseConv groupsize 3 into groupsize 5" begin
             inpt = inputvertex("in", 4, FluxConv{2}())
-            dc1 = mutable("dc1", DepthwiseConv((2,2), nout(inpt) => 3 * nout(inpt)), inpt)
-            dc2 = mutable("dc2", DepthwiseConv((2,2), nout(dc1) => 5 * nout(dc1)), dc1)
-            dc3 = mutable("dc3", DepthwiseConv((2,2), nout(dc2) => nout(dc2)), dc2)
+            dc1 = fluxvertex("dc1", DepthwiseConv((2,2), nout(inpt) => 3 * nout(inpt)), inpt)
+            dc2 = fluxvertex("dc2", DepthwiseConv((2,2), nout(dc1) => 5 * nout(dc1)), dc1)
+            dc3 = fluxvertex("dc3", DepthwiseConv((2,2), nout(dc2) => nout(dc2)), dc2)
 
             # TODO: Check compgraph output pre and post?
             # Need to insert zeros then?
@@ -261,9 +261,9 @@ end
         @testset "Depthwise conv change input size from Conv" begin
             import NaiveNASflux: weights
             inpt = inputvertex("in", 4, FluxConv{2}())
-            v1 = mutable("v1", Conv((1,1), nout(inpt) => 3), inpt)
-            v2 = mutable("v2", DepthwiseConv((1,1), nout(v1) => 2 * nout(v1)), v1)
-            v3 = mutable("v3", Conv((1,1), nout(v2) => 3), v2)
+            v1 = fluxvertex("v1", Conv((1,1), nout(inpt) => 3), inpt)
+            v2 = fluxvertex("v2", DepthwiseConv((1,1), nout(v1) => 2 * nout(v1)), v1)
+            v3 = fluxvertex("v3", Conv((1,1), nout(v2) => 3), v2)
 
             graph = CompGraph(inpt, v3)
             indata = randn(Float32, 1,1,4,1)
@@ -292,9 +292,9 @@ end
         @testset "Depthwise conv change output size" begin
             import NaiveNASflux: weights
             inpt = inputvertex("in", 4, FluxConv{2}())
-            v1 = mutable("v1", Conv((1,1), nout(inpt) => 3), inpt)
-            v2 = mutable("v2", DepthwiseConv((1,1), nout(v1) => 2 * nout(v1)), v1)
-            v3 = mutable("v3", Conv((1,1), nout(v2) => 3), v2)
+            v1 = fluxvertex("v1", Conv((1,1), nout(inpt) => 3), inpt)
+            v2 = fluxvertex("v2", DepthwiseConv((1,1), nout(v1) => 2 * nout(v1)), v1)
+            v3 = fluxvertex("v3", Conv((1,1), nout(v2) => 3), v2)
 
             graph = CompGraph(inpt, v3)
             indata = randn(Float32, 1,1,4,1)
@@ -322,7 +322,7 @@ end
     @testset "Concatenate activations" begin
 
         function testgraph(layerfun, nin1, nin2)
-            vfun = (v, s) -> mutable(layerfun(nout(v), s), v)
+            vfun = (v, s) -> fluxvertex(layerfun(nout(v), s), v)
             return testgraph_vfun(vfun, nin1, nin2)
         end
 
@@ -374,8 +374,8 @@ end
             indata1 = reshape(collect(Float32, 1:nin1*4*4), 4, 4, nin1, 1)
             indata2 = reshape(collect(Float32, 1:nin2*4*4), 4, 4, nin2, 1)
             function vfun(v, s)
-                cv = mutable(Conv((3,3), nout(v)=>s, pad = (1,1)), v)
-                return mutable(MaxPool((3,3), pad=(1,1), stride=(1,1)), cv)
+                cv = fluxvertex(Conv((3,3), nout(v)=>s, pad = (1,1)), v)
+                return fluxvertex(MaxPool((3,3), pad=(1,1), stride=(1,1)), cv)
             end
             @test size(testgraph_vfun(vfun, nin1, nin2)(indata1, indata2)) == (4,4,9,1)
         end
@@ -395,7 +395,7 @@ end
             indata2 = reshape(collect(Float32, 1:nin2*4*4), 4, 4, nin2, 1)
             in1 = inputvertex("in1", nin1, FluxConv{2}())
             in2 = inputvertex("in2", nin2, FluxConv{2}())
-            vfun(v,s) = mutable(BatchNorm(nout(v)), v)
+            vfun(v,s) = fluxvertex(BatchNorm(nout(v)), v)
 
             @test size(testgraph_vfun(vfun, in1, in2)(indata1, indata2)) == (4,4,10,1)
         end
@@ -416,17 +416,17 @@ end
         end
 
         @testset "Concatentate dimension mismatch fail" begin
-            d1 = mutable(Dense(2,3), inputvertex("in1", 2))
-            c1 = mutable(Conv((3,3), 4=>5), inputvertex("in2", 4))
-            r1 = mutable(RNN(6,7), inputvertex("in3", 6))
+            d1 = fluxvertex(Dense(2,3), inputvertex("in1", 2))
+            c1 = fluxvertex(Conv((3,3), 4=>5), inputvertex("in2", 4))
+            r1 = fluxvertex(RNN(6,7), inputvertex("in3", 6))
             @test_throws DimensionMismatch concat(d1, c1)
             @test_throws DimensionMismatch concat(r1, c1)
             @test_throws DimensionMismatch concat(d1, r1)
         end
 
         @testset "Concat with name" begin
-            d1 = mutable(Dense(2,3), inputvertex("in1", 2))
-            d2 = mutable(Dense(2,5), inputvertex("in1", 2))
+            d1 = fluxvertex(Dense(2,3), inputvertex("in1", 2))
+            d2 = fluxvertex(Dense(2,5), inputvertex("in1", 2))
             c = concat("c", d1, d2)
 
             @test name(c) == "c"
@@ -450,9 +450,9 @@ end
             return invariantvertex(NoParams(p), in), p
         end
 
-        conv3x3(inpt::AbstractVertex, nch::Integer) = mutable(Conv((3,3), nout(inpt)=>nch, pad=(1,1)), inpt)
-        batchnorm(inpt) = mutable(BatchNorm(nout(inpt)), inpt)
-        mmaxpool(inpt) = mutable(MaxPool((2,2)), inpt)
+        conv3x3(inpt::AbstractVertex, nch::Integer) = fluxvertex(Conv((3,3), nout(inpt)=>nch, pad=(1,1)), inpt)
+        batchnorm(inpt) = fluxvertex(BatchNorm(nout(inpt)), inpt)
+        mmaxpool(inpt) = fluxvertex(MaxPool((2,2)), inpt)
 
         @testset "Residual Conv block" begin
             inpt = inputvertex("in", 3)
@@ -514,8 +514,8 @@ end
             @test size(p1b.activation) == (4, 4, 2, 1)
         end
 
-        rnnvertex(inpt, outsize) = mutable("rnn", RNN(nout(inpt), outsize), inpt)
-        densevertex(inpt, outsize) = mutable("dense", Dense(nout(inpt), outsize), inpt)
+        rnnvertex(inpt, outsize) = fluxvertex("rnn", RNN(nout(inpt), outsize), inpt)
+        densevertex(inpt, outsize) = fluxvertex("dense", Dense(nout(inpt), outsize), inpt)
 
         @testset "RNN to Dense" begin
             inpt = inputvertex("in", 4)
@@ -552,8 +552,8 @@ end
     import Flux:functor
     import NaiveNASflux: weights, bias
     inpt = inputvertex("in", 2, FluxDense())
-    v1 = mutable(Dense(2, 3), inpt)
-    v2 = mutable(Dense(3, 4), v1)
+    v1 = fluxvertex(Dense(2, 3), inpt)
+    v2 = fluxvertex(Dense(3, 4), v1)
     g1 = CompGraph(inpt, v2)
 
     @test functor(g1)[1] == (inpt, v1, v2)
@@ -581,9 +581,9 @@ end
     @testset "Dense-Dense-Dense" begin
         Random.seed!(0)
         iv = inputvertex("in", 3, FluxDense())
-        v1 = mutable("v1", Dense(3,3), iv)
-        v2 = mutable("v2", Dense(3,4), v1)
-        v3 = mutable("v3", Dense(4,2), v2)
+        v1 = fluxvertex("v1", Dense(3,3), iv)
+        v2 = fluxvertex("v2", Dense(3,4), v1)
+        v3 = fluxvertex("v3", Dense(4,2), v2)
 
         g = CompGraph(iv, v3)
 
@@ -605,9 +605,9 @@ end
     @testset "Conv-Bn-Conv" begin
         Random.seed!(0)
         iv = inputvertex("in", 2, FluxConv{2}())
-        v1 = mutable("v1", Conv((1,1), 2 => 2), iv)
-        v2 = mutable("v2", BatchNorm(2), v1)
-        v3 = mutable("v3", Conv((1,1), 2 => 2), v2)
+        v1 = fluxvertex("v1", Conv((1,1), 2 => 2), iv)
+        v2 = fluxvertex("v2", BatchNorm(2), v1)
+        v3 = fluxvertex("v3", Conv((1,1), 2 => 2), v2)
 
         g = CompGraph(iv, v3)
 
@@ -628,9 +628,9 @@ end
     @testset "Conv-Conv-Conv" begin
         Random.seed!(0)
         iv = inputvertex("in", 2, FluxConv{2}())
-        v1 = mutable("v1", Conv((1,1), 2 => 2), iv; layerfun=ActivationContribution ∘ LazyMutable)
-        v2 = mutable("v2", Conv((1,1), 2 => 2), v1; layerfun=ActivationContribution ∘ LazyMutable)
-        v3 = mutable("v3", Conv((1,1), 2 => 2), v2; layerfun=ActivationContribution ∘ LazyMutable)
+        v1 = fluxvertex("v1", Conv((1,1), 2 => 2), iv; layerfun=ActivationContribution ∘ LazyMutable)
+        v2 = fluxvertex("v2", Conv((1,1), 2 => 2), v1; layerfun=ActivationContribution ∘ LazyMutable)
+        v3 = fluxvertex("v3", Conv((1,1), 2 => 2), v2; layerfun=ActivationContribution ∘ LazyMutable)
 
         g = CompGraph(iv, v3)
 

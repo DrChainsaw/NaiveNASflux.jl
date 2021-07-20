@@ -290,7 +290,7 @@ function Flux.functor(m::LazyMutable)
 end
 
 (m::LazyMutable)(x...) = dispatch!(m, m.mutable, x...)
-dispatch!(::LazyMutable, mutable::AbstractMutableComp, x...) = mutable(x...)
+dispatch!(::LazyMutable, m::AbstractMutableComp, x...) = m(x...)
 
 NaiveNASlib.nin(m::LazyMutable) = length.(m.inputs)
 NaiveNASlib.nout(m::LazyMutable) = length(m.outputs)

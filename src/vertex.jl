@@ -66,16 +66,16 @@ Flux.functor(::Type{<:AbstractVertex}, v) = (base(v),), y -> v
 Flux.functor(::Type{<:CompGraph}, g) = Tuple(vertices(g)), y -> g
 
 """
-    mutable(l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated())
+    fluxvertex(l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated())
 
 Return a vertex wrapping the layer `l` with input vertex `in`.
 
 Extra arguments `layerfun`, and `traitfun` can be used to add extra info about the vertex.
 """
-mutable(l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated()) = mutable(layertype(l), l, in, layerfun, traitfun)
+fluxvertex(l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated()) = fluxvertex(layertype(l), l, in, layerfun, traitfun)
 
 """
-    mutable(name::String, l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated())
+    fluxvertex(name::String, l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated())
 
 Return a vertex wrapping the layer `l` with input vertex `in` with name `name`.
 
@@ -83,15 +83,15 @@ Name is only used when displaying or logging and does not have to be unique (alt
 
 Extra arguments `layerfun` and `traitfun` can be used to add extra info about the vertex.
 """
-mutable(name::String, l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated()) = mutable(layertype(l), l, in, layerfun, traitfun ∘ named(name))
+fluxvertex(name::String, l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated()) = fluxvertex(layertype(l), l, in, layerfun, traitfun ∘ named(name))
 
-mutable(::FluxParLayer, l, in::AbstractVertex, layerfun, traitfun) = absorbvertex(layerfun(MutableLayer(l)), in, traitdecoration = traitfun)
+fluxvertex(::FluxParLayer, l, in::AbstractVertex, layerfun, traitfun) = absorbvertex(layerfun(MutableLayer(l)), in, traitdecoration = traitfun)
 
-mutable(::FluxDepthwiseConv, l, in::AbstractVertex, layerfun, traitfun) = absorbvertex(layerfun(MutableLayer(l)), in; traitdecoration=traitfun ∘ SizeNinNoutConnected)
+fluxvertex(::FluxDepthwiseConv, l, in::AbstractVertex, layerfun, traitfun) = absorbvertex(layerfun(MutableLayer(l)), in; traitdecoration=traitfun ∘ SizeNinNoutConnected)
 
-mutable(::FluxParInvLayer, l, in::AbstractVertex, layerfun, traitfun) = invariantvertex(layerfun(MutableLayer(l)), in, traitdecoration=traitfun)
+fluxvertex(::FluxParInvLayer, l, in::AbstractVertex, layerfun, traitfun) = invariantvertex(layerfun(MutableLayer(l)), in, traitdecoration=traitfun)
 
-mutable(::FluxNoParLayer, l, in::AbstractVertex, layerfun, traitfun) = invariantvertex(layerfun(NoParams(l)), in, traitdecoration=traitfun)
+fluxvertex(::FluxNoParLayer, l, in::AbstractVertex, layerfun, traitfun) = invariantvertex(layerfun(NoParams(l)), in, traitdecoration=traitfun)
 
 # Decorate trait with extra stuff like logging of size changes or validation.
 # Meant to be composable, e.g. using ∘

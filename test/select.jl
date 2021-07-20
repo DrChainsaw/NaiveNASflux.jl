@@ -29,7 +29,7 @@
 
     @testset "KernelSizeAligned MutableLayer $convtype" for convtype in (Conv, ConvTranspose, DepthwiseConv)
         import NaiveNASflux: weights
-        m = mutable(convtype((3,4), 5=>5, pad=(1,1,1,2)), inputvertex("in", 5), layerfun=identity)
+        m = fluxvertex(convtype((3,4), 5=>5, pad=(1,1,1,2)), inputvertex("in", 5), layerfun=identity)
         indata = ones(Float32, 5,5,5,2)
 
         @test size(weights(layer(m)))[1:2] == (3,4)
@@ -43,7 +43,7 @@
 
     @testset "KernelSizeAligned LazyMutable" begin
         import NaiveNASflux: weights
-        m = mutable(Conv((3,4), 5=>6, pad=(1,1,1,2)), inputvertex("in", 5), layerfun=LazyMutable)
+        m = fluxvertex(Conv((3,4), 5=>6, pad=(1,1,1,2)), inputvertex("in", 5), layerfun=LazyMutable)
         indata = ones(Float32, 5,5,5,2)
 
         @test size(weights(layer(m))) == (3,4,5,6)
@@ -62,7 +62,7 @@
     end
 
     @testset "KernelSizeAligned Dense is Noop with layerfun $lfun" for lfun in (identity, LazyMutable)
-        m = mutable(Dense(3,4), inputvertex("in", 3), layerfun = lfun)
+        m = fluxvertex(Dense(3,4), inputvertex("in", 3), layerfun = lfun)
         @test nin(m) == [3]
         indata = ones(Float32, nin(m)[], 2)
 

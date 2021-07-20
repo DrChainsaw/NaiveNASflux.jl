@@ -12,7 +12,7 @@ import JuMP: @variable, @constraint, @expression, SOS1
 
 export FluxLayer, FluxParLayer, FluxDense, FluxRecurrent, FluxRnn, FluxGru, FluxLstm, FluxConvolutional, FluxConv, FluxConvTranspose, FluxDepthwiseConv, FluxCrossCor, FluxTransparentLayer, FluxParInvLayer, FluxDiagonal, FluxLayerNorm, FluxParNorm, FluxBatchNorm, FluxInstanceNorm, FluxGroupNorm, FluxNoParLayer
 
-export mutable, concat, AbstractMutableComp, MutableLayer, LazyMutable, NoParams
+export fluxvertex, concat, AbstractMutableComp, MutableLayer, LazyMutable, NoParams
 
 export named, validated, logged
 
