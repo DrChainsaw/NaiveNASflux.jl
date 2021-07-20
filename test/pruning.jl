@@ -1,6 +1,6 @@
 
 @testset "Neuron value tests" begin
-    import NaiveNASflux: neuron_value_safe
+    import NaiveNASflux: neuron_value_safe, neuron_value
 
     ml(l, lfun=LazyMutable; insize=nin(l)[]) = fluxvertex(l, inputvertex("in", insize, layertype(l)), layerfun = lfun)
 
@@ -19,7 +19,7 @@
         actonly(curr, act, grad) = act
 
         @testset "Ewma" begin
-            m = Ewma(0.3, actonly)
+            m = NaiveNASflux.Ewma(0.3, actonly)
             @test m(missing, [1,2,3,4], :ignored) == [1,2,3,4]
             @test m([1,2,3,4], [5,6,7,8], :ignored) ≈ [3.8, 4.8, 5.8, 6.8]
         end

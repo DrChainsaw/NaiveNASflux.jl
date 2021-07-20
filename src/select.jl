@@ -1,58 +1,5 @@
 
-"""
-    select(pars::AbstractArray{T,N}, elements_per_dim...; newfun = zeros) where {T, N}
-
-Return a new `AbstractArray{T, N}` which has a subset of the elements of `pars`.
-
-Which elements to select is determined by `elements_per_dim` which is a `Pair{Int, Vector{Int}}` mapping dimension (first memeber) to which elements to select in that dimension (second memeber).
-
-For a single `dim=>elems` pair, the following holds: `selectdim(output, dim, i) == selectdim(pars, dim, elems[i])` if `elems[i]` is positive and `selectdim(output, dim, i) .== newfun(T, dim, size)[j]` if `elems[i]` is the `j:th` negative value and `size` is `sum(elems .< 0)`.
-
-# Examples
-```julia-repl
-julia> using NaiveNASflux
-
-julia> pars = reshape(1:3*5, 3,5)
-3×5 reshape(::UnitRange{Int64}, 3, 5) with eltype Int64:
- 1  4  7  10  13
- 2  5  8  11  14
- 3  6  9  12  15
-
- julia> NaiveNASflux.select(pars, 1 => [-1, 1,3,-1,2], 2=>[3, -1, 2], newfun = (T, d, s...) -> -ones(T, s))
- 5×3 Array{Int64,2}:
-  -1  -1  -1
-   7  -1   4
-   9  -1   6
-  -1  -1  -1
-   8  -1   5
-```
-"""
-function select(pars::AbstractArray{T,N}, elements_per_dim...; newfun = randoutzeroin) where {T, N}
-    psize = collect(size(pars))
-    assign = repeat(Any[Colon()], N)
-    access = repeat(Any[Colon()], N)
-
-    for (dim, elements) in elements_per_dim
-        psize[dim] = length(elements)
-    end
-    newpars = similar(pars, psize...)
-
-    for (dim, elements) in elements_per_dim
-        indskeep = filter(ind -> ind > 0, elements)
-        indsmap = elements .> 0
-        newmap = .!indsmap
-
-        assign[dim] = findall(indsmap)
-        access[dim] = indskeep
-        tsize = copy(psize)
-        tsize[dim] = sum(newmap)
-        selectdim(newpars, dim, newmap) .= newfun(T, dim, tsize...)
-    end
-
-    newpars[assign...] = pars[access...]
-    return newpars
-end
-
+select(pars::AbstractArray{T,N}, elements_per_dim...; newfun = randoutzeroin) where {T, N} = NaiveNASlib.parselect(pars, elements_per_dim...; newfun)
 select(::Missing, args...;kwargs...) = missing
 select(::Flux.Zeros, args...;kwargs...) = Flux.Zeros()
 

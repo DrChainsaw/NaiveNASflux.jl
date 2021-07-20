@@ -1,6 +1,3 @@
-import NaiveNASflux
-using Flux
-
 @testset "Utils" begin
 
     struct BogusLayer <: NaiveNASflux.FluxLayer end
@@ -57,6 +54,7 @@ using Flux
     end
 
     @testset "Dims" begin
+        import NaiveNASflux: actdim, indim, outdim
         @test actdim(Dense(3,4)) == 1
 
         @test actdim(Conv((1,2), 3=>6)) == 3

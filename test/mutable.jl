@@ -565,6 +565,7 @@ import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bi
         end
 
         @testset "Force mutation" begin
+            import NaiveNASflux: FluxDense
             invertex = inputvertex("in", 3, FluxDense())
             hlayer = fluxvertex("hlayer", Dense(3,4), invertex)
             outlayer = fluxvertex("outlayer", Dense(4, 2), hlayer)

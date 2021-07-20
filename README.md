@@ -30,7 +30,7 @@ Here is a quick rundown of some common operations:
 # Input type: 3 channels 2D image
 invertex = inputvertex("in", 3, FluxConv{2}())
 
-# Mutable layers
+# Layers in a graph
 conv = fluxvertex(Conv((3,3), 3 => 5, pad=(1,1)), invertex)
 batchnorm = fluxvertex(BatchNorm(nout(conv), relu), conv)
 

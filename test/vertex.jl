@@ -81,7 +81,7 @@ end
     end
 
     @testset "DepthwiseConv" begin
-        import NaiveNASflux: outdim, wrapped
+        import NaiveNASflux: outdim, wrapped, FluxConv
         lazymutable(v::AbstractVertex) = lazymutable(base(v))
         lazymutable(v::CompVertex) = lazymutable(v.computation)
         lazymutable(m::AbstractMutableComp) = lazymutable(wrapped(m)) 
@@ -90,6 +90,7 @@ end
         lazyins(v) = lazymutable(v).inputs
 
         @testset "Depthwise single layer" begin
+            import NaiveNASflux: neuron_value
             # just to check that I have understood the wiring of the weight
             @testset "4 inputs times 2" begin
                 inpt = inputvertex("in", 4, FluxConv{2}())
@@ -193,7 +194,6 @@ end
         end
 
         @testset "DepthwiseConv groupsize 2 into groupsize 1" begin
-            
             inpt = inputvertex("in", 4, FluxConv{2}())
             dc1 = fluxvertex("dc1", DepthwiseConv((2,2), nout(inpt) => 2 * nout(inpt)), inpt)
             dc2 = fluxvertex("dc2", DepthwiseConv((2,2), nout(dc1) => nout(dc1)), dc1)
@@ -389,6 +389,7 @@ end
         end
 
         @testset "Concatenate BatchNorm only" begin
+            import NaiveNASflux: FluxConv
             nin1 = 3
             nin2 = 7
             indata1 = reshape(collect(Float32, 1:nin1*4*4), 4, 4, nin1, 1)
@@ -401,6 +402,7 @@ end
         end
 
         @testset "Concatenate elementwise and concatenated" begin
+            import NaiveNASflux: FluxDense
             in1 = inputvertex("in1", 3, FluxDense())
             in2 = inputvertex("in2", 3, FluxDense())
 
@@ -436,7 +438,7 @@ end
     end
 
     @testset "Tricky structures" begin
-
+        import NaiveNASflux: NoParams
         mutable struct Probe
             activation
         end
@@ -543,6 +545,7 @@ end
 end
 
 @testset "Trait functions" begin
+    import NaiveNASflux: named, validated, logged
     @test named("test")(SizeAbsorb()) == NamedTrait(SizeAbsorb(), "test")
     @test validated()(SizeAbsorb()) == SizeChangeValidation(SizeAbsorb())
     @test logged(level=Base.CoreLogging.Info, info=NameInfoStr())(SizeAbsorb()) == SizeChangeLogger(Base.CoreLogging.Info, NameInfoStr(), SizeAbsorb())
@@ -550,7 +553,7 @@ end
 
 @testset "Flux functor" begin
     import Flux:functor
-    import NaiveNASflux: weights, bias
+    import NaiveNASflux: weights, bias, FluxDense
     inpt = inputvertex("in", 2, FluxDense())
     v1 = fluxvertex(Dense(2, 3), inpt)
     v2 = fluxvertex(Dense(3, 4), v1)
@@ -579,6 +582,7 @@ end
     import NaiveNASflux: weights, bias
 
     @testset "Dense-Dense-Dense" begin
+        import NaiveNASflux: FluxDense
         Random.seed!(0)
         iv = inputvertex("in", 3, FluxDense())
         v1 = fluxvertex("v1", Dense(3,3), iv)
@@ -603,6 +607,7 @@ end
     end
 
     @testset "Conv-Bn-Conv" begin
+        import NaiveNASflux: FluxConv
         Random.seed!(0)
         iv = inputvertex("in", 2, FluxConv{2}())
         v1 = fluxvertex("v1", Conv((1,1), 2 => 2), iv)
@@ -626,6 +631,7 @@ end
     end
 
     @testset "Conv-Conv-Conv" begin
+        import NaiveNASflux: FluxConv
         Random.seed!(0)
         iv = inputvertex("in", 2, FluxConv{2}())
         v1 = fluxvertex("v1", Conv((1,1), 2 => 2), iv; layerfun=ActivationContribution ∘ LazyMutable)

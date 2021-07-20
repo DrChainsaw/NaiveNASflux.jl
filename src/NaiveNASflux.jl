@@ -10,20 +10,13 @@ using LinearAlgebra
 import InteractiveUtils: subtypes
 import JuMP: @variable, @constraint, @expression, SOS1
 
-export FluxLayer, FluxParLayer, FluxDense, FluxRecurrent, FluxRnn, FluxGru, FluxLstm, FluxConvolutional, FluxConv, FluxConvTranspose, FluxDepthwiseConv, FluxCrossCor, FluxTransparentLayer, FluxParInvLayer, FluxDiagonal, FluxLayerNorm, FluxParNorm, FluxBatchNorm, FluxInstanceNorm, FluxGroupNorm, FluxNoParLayer
+export fluxvertex, concat
 
-export fluxvertex, concat, AbstractMutableComp, MutableLayer, LazyMutable, NoParams
+export ActivationContribution, NeuronValueEvery, LazyMutable
 
-export named, validated, logged
-
-export ActivationContribution, neuron_value, neuronvaluetaylor, Ewma, NeuronValueEvery
-
-export indim, outdim, actdim, layer, layertype
-
-export idmapping, idmapping_nowarn
+export layer, layertype
 
 export KernelSizeAligned, mutate_weights
-
 
 include("types.jl")
 include("util.jl")

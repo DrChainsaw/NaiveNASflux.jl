@@ -5,7 +5,7 @@
         # Input type: 3 channels 2D image
         invertex = inputvertex("in", 3, FluxConv{2}())
 
-        # Mutable layers
+        # Layers in a graph
         conv = fluxvertex(Conv((3,3), 3 => 5, pad=(1,1)), invertex)
         batchnorm = fluxvertex(BatchNorm(nout(conv), relu), conv)
 
@@ -16,8 +16,8 @@
         @test nin(conv) == [3]
         @test nout(conv) == 5
 
-        @test layertype(conv) isa FluxConv{2}
-        @test layertype(batchnorm) isa FluxBatchNorm
+        @test layer(conv) isa Flux.Conv
+        @test layer(batchnorm) isa Flux.BatchNorm
 
         # naming vertices is a good idea for debugging and logging purposes
         namedconv = fluxvertex("namedconv", Conv((5,5), 3=>7, pad=(2,2)), invertex)
@@ -208,8 +208,8 @@
         # Add two layers after the conv layer
         add_layers = copy(original)
         function add2conv(in)
-            l = convvertex(in, nout(in), relu, init=idmapping)
-            return convvertex(l, nout(in), relu, init=idmapping)
+            l = convvertex(in, nout(in), relu, init=Flux.identity_init)
+            return convvertex(l, nout(in), relu, init=Flux.identity_init)
         end
         insert!(vertices(add_layers)[2], add2conv)
 
