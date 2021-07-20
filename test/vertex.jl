@@ -655,3 +655,9 @@ end
         @test minimum(abs.(weights(layer(v3)))) > 0
     end
 end
+
+@testset "setlayer" begin
+    v = fluxvertex(Dense(3, 4, relu), inputvertex("in", 3))
+    NaiveNASflux.setlayer!(v, (;σ=tanh))
+    @test layer(v).σ == tanh
+end

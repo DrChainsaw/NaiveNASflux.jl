@@ -146,3 +146,34 @@ actrank(v::AbstractVertex) = actrank.(layer.(NaiveNASlib.findterminating(v, inpu
 
 mutate_weights(v::AbstractVertex, w) = mutate_weights(base(v), w)
 mutate_weights(v::CompVertex, w) = mutate_weights(v.computation, w)
+
+"""
+    setlayer!(x, propval)
+
+Set the properties `propval` to the layer wrapped in `x` where `propval` is a named tuple with fieldname->value pairs.
+
+This typically means create a new layer with the given values and set the wrapped layer to it.
+
+### Examples
+
+```julia-repl
+julia> v = fluxvertex(Dense(3, 4, relu), inputvertex("in", 3));
+
+julia> layer(v)
+Dense(3, 4, relu)   # 16 parameters
+
+julia> NaiveNASflux.setlayer!(v, (;σ=tanh));
+
+julia> layer(v)
+Dense(3, 4, tanh)   # 16 parameters
+```
+"""
+function setlayer!(x, propval) end
+setlayer!(v::AbstractVertex, propval) = setlayer!(base(v), propval)
+setlayer!(v::CompVertex, propval) = setlayer!(v.computation, propval)
+setlayer!(m::AbstractMutableComp, propval) = setlayer!(wrapped(m), propval)
+setlayer!(m::ResetLazyMutable, propval) = setlayer!(m.wrapped, propval)
+setlayer!(m::MutationTriggered, propval) = setlayer!(m.wrapped, propval)
+function setlayer!(m::MutableLayer, propval)
+    m.layer = setproperties(m.layer, propval)
+end
