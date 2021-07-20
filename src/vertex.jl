@@ -5,9 +5,9 @@
 
 Input type vertex which also has information about what type of layer the input is shaped for.
 """
-struct InputShapeVertex <: AbstractVertex
-    base::AbstractVertex
-    t::FluxLayer
+struct InputShapeVertex{V<:AbstractVertex, L<:FluxLayer} <: AbstractVertex
+    base::V
+    t::L
 end
 """
     inputvertex(name, size, type::FluxLayer)
@@ -16,8 +16,34 @@ Return an immutable input type vertex with the given `name` and `size` and a `ty
 indicate what type of input is expected.
 """
 NaiveNASlib.inputvertex(name, size, type::FluxLayer) = InputShapeVertex(inputvertex(name, size), type)
+
+"""
+    convinputvertex(name, size, ndims) 
+
+Return an input type vertex with the given `name` which promises convolution shaped input 
+with `size` channels and `ndims` number of dimensions for feature maps (e.g. 2 for images)
+suitable for `Flux`s convolution layers.
+"""
+convinputvertex(name, size, ndims) = inputvertex(name, size, FluxConv{ndims}())
+
+"""
+    denseinputvertex(name, size)
+
+Return an input type vertex with the given `name` which promises 2D shaped input
+with `size` number of features suitable for e.g. `Flux`s `Dense` layer.
+"""
+denseinputvertex(name, size) = inputvertex(name, size, FluxDense())
+
+"""
+    rnninputvertex(name, size)
+
+Return an input type vertex with the given `name` which promises 2D shaped input
+with `size` number of features suitable for `Flux`s recurrent layers.
+"""
+rnninputvertex(name, size) = inputvertex(name, size, FluxRnn())
+
 layertype(v::InputShapeVertex) = v.t
-layer(v::InputShapeVertex) = LayerTypeWrapper(v.t)
+layer(v::InputShapeVertex) = LayerTypeWrapper(v.t) # so that layertype(layer(v)) works
 NaiveNASlib.base(v::InputShapeVertex) = v.base
 NaiveNASlib.name(v::InputShapeVertex) = name(base(v))
 NaiveNASlib.nout(v::InputShapeVertex) = nout(base(v))
@@ -27,8 +53,8 @@ NaiveNASlib.inputs(::InputShapeVertex) = []
 NaiveNASlib.clone(v::InputShapeVertex, ins::AbstractVertex...;cf=clone) = InputShapeVertex(cf(base(v), ins...;cf=cf), layertype(v))
 
 # Only to prevent stack overflow above
-struct LayerTypeWrapper
-    t::FluxLayer
+struct LayerTypeWrapper{L}
+    t::L
 end
 layertype(l::LayerTypeWrapper) = l.t
 
@@ -137,9 +163,12 @@ concat(name::String, v::AbstractVertex, vs::AbstractVertex...; traitfun = identi
 
 layer(v::AbstractVertex) = layer(base(v))
 layer(v::CompVertex) = layer(v.computation)
+layer(::InputVertex) = nothing
 
 layertype(v::AbstractVertex) = layertype(base(v))
 layertype(v::CompVertex) = layertype(v.computation)
+layertype(::InputVertex) = nothing
+
 
 actdim(v::AbstractVertex) = actdim.(layer.(NaiveNASlib.findterminating(v, inputs)))
 actrank(v::AbstractVertex) = actrank.(layer.(NaiveNASlib.findterminating(v, inputs)))

@@ -1,6 +1,6 @@
-import NaiveNASflux: weights, bias
 
 @testset "InputShapeVertex" begin
+    import NaiveNASflux: FluxDense, FluxConv, FluxRnn
     v = inputvertex("in", 3, FluxDense())
     @test layertype(v) == FluxDense()
     @test name(v) == "in"
@@ -10,9 +10,14 @@ import NaiveNASflux: weights, bias
     @test layertype(c) == FluxDense()
     @test name(c) == "in"
     @test nout(c) == 3
+
+    @test layertype(inputvertex("in", 4, FluxDense()))   == layertype(denseinputvertex("in", 4))
+    @test layertype(inputvertex("in", 3, FluxConv{2}())) == layertype(convinputvertex("in", 3, 2))
+    @test layertype(inputvertex("in", 2, FluxRnn()))     == layertype(rnninputvertex("in", 2))
 end
 
 @testset "Size mutations" begin
+    import NaiveNASflux: weights, bias
 
     @testset "Dense to Dense" begin
         inpt = inputvertex("in", 4)

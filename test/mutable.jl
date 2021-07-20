@@ -1,6 +1,6 @@
-import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, layer, mutate, hiddenweights, hiddenstate, state, outscale
-
 @testset "Mutable computation" begin
+
+    import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, mutate, hiddenweights, hiddenstate, state, outscale
 
     inszero = pairs((insert = (lt, pn) -> (args...) -> 0,))
     _nins(m) = [1:nin(m)[]]

@@ -3,7 +3,7 @@
 
     @testset "Quick reference example" begin
         # Input type: 3 channels 2D image
-        invertex = inputvertex("in", 3, FluxConv{2}())
+        invertex = convinputvertex("in", 3, 2)
 
         # Layers in a graph
         conv = fluxvertex(Conv((3,3), 3 => 5, pad=(1,1)), invertex)
@@ -92,7 +92,7 @@
         # layerfun=ActivationContribution will wrap the layer and compute a pruning metric for it while the model trains
         densevertex(in, outsize, act) = fluxvertex(Dense(nout(in),outsize, act), in, layerfun=ActivationContribution)
 
-        invertex = inputvertex("input", 2, FluxDense())
+        invertex = denseinputvertex("input", 2)
         layer1 = densevertex(invertex, 32, relu)
         layer2 = densevertex(layer1, 1, sigmoid)
         original = CompGraph(invertex, layer2)
@@ -158,7 +158,7 @@
         width = 4
 
         function model(nconv)
-            invertex = inputvertex("in", 1, FluxConv{2}())
+            invertex = convinputvertex("in", 1, 2)
             l = invertex
             for i in 1:nconv
                 l = convvertex(l, 16, relu)
