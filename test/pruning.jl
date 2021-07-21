@@ -209,4 +209,21 @@
         tr(g, ones(Float32, 2,2,3,3), ones(Float32, 4,4,2,3))
         @test size(neuron_value(l1)) == size(neuron_value(l2)) == (3,)
     end
+
+    @testset "Add input edge to ActivationContribution concat" begin
+        v0 = denseinputvertex("in", 3)
+        v1 = fluxvertex("v1", Dense(nout(v0), 4), v0; layerfun=ActivationContribution)
+        v2 = fluxvertex("v2", Dense(nout(v0), 3), v0; layerfun=ActivationContribution)
+        v3 = concat("v3", v1; layerfun=ActivationContribution)
+
+        g = CompGraph(v0, v3)
+        Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
+
+        # make sure values have materialized so we don't accidentally have a scalar value
+        @test length(NaiveNASlib.default_outvalue(v3)) == nout(v3) == nout(v1)
+
+        @test create_edge!(v2, v3)
+
+        @test length(NaiveNASlib.default_outvalue(v3)) == nout(v3) == nout(v1) + nout(v2)
+    end
 end
