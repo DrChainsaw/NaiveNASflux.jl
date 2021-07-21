@@ -215,8 +215,10 @@
         v1 = fluxvertex("v1", Dense(nout(v0), 4), v0; layerfun=ActivationContribution)
         v2 = fluxvertex("v2", Dense(nout(v0), 3), v0; layerfun=ActivationContribution)
         v3 = concat("v3", v1; layerfun=ActivationContribution)
+        v4 = fluxvertex("v4", Dense(nout(v3), 2), v3; layerfun=ActivationContribution)
+        v5 = concat("v5", v4, v3, v3; layerfun=ActivationContribution)
 
-        g = CompGraph(v0, v3)
+        g = CompGraph(v0, v5)
         Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
 
         # make sure values have materialized so we don't accidentally have a scalar value
@@ -225,5 +227,144 @@
         @test create_edge!(v2, v3)
 
         @test length(NaiveNASlib.default_outvalue(v3)) == nout(v3) == nout(v1) + nout(v2)
+        @test length(NaiveNASlib.default_outvalue(v5)) == nout(v5) == 2 * nout(v3) + nout(v4)
+
+        @test size(g(ones(Float32, nout(v0), 1))) == (nout(v5), 1)
+    end
+
+    @testset "Add input edge to ActivationContribution concat fail" begin
+        import NaiveNASlib: PostAlign, NotifyVertexChange, ΔSizeFailNoOp, FailAlignSizeNoOp
+        import NaiveNASflux: neuron_value
+        v0 = denseinputvertex("in", 3)
+        v1 = fluxvertex("v1", Dense(nout(v0), 4), v0; layerfun=ActivationContribution)
+        v2 = fluxvertex("v2", Dense(nout(v0), 3), v0; layerfun=ActivationContribution)
+        v3 = concat("v3", v1; layerfun=ActivationContribution)
+        v4 = fluxvertex("v4", Dense(nout(v3), 2), v3; layerfun=ActivationContribution)
+        v5 = concat("v5", v4, v3, v3; layerfun=ActivationContribution)
+
+        g = CompGraph(v0, v5)
+        Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
+
+        # make sure values have materialized so we don't accidentally have a scalar value
+        @test length(NaiveNASlib.default_outvalue(v3)) == nout(v3) == nout(v1)
+
+        nvbefore_v3 = copy(neuron_value(v3))
+        nvbefore_v5 = copy(neuron_value(v5))
+
+        @test create_edge!(v2, v3; strategy=NotifyVertexChange(PostAlign(ΔSizeFailNoOp(), FailAlignSizeNoOp()))) == false
+
+        @test length(NaiveNASlib.default_outvalue(v3)) == nout(v3) == nout(v1)
+        @test length(NaiveNASlib.default_outvalue(v5)) == nout(v5) == 2 * nout(v3) + nout(v4)
+
+        @test nvbefore_v3 == neuron_value(v3)
+        @test nvbefore_v5 == neuron_value(v5)
+
+        @test size(g(ones(Float32, nout(v0), 1))) == (nout(v5), 1)
+    end
+
+    @testset "Add input edge to ActivationContribution concat maze" begin
+        import NaiveNASlib: PostAlign, NotifyVertexChange
+        v0 = denseinputvertex("in", 3)
+        v1 = fluxvertex("v1", Dense(nout(v0), 4), v0; layerfun=ActivationContribution)
+        v2 = fluxvertex("v2", Dense(nout(v0), 3), v0; layerfun=ActivationContribution)
+        v3 = concat("v3", v1; layerfun=ActivationContribution)
+        v4 = concat("v4", v3; layerfun=ActivationContribution)
+        v5 = concat("v5", v3; layerfun=ActivationContribution)
+        v6 = concat("v6", v3,v4,v5; layerfun=ActivationContribution)
+
+        g = CompGraph(v0, v6)
+        Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
+
+        # make sure values have materialized so we don't accidentally have a scalar value
+        @test length(NaiveNASlib.default_outvalue(v3)) == nout(v3) == nout(v1)
+
+        @test create_edge!(v2, v3; strategy=NotifyVertexChange(PostAlign()))
+
+        @test length(NaiveNASlib.default_outvalue(v3)) == nout(v3) == nout(v1) + nout(v2)
+        @test length(NaiveNASlib.default_outvalue(v4)) == nout(v4) == nout(v3)
+        @test length(NaiveNASlib.default_outvalue(v5)) == nout(v5) == nout(v3)
+        @test length(NaiveNASlib.default_outvalue(v6)) == nout(v6) == nout(v3) + nout(v4) + nout(v5)
+
+        @test size(g(ones(Float32, nout(v0), 1))) == (nout(v6), 1)
+    end
+
+    @testset "Remove input edge to ActivationContribution concat" begin
+        v0 = denseinputvertex("in", 3)
+        v1 = fluxvertex("v1", Dense(nout(v0), 4), v0; layerfun=ActivationContribution)
+        v2 = fluxvertex("v2", Dense(nout(v0), 3), v0; layerfun=ActivationContribution)
+        v3 = concat("v3", v1, v2; layerfun=ActivationContribution)
+        v4 = fluxvertex("v4", Dense(nout(v3), 2), v3; layerfun=ActivationContribution)
+        v5 = concat("v5", v4, v3, v3; layerfun=ActivationContribution)
+
+        g = CompGraph(v0, v5)
+        Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
+
+        # make sure values have materialized so we don't accidentally have a scalar value
+        @test length(NaiveNASlib.default_outvalue(v3)) == nout(v3) == nout(v1) + nout(v2)
+
+        @test remove_edge!(v2, v3)
+
+        @test length(NaiveNASlib.default_outvalue(v3)) == nout(v3) == nout(v1)
+        @test length(NaiveNASlib.default_outvalue(v5)) == nout(v5) == 2 * nout(v3) + nout(v4)
+
+        @test size(g(ones(Float32, nout(v0), 1))) == (nout(v5), 1)
+    end
+
+    
+    @testset "Remove input edge to ActivationContribution concat fail" begin
+        import NaiveNASlib: PostAlign, NotifyVertexChange, ΔSizeFailNoOp, FailAlignSizeNoOp
+        import NaiveNASflux: neuron_value
+
+        v0 = denseinputvertex("in", 3)
+        v1 = fluxvertex("v1", Dense(nout(v0), 4), v0; layerfun=ActivationContribution)
+        v2 = fluxvertex("v2", Dense(nout(v0), 3), v0; layerfun=ActivationContribution)
+        v3 = concat("v3", v1, v2; layerfun=ActivationContribution)
+        v4 = fluxvertex("v4", Dense(nout(v3), 2), v3; layerfun=ActivationContribution)
+        v5 = concat("v5", v4, v3, v3; layerfun=ActivationContribution)
+
+        g = CompGraph(v0, v5)
+        Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
+
+        # make sure values have materialized so we don't accidentally have a scalar value
+        @test length(NaiveNASlib.default_outvalue(v3)) == nout(v3) == nout(v1) + nout(v2)
+
+        nvbefore_v3 = copy(neuron_value(v3))
+        nvbefore_v5 = copy(neuron_value(v5))
+
+        @test remove_edge!(v2, v3; strategy=NotifyVertexChange(PostAlign(ΔSizeFailNoOp(), FailAlignSizeNoOp()))) == false
+
+        @test length(NaiveNASlib.default_outvalue(v3)) == nout(v3) == nout(v1) + nout(v2)
+        @test length(NaiveNASlib.default_outvalue(v5)) == nout(v5) == 2 * nout(v3) + nout(v4)
+
+        @test nvbefore_v3 == neuron_value(v3)
+        @test nvbefore_v5 == neuron_value(v5)
+
+        @test size(g(ones(Float32, nout(v0), 1))) == (nout(v5), 1)
+    end
+
+    @testset "Remove input edge to ActivationContribution concat maze" begin
+        import NaiveNASlib: PostAlign, NotifyVertexChange
+        v0 = denseinputvertex("in", 3)
+        v1 = fluxvertex("v1", Dense(nout(v0), 4), v0; layerfun=ActivationContribution)
+        v2 = fluxvertex("v2", Dense(nout(v0), 3), v0; layerfun=ActivationContribution)
+        v3 = concat("v3", v1, v2; layerfun=ActivationContribution)
+        v4 = concat("v4", v3; layerfun=ActivationContribution)
+        v5 = concat("v5", v3; layerfun=ActivationContribution)
+        v6 = concat("v6", v3,v4,v5; layerfun=ActivationContribution)
+
+        g = CompGraph(v0, v6)
+        Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
+
+        # make sure values have materialized so we don't accidentally have a scalar value
+        @test length(NaiveNASlib.default_outvalue(v3)) == nout(v3) == nout(v1) + nout(v2)
+
+        @test remove_edge!(v2, v3; strategy=NotifyVertexChange(PostAlign()))
+
+        @test length(NaiveNASlib.default_outvalue(v3)) == nout(v3) == nout(v1)
+        @test length(NaiveNASlib.default_outvalue(v4)) == nout(v4) == nout(v3)
+        @test length(NaiveNASlib.default_outvalue(v5)) == nout(v5) == nout(v3)
+        @test length(NaiveNASlib.default_outvalue(v6)) == nout(v6) == nout(v3) + nout(v4) + nout(v5)
+
+        @test size(g(ones(Float32, nout(v0), 1))) == (nout(v6), 1)
     end
 end
