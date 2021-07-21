@@ -41,6 +41,55 @@ function NaiveNASlib.Δsize!(m::ActivationContribution, inputs::AbstractVector, 
     NaiveNASlib.Δsize!(wrapped(m), inputs, outputs; kwargs...)
 end
 
+function NaiveNASlib.notify_remove_input_edge!(t::DecoratingTrait, m::ActivationContribution, vout::AbstractVertex, vin::AbstractVertex, pos)
+    NaiveNASlib.notify_remove_input_edge!(NaiveNASlib.base(t), m, vout::AbstractVertex, vin::AbstractVertex, pos)
+end
+
+function NaiveNASlib.notify_create_input_edge!(t::DecoratingTrait, m::ActivationContribution, vout::AbstractVertex, vin::AbstractVertex, pos)
+    NaiveNASlib.notify_create_input_edge!(NaiveNASlib.base(t), m, vout::AbstractVertex, vin::AbstractVertex, pos)
+end
+
+function NaiveNASlib.notify_remove_input_edge!(::SizeStack, m::ActivationContribution, vout::AbstractVertex, vin::AbstractVertex, pos)
+    error("Not implemented!")
+end
+
+function NaiveNASlib.notify_create_input_edge!(::SizeStack, m::ActivationContribution, vout::AbstractVertex, vin::AbstractVertex, pos)
+    nins = nin(vout)
+    start = isempty(nins) ? 0 : sum(nins[1:pos-1])
+    inds = 1+start:start+nout(vin)
+    values = NaiveNASlib.default_outvalue(vin)
+    values = length(values) == 1 ? fill(values, length(inds)) : values
+    @assert length(values) == length(inds) "Length of values must match length of inds! Was $(length(values)) vs $(length(inds))" 
+    propagate_new_inds(vout, inds, neuron_value(vin))
+end
+
+propagate_new_inds(v::AbstractVertex, inds, values) = propagate_new_inds(trait(v), v, v, inds, values)
+propagate_new_inds(t::DecoratingTrait, v, vouter, inds, values) = propagate_new_inds(base(t), v, vouter, inds, values)
+propagate_new_inds(t::MutationTrait, v, vouter, inds, values) = nothing
+propagate_new_inds(t::SizeStack, v::AbstractVertex, vouter, inds, values) = propagate_new_inds(t, base(v), vouter, inds, values)
+propagate_new_inds(::SizeStack, v::CompVertex, vouter, inds, values) = propagate_new_inds(v.computation, vouter, inds, values)
+propagate_new_inds(f, v, inds, values) = nothing
+propagate_new_inds(m::AbstractMutableComp, v, inds, values) = propagate_new_inds(wrapped(m), v, inds, values)
+function propagate_new_inds(m::ActivationContribution, v, inds, values)
+    if m.contribution !== missing
+        foreach((ind, val) -> insert!(m.contribution, ind, val), inds, values) 
+    end
+    for vo in outputs(v)
+        newinds = similar(vals, 0)
+        newvals = similar(vals, 0)
+        offs = 0
+        for voi in inputs(vi)
+            if voi == v
+                newinds = vcat(newinds, inds .+ offs)
+                newvals = vcat(newvals, values)
+            end
+            offs += nout(v)
+        end
+        propagate_new_inds(vo, newinds, newvals)
+    end
+end
+
+
 """
     mean_squeeze(x, dimkeep)
 

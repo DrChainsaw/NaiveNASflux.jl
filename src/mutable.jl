@@ -37,6 +37,15 @@ end
 
 NaiveNASlib.default_outvalue(m::AbstractMutableComp) = neuron_value_safe(m)
 
+function NaiveNASlib.notify_remove_input_edge!(t, m::AbstractMutableComp, vout::AbstractVertex, vin::AbstractVertex, pos)
+    NaiveNASlib.notify_remove_input_edge!(t, wrapped(m), vout::AbstractVertex, vin::AbstractVertex, pos)
+end
+
+function NaiveNASlib.notify_create_input_edge!(t, m::AbstractMutableComp, vout::AbstractVertex, vin::AbstractVertex, pos)
+    NaiveNASlib.notify_create_input_edge!(t, wrapped(m), vout::AbstractVertex, vin::AbstractVertex, pos)
+end
+
+
 """
     MutableLayer
 
