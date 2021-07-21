@@ -9,28 +9,62 @@ struct InputShapeVertex{V<:AbstractVertex, L<:FluxLayer} <: AbstractVertex
     base::V
     t::L
 end
+
+const inputshapemotivation = """
+Providing the input type is not strictly necessary for the package to work and in many cases a normal `inputvertex` 
+will do. 
+
+One example of when it is useful is the [`concat`](@ref) function which needs to know the input type to
+automatically determine which dimension to concatenate.
+"""
+
 """
     inputvertex(name, size, type::FluxLayer)
 
 Return an immutable input type vertex with the given `name` and `size` and a `type` which can be used to 
 indicate what type of input is expected.
+
+$inputshapemotivation
 """
 NaiveNASlib.inputvertex(name, size, type::FluxLayer) = InputShapeVertex(inputvertex(name, size), type)
 
 """
-    convinputvertex(name, size, ndims) 
+    convinputvertex(name, nchannel, ndim) 
 
 Return an input type vertex with the given `name` which promises convolution shaped input 
-with `size` channels and `ndims` number of dimensions for feature maps (e.g. 2 for images)
+with `nchannel` channels and `ndim` number of dimensions for feature maps (e.g. 2 for images)
 suitable for `Flux`s convolution layers.
+
+$inputshapemotivation
 """
-convinputvertex(name, size, ndims) = inputvertex(name, size, FluxConv{ndims}())
+convinputvertex(name, nchannel, ndim) = inputvertex(name, nchannel, FluxConv{ndim}())
+
+"""
+    conv1dinputvertex(name, nchannel)
+    conv2dinputvertex(name, nchannel)
+    conv3dinputvertex(name, nchannel)
+
+Return an input type vertex with the given `name` which promises convolution shaped input 
+with `nchannel` channels suitable for `Flux`s convolution layers.
+
+Equivalent to [`convinputvertex(name, nchannel, ndim)`](@ref) with the appropriate value 
+for `ndim`. 
+
+$inputshapemotivation
+"""
+conv1dinputvertex(name, nchannel) = convinputvertex(name, nchannel, 1)
+@doc (@doc conv1dinputvertex) 
+conv2dinputvertex(name, nchannel) = convinputvertex(name, nchannel, 2)
+@doc (@doc conv1dinputvertex) 
+conv3dinputvertex(name, nchannel) = convinputvertex(name, nchannel, 3)
 
 """
     denseinputvertex(name, size)
 
 Return an input type vertex with the given `name` which promises 2D shaped input
 with `size` number of features suitable for e.g. `Flux`s `Dense` layer.
+
+$inputshapemotivation
 """
 denseinputvertex(name, size) = inputvertex(name, size, FluxDense())
 
@@ -39,6 +73,8 @@ denseinputvertex(name, size) = inputvertex(name, size, FluxDense())
 
 Return an input type vertex with the given `name` which promises 2D shaped input
 with `size` number of features suitable for `Flux`s recurrent layers.
+
+$inputshapemotivation
 """
 rnninputvertex(name, size) = inputvertex(name, size, FluxRnn())
 
@@ -128,11 +164,13 @@ logged(;level = Base.CoreLogging.Debug, info = FullInfoStr()) = t -> SizeChangeL
 """
    concat(v::AbstractVertex, vs::AbstractVertex...; traitfun=identity)
 
-Return a vertex which concatenates input.
+Return a vertex which concatenates input along the activation (e.g. channel if convolution, first dimension if dense) dimension.
 
 Inputs must have compatible activation shapes or an exception will be thrown.
 
 Extra arguments `layerfun` and `traitfun` can be used to add extra info about the vertex.
+
+See also [`NaiveNASlib.conc`](@ref). 
 """
 function concat(v::AbstractVertex, vs::AbstractVertex...; traitfun=identity, layerfun=identity)
     allactdims = unique(mapreduce(actdim, vcat, [v, vs...]))
@@ -151,13 +189,15 @@ end
 """
     concat(name::String, v::AbstractVertex, vs::AbstractVertex...; traitfun=identity)
 
-Return a vertex with name `name` which concatenates input.
+Return a vertex with name `name` which concatenates input along the activation (e.g. channel if convolution, first dimension if dense) dimension.
 
 Name is only used when displaying or logging and does not have to be unique (although it probably is a good idea).
 
 Inputs must have compatible activation shapes or an exception will be thrown.
 
 Extra arguments `layerfun` and `traitfun` can be used to add extra info about the vertex.
+
+See also [`NaiveNASlib.conc`](@ref). 
 """
 concat(name::String, v::AbstractVertex, vs::AbstractVertex...; traitfun = identity, layerfun=identity) = concat(v, vs..., traitfun=traitfun ∘ named(name), layerfun=layerfun)
 

@@ -12,7 +12,13 @@
     @test nout(c) == 3
 
     @test layertype(inputvertex("in", 4, FluxDense()))   == layertype(denseinputvertex("in", 4))
+
     @test layertype(inputvertex("in", 3, FluxConv{2}())) == layertype(convinputvertex("in", 3, 2))
+
+    @test layertype(inputvertex("in", 3, FluxConv{1}())) == layertype(conv1dinputvertex("in", 3))
+    @test layertype(inputvertex("in", 3, FluxConv{2}())) == layertype(conv2dinputvertex("in", 3))
+    @test layertype(inputvertex("in", 3, FluxConv{3}())) == layertype(conv3dinputvertex("in", 3))
+
     @test layertype(inputvertex("in", 2, FluxRnn()))     == layertype(rnninputvertex("in", 2))
 end
 

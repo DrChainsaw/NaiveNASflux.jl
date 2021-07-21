@@ -28,7 +28,7 @@ Here is a quick rundown of some common operations:
 
 ```julia
 # Input type: 3 channels 2D image
-invertex = inputvertex("in", 3, FluxConv{2}())
+invertex = conv2dinputvertex("in", 3)
 
 # Layers in a graph
 conv = fluxvertex(Conv((3,3), 3 => 5, pad=(1,1)), invertex)

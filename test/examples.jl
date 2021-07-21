@@ -3,7 +3,7 @@
 
     @testset "Quick reference example" begin
         # Input type: 3 channels 2D image
-        invertex = convinputvertex("in", 3, 2)
+        invertex = conv2dinputvertex("in", 3)
 
         # Layers in a graph
         conv = fluxvertex(Conv((3,3), 3 => 5, pad=(1,1)), invertex)

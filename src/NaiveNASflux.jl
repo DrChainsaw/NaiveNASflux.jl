@@ -10,7 +10,9 @@ using LinearAlgebra
 import InteractiveUtils: subtypes
 import JuMP: @variable, @constraint, @expression, SOS1
 
-export convinputvertex, denseinputvertex, rnninputvertex, fluxvertex, concat
+export denseinputvertex, rnninputvertex, fluxvertex, concat
+
+export convinputvertex, conv1dinputvertex, conv2dinputvertex, conv3dinputvertex
 
 export ActivationContribution, NeuronValueEvery, LazyMutable
 
