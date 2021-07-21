@@ -1,17 +1,12 @@
-
-
-NaiveNASlib.nin(l) = nin(layertype(l), l)
-NaiveNASlib.nout(l) = nout(layertype(l), l)
-
 NaiveNASlib.nin(t::FluxLayer, l) = throw(ArgumentError("Not implemented for $t"))
 NaiveNASlib.nout(t::FluxLayer, l) = throw(ArgumentError("Not implemented for $t"))
 
-NaiveNASlib.nin(::FluxParLayer, l) = size(weights(l), indim(l))
+NaiveNASlib.nin(::FluxParLayer, l) = [size(weights(l), indim(l))]
 NaiveNASlib.nout(::FluxParLayer, l) = size(weights(l), outdim(l))
-NaiveNASlib.nout(::FluxDepthwiseConv, l) = size(weights(l), outdim(l)) * nin(l)
+NaiveNASlib.nout(::FluxDepthwiseConv, l) = size(weights(l), outdim(l)) * nin(l)[]
 
 
-NaiveNASlib.nin(::FluxParInvLayer, l) = nout(l)
+NaiveNASlib.nin(::FluxParInvLayer, l) = [nout(l)]
 
 NaiveNASlib.nout(::FluxDiagonal, l) = length(weights(l))
 NaiveNASlib.nout(::FluxParInvLayer, l::LayerNorm) = nout(l.diag)

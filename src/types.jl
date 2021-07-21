@@ -1,7 +1,7 @@
 
 abstract type FluxLayer end
 
-layertype(l::T) where T = T
+layertype(l) = NaiveNASlib.shapetrait(l)
 layer(l) = l
 
 # Types for layers with parameters (e.g. weights and biases) and with similar handling
@@ -11,7 +11,7 @@ abstract type FluxParLayer <: FluxLayer end
 abstract type Flux2D <: FluxParLayer end
 struct GenericFlux2D <: Flux2D end
 struct FluxDense <: Flux2D end
-layertype(::Dense) = FluxDense()
+NaiveNASlib.shapetrait(::Dense) = FluxDense()
 
 # Might be a Flux2D, but not exactly the same. Also want to leave the door open to when/if they accept 3D input too
 # Type hierarchies are hard :/
@@ -20,9 +20,9 @@ struct GenericFluxRecurrent <: FluxRecurrent end
 struct FluxRnn <: FluxRecurrent end
 struct FluxLstm <: FluxRecurrent end
 struct FluxGru <: FluxRecurrent end
-layertype(::Flux.Recur{<:Flux.RNNCell}) = FluxRnn()
-layertype(::Flux.Recur{<:Flux.LSTMCell}) = FluxLstm()
-layertype(::Flux.Recur{<:Flux.GRUCell}) = FluxGru()
+NaiveNASlib.shapetrait(::Flux.Recur{<:Flux.RNNCell}) = FluxRnn()
+NaiveNASlib.shapetrait(::Flux.Recur{<:Flux.LSTMCell}) = FluxLstm()
+NaiveNASlib.shapetrait(::Flux.Recur{<:Flux.GRUCell}) = FluxGru()
 
 abstract type FluxConvolutional{N} <: FluxParLayer end
 struct GenericFluxConvolutional{N} <: FluxConvolutional{N} end
@@ -30,10 +30,10 @@ struct FluxConv{N} <: FluxConvolutional{N} end
 struct FluxConvTranspose{N}  <: FluxConvolutional{N} end
 struct FluxDepthwiseConv{N} <: FluxConvolutional{N}  end
 struct FluxCrossCor{N} <: FluxConvolutional{N}  end
-layertype(::Conv{N}) where N = FluxConv{N}()
-layertype(::ConvTranspose{N}) where N = FluxConvTranspose{N}()
-layertype(::DepthwiseConv{N}) where N = FluxDepthwiseConv{N}()
-layertype(::CrossCor{N}) where N = FluxCrossCor{N}()
+NaiveNASlib.shapetrait(::Conv{N}) where N = FluxConv{N}()
+NaiveNASlib.shapetrait(::ConvTranspose{N}) where N = FluxConvTranspose{N}()
+NaiveNASlib.shapetrait(::DepthwiseConv{N}) where N = FluxDepthwiseConv{N}()
+NaiveNASlib.shapetrait(::CrossCor{N}) where N = FluxCrossCor{N}()
 
 
 abstract type FluxTransparentLayer <: FluxLayer end
@@ -47,20 +47,20 @@ struct FluxBatchNorm <: FluxParNorm end
 struct FluxInstanceNorm <: FluxParNorm end
 struct FluxGroupNorm <: FluxParNorm end
 
-layertype(::Flux.Diagonal) = FluxDiagonal()
-layertype(::LayerNorm) = FluxLayerNorm()
-layertype(::BatchNorm) = FluxBatchNorm()
-layertype(::InstanceNorm) = FluxInstanceNorm()
-layertype(::GroupNorm) = FluxGroupNorm()
+NaiveNASlib.shapetrait(::Flux.Diagonal) = FluxDiagonal()
+NaiveNASlib.shapetrait(::LayerNorm) = FluxLayerNorm()
+NaiveNASlib.shapetrait(::BatchNorm) = FluxBatchNorm()
+NaiveNASlib.shapetrait(::InstanceNorm) = FluxInstanceNorm()
+NaiveNASlib.shapetrait(::GroupNorm) = FluxGroupNorm()
 
 # Transparent layers, i.e nin == nout always and there are no parameters
 struct FluxNoParLayer <: FluxTransparentLayer end
-layertype(::MaxPool) = FluxNoParLayer()
-layertype(::MeanPool) = FluxNoParLayer()
-layertype(::Dropout) = FluxNoParLayer()
-layertype(::AlphaDropout) = FluxNoParLayer()
-layertype(::GlobalMaxPool) = FluxNoParLayer()
-layertype(::GlobalMeanPool) = FluxNoParLayer()
+NaiveNASlib.shapetrait(::MaxPool) = FluxNoParLayer()
+NaiveNASlib.shapetrait(::MeanPool) = FluxNoParLayer()
+NaiveNASlib.shapetrait(::Dropout) = FluxNoParLayer()
+NaiveNASlib.shapetrait(::AlphaDropout) = FluxNoParLayer()
+NaiveNASlib.shapetrait(::GlobalMaxPool) = FluxNoParLayer()
+NaiveNASlib.shapetrait(::GlobalMeanPool) = FluxNoParLayer()
 
 # Compositions? Might not have any common methods...
 # MaxOut, Chain?

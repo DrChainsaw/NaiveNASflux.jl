@@ -573,13 +573,13 @@
 
             Δnout!(hlayer, 2)
 
-            @test nout(layertype(hlayer), layer(hlayer)) == 4
-            @test nin(layertype(hlayer), layer(outlayer)) == 4
+            @test nout(layer(hlayer)) == 4
+            @test nin(layer(outlayer)) == [4]
 
             NaiveNASflux.forcemutation(graph)
 
-            @test nout(layertype(hlayer), layer(hlayer)) == 6
-            @test nin(layertype(hlayer), layer(outlayer)) == 6
+            @test nout(layer(hlayer)) == 6
+            @test nin(layer(outlayer)) == [6]
         end
     end
 end

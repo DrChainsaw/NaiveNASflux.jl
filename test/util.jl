@@ -2,55 +2,52 @@
 
     struct BogusLayer <: NaiveNASflux.FluxLayer end
 
-    _nin(l) = nin(layertype(l), l)[]
-    _nout(l) = nout(layertype(l), l)
-
     @testset "Sizes" begin
 
-        @test _nin(Dense(3,4)) == 3
-        @test _nout(Dense(3,4)) == 4
+        @test nin(Dense(3,4)) == [3]
+        @test nout(Dense(3,4)) == 4
 
-        @test _nin(Conv((2,), 3=>4)) == 3
-        @test _nout(Conv((2,), 3=>4)) == 4
-        @test _nin(Conv((1,2), 3=>6)) == 3
-        @test _nout(Conv((1,2), 3=>6)) == 6
-        @test _nin(Conv((1,2,3), 4=>5)) == 4
-        @test _nout(Conv((1,2,3), 4=>5)) == 5
+        @test nin(Conv((2,), 3=>4)) == [3]
+        @test nout(Conv((2,), 3=>4)) == 4
+        @test nin(Conv((1,2), 3=>6)) == [3]
+        @test nout(Conv((1,2), 3=>6)) == 6
+        @test nin(Conv((1,2,3), 4=>5)) == [4]
+        @test nout(Conv((1,2,3), 4=>5)) == 5
 
-        @test _nin(ConvTranspose((2,), 3=>4)) == 3
-        @test _nout(ConvTranspose((2,), 3=>4)) == 4
-        @test _nin(ConvTranspose((1,2), 3=>6)) == 3
-        @test _nout(ConvTranspose((1,2), 3=>6)) == 6
-        @test _nin(ConvTranspose((1,2,3), 4=>5)) == 4
-        @test _nout(ConvTranspose((1,2,3), 4=>5)) == 5
+        @test nin(ConvTranspose((2,), 3=>4)) == [3]
+        @test nout(ConvTranspose((2,), 3=>4)) == 4
+        @test nin(ConvTranspose((1,2), 3=>6)) == [3]
+        @test nout(ConvTranspose((1,2), 3=>6)) == 6
+        @test nin(ConvTranspose((1,2,3), 4=>5)) == [4]
+        @test nout(ConvTranspose((1,2,3), 4=>5)) == 5
 
-        @test _nin(DepthwiseConv((2,), 3=>4*3)) == 3
-        @test _nout(DepthwiseConv((2,), 3=>4*3)) == 12
-        @test _nin(DepthwiseConv((1,2), 3=>6*3)) == 3
-        @test _nout(DepthwiseConv((1,2), 3=>6*3)) == 18
-        @test _nin(DepthwiseConv((1,2,3), 4=>5*4)) == 4
-        @test _nout(DepthwiseConv((1,2,3), 4=>5*4)) == 20
+        @test nin(DepthwiseConv((2,), 3=>4*3)) == [3]
+        @test nout(DepthwiseConv((2,), 3=>4*3)) == 12
+        @test nin(DepthwiseConv((1,2), 3=>6*3)) == [3]
+        @test nout(DepthwiseConv((1,2), 3=>6*3)) == 18
+        @test nin(DepthwiseConv((1,2,3), 4=>5*4)) == [4]
+        @test nout(DepthwiseConv((1,2,3), 4=>5*4)) == 20
 
-        @test _nin(CrossCor((2,), 3=>4)) == 3
-        @test _nout(CrossCor((2,), 3=>4)) == 4
-        @test _nin(CrossCor((1,2), 3=>6)) == 3
-        @test _nout(CrossCor((1,2), 3=>6)) == 6
-        @test _nin(CrossCor((1,2,3), 4=>5)) == 4
-        @test _nout(CrossCor((1,2,3), 4=>5)) == 5
+        @test nin(CrossCor((2,), 3=>4)) == [3]
+        @test nout(CrossCor((2,), 3=>4)) == 4
+        @test nin(CrossCor((1,2), 3=>6)) == [3]
+        @test nout(CrossCor((1,2), 3=>6)) == 6
+        @test nin(CrossCor((1,2,3), 4=>5)) == [4]
+        @test nout(CrossCor((1,2,3), 4=>5)) == 5
 
-        @test _nin(Flux.Diagonal(3)) == _nout(Flux.Diagonal(3)) == 3
+        @test nin(Flux.Diagonal(3)) == [nout(Flux.Diagonal(3))] == [3]
 
-        @test _nin(LayerNorm(3)) == _nout(LayerNorm(3)) == 3
-        @test _nin(BatchNorm(3)) == _nout(BatchNorm(3)) == 3
-        @test _nin(InstanceNorm(3)) == _nout(InstanceNorm(3)) == 3
-        @test _nin(GroupNorm(3,1)) == _nout(GroupNorm(3,1)) == 3
+        @test nin(LayerNorm(3)) == [nout(LayerNorm(3))] == [3]
+        @test nin(BatchNorm(3)) == [nout(BatchNorm(3))] == [3]
+        @test nin(InstanceNorm(3)) == [nout(InstanceNorm(3))] == [3]
+        @test nin(GroupNorm(3,1)) == [nout(GroupNorm(3,1))] == [3]
 
-        @test _nin(RNN(3,4)) == 3
-        @test _nout(RNN(3,4)) == 4
-        @test _nin(LSTM(3,4)) == 3
-        @test _nout(LSTM(3,4)) == 4
-        @test _nin(GRU(3,4)) == 3
-        @test _nout(GRU(3,4)) == 4
+        @test nin(RNN(3,4)) == [3]
+        @test nout(RNN(3,4)) == 4
+        @test nin(LSTM(3,4)) == [3]
+        @test nout(LSTM(3,4)) == 4
+        @test nin(GRU(3,4)) == [3]
+        @test nout(GRU(3,4)) == 4
     end
 
     @testset "Dims" begin

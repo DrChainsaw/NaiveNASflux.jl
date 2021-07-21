@@ -49,12 +49,10 @@ end
 wrapped(m::MutableLayer) = m.layer
 layer(m::MutableLayer) = wrapped(m)
 layertype(m::MutableLayer) = layertype(layer(m))
-NaiveNASlib.nin(m::MutableLayer) = [nin(layertype(m), layer(m))]
-NaiveNASlib.nout(m::MutableLayer) = nout(layertype(m), layer(m))
 
 # This handles both nin and nout for SizeInvariant layers with params, like BatchNorm
 NaiveNASlib.nin(m::MutableLayer, t::SizeInvariant, v::AbstractVertex) = layernin(layertype(m), layer(m), t, v)
-layernin(lt::FluxParInvLayer, l, t, ::AbstractVertex) = [nin(lt, l)]
+layernin(lt::FluxParInvLayer, l, t, ::AbstractVertex) = nin(lt, l)
 layernin(lt, l, t, v::AbstractVertex) = nin(l, t, v) # Default implentation in NaiveNASlib: calculate from inputs
 
 function NaiveNASlib.Δsize!(m::MutableLayer, inputs::AbstractVector, outputs::AbstractVector; insert=neuroninsert, kwargs...) 
@@ -188,7 +186,7 @@ function mutate(lt::FluxGroupNorm, m::MutableLayer, inds; insert=neuroninsert)
     # TODO: Select the most commonly occuring index in each column (except -1)
     inds_groups = reshape(inds_groups, nchannels_per_group, ngroups)[1,:]
 
-    sizetoinds = Dict(nin(l) => inds, l.G => inds_groups)
+    sizetoinds = Dict(nin(l)[] => inds, l.G => inds_groups)
 
     parselect(p::Pair) = parselect(p...)
     parselect(pname, x::AbstractArray) = select(x, 1 => sizetoinds[length(x)]; newfun = insert(lt, pname))
