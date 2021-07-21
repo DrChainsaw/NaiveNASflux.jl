@@ -37,7 +37,7 @@ suitable for `Flux`s convolution layers.
 
 $inputshapemotivation
 """
-convinputvertex(name, nchannel, ndim) = inputvertex(name, nchannel, FluxConv{ndim}())
+convinputvertex(name, nchannel, ndim) = inputvertex(name, nchannel, GenericFluxConvolutional{ndim}())
 
 """
     conv1dinputvertex(name, nchannel)
@@ -66,7 +66,7 @@ with `size` number of features suitable for e.g. `Flux`s `Dense` layer.
 
 $inputshapemotivation
 """
-denseinputvertex(name, size) = inputvertex(name, size, FluxDense())
+denseinputvertex(name, size) = inputvertex(name, size, GenericFlux2D())
 
 """
     rnninputvertex(name, size)
@@ -76,7 +76,7 @@ with `size` number of features suitable for `Flux`s recurrent layers.
 
 $inputshapemotivation
 """
-rnninputvertex(name, size) = inputvertex(name, size, FluxRnn())
+rnninputvertex(name, size) = inputvertex(name, size, GenericFluxRecurrent())
 
 layertype(v::InputShapeVertex) = v.t
 layer(v::InputShapeVertex) = LayerTypeWrapper(v.t) # so that layertype(layer(v)) works

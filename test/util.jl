@@ -55,19 +55,19 @@
 
     @testset "Dims" begin
         import NaiveNASflux: actdim, indim, outdim
-        @test actdim(Dense(3,4)) == 1
+        import NaiveNASflux: GenericFlux2D, GenericFluxConvolutional, GenericFluxRecurrent
+        @test actdim(Dense(3,4)) == actdim(GenericFlux2D()) == 1
 
+        @test actdim(GenericFluxConvolutional{2}()) ==  3
         @test actdim(Conv((1,2), 3=>6)) == 3
-
         @test actdim(ConvTranspose((1,2), 3=>6)) == 3
-
         @test actdim(DepthwiseConv((1,2), 3=>6)) == 3
-
         @test actdim(CrossCor((1,2), 3=>6)) == 3
 
         @test actdim(Flux.Diagonal(1)) == indim(Flux.Diagonal(2)) == outdim(Flux.Diagonal(3)) == 1
 
-        @test actdim(RNN(3,4)) == 1
+        @test actdim(GenericFluxRecurrent()) == 1
+        @test actdim(RNN(3,4)) ==  1
         @test actdim(LSTM(3,4)) == 1
         @test actdim(GRU(3,4)) == 1
 

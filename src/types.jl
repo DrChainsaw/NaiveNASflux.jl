@@ -7,10 +7,16 @@ layer(l) = l
 # Types for layers with parameters (e.g. weights and biases) and with similar handling
 # w.r.t what shape of parameters means in terms of number of inputs and number of outputs
 abstract type FluxParLayer <: FluxLayer end
-struct FluxDense <: FluxParLayer end
+
+abstract type Flux2D <: FluxParLayer end
+struct GenericFlux2D <: Flux2D end
+struct FluxDense <: Flux2D end
 layertype(::Dense) = FluxDense()
 
+# Might be a Flux2D, but not exactly the same. Also want to leave the door open to when/if they accept 3D input too
+# Type hierarchies are hard :/
 abstract type FluxRecurrent <:FluxParLayer end
+struct GenericFluxRecurrent <: FluxRecurrent end
 struct FluxRnn <: FluxRecurrent end
 struct FluxLstm <: FluxRecurrent end
 struct FluxGru <: FluxRecurrent end
@@ -19,6 +25,7 @@ layertype(::Flux.Recur{<:Flux.LSTMCell}) = FluxLstm()
 layertype(::Flux.Recur{<:Flux.GRUCell}) = FluxGru()
 
 abstract type FluxConvolutional{N} <: FluxParLayer end
+struct GenericFluxConvolutional{N} <: FluxConvolutional{N} end
 struct FluxConv{N} <: FluxConvolutional{N} end
 struct FluxConvTranspose{N}  <: FluxConvolutional{N} end
 struct FluxDepthwiseConv{N} <: FluxConvolutional{N}  end

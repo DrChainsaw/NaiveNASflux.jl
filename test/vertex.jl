@@ -1,6 +1,7 @@
 
 @testset "InputShapeVertex" begin
     import NaiveNASflux: FluxDense, FluxConv, FluxRnn
+    import NaiveNASflux: actrank, actdim
     v = inputvertex("in", 3, FluxDense())
     @test layertype(v) == FluxDense()
     @test name(v) == "in"
@@ -11,15 +12,25 @@
     @test name(c) == "in"
     @test nout(c) == 3
 
-    @test layertype(inputvertex("in", 4, FluxDense()))   == layertype(denseinputvertex("in", 4))
+    @test nout(inputvertex("in", 4, FluxDense()))   == nout(denseinputvertex("in", 4))
+    @test nout(inputvertex("in", 3, FluxConv{1}())) == nout(conv1dinputvertex("in", 3))
+    @test nout(inputvertex("in", 3, FluxConv{2}())) == nout(conv2dinputvertex("in", 3))
+    @test nout(inputvertex("in", 3, FluxConv{3}())) == nout(conv3dinputvertex("in", 3))
+    @test nout(inputvertex("in", 2, FluxRnn()))     == nout(rnninputvertex("in", 2))
 
-    @test layertype(inputvertex("in", 3, FluxConv{2}())) == layertype(convinputvertex("in", 3, 2))
+    @test actdim(inputvertex("in", 4, FluxDense()))   == actdim(denseinputvertex("in", 4))
+    @test actdim(inputvertex("in", 3, FluxConv{2}())) == actdim(convinputvertex("in", 3, 2))
+    @test actdim(inputvertex("in", 3, FluxConv{1}())) == actdim(conv1dinputvertex("in", 3))
+    @test actdim(inputvertex("in", 3, FluxConv{2}())) == actdim(conv2dinputvertex("in", 3))
+    @test actdim(inputvertex("in", 3, FluxConv{3}())) == actdim(conv3dinputvertex("in", 3))
+    @test actdim(inputvertex("in", 2, FluxRnn()))     == actdim(rnninputvertex("in", 2))
 
-    @test layertype(inputvertex("in", 3, FluxConv{1}())) == layertype(conv1dinputvertex("in", 3))
-    @test layertype(inputvertex("in", 3, FluxConv{2}())) == layertype(conv2dinputvertex("in", 3))
-    @test layertype(inputvertex("in", 3, FluxConv{3}())) == layertype(conv3dinputvertex("in", 3))
-
-    @test layertype(inputvertex("in", 2, FluxRnn()))     == layertype(rnninputvertex("in", 2))
+    @test actrank(inputvertex("in", 4, FluxDense()))   == actrank(denseinputvertex("in", 4))
+    @test actrank(inputvertex("in", 3, FluxConv{2}())) == actrank(convinputvertex("in", 3, 2))
+    @test actrank(inputvertex("in", 3, FluxConv{1}())) == actrank(conv1dinputvertex("in", 3))
+    @test actrank(inputvertex("in", 3, FluxConv{2}())) == actrank(conv2dinputvertex("in", 3))
+    @test actrank(inputvertex("in", 3, FluxConv{3}())) == actrank(conv3dinputvertex("in", 3))
+    @test actrank(inputvertex("in", 2, FluxRnn()))     == actrank(rnninputvertex("in", 2))
 end
 
 @testset "Size mutations" begin
@@ -400,13 +411,12 @@ end
         end
 
         @testset "Concatenate BatchNorm only" begin
-            import NaiveNASflux: FluxConv
             nin1 = 3
             nin2 = 7
             indata1 = reshape(collect(Float32, 1:nin1*4*4), 4, 4, nin1, 1)
             indata2 = reshape(collect(Float32, 1:nin2*4*4), 4, 4, nin2, 1)
-            in1 = inputvertex("in1", nin1, FluxConv{2}())
-            in2 = inputvertex("in2", nin2, FluxConv{2}())
+            in1 = conv2dinputvertex("in1", nin1)
+            in2 = conv2dinputvertex("in2", nin2)
             vfun(v,s) = fluxvertex(BatchNorm(nout(v)), v)
 
             @test size(testgraph_vfun(vfun, in1, in2)(indata1, indata2)) == (4,4,10,1)
@@ -414,8 +424,8 @@ end
 
         @testset "Concatenate elementwise and concatenated" begin
             import NaiveNASflux: FluxDense
-            in1 = inputvertex("in1", 3, FluxDense())
-            in2 = inputvertex("in2", 3, FluxDense())
+            in1 = denseinputvertex("in1", 3)
+            in2 = denseinputvertex("in2", 3)
 
             v1 = "v1" >> in1 + in2
             v2 = concat("v2", in1, in2)

@@ -37,10 +37,10 @@ outdim(t::FluxLayer) = throw(ArgumentError("Not implemented for $t"))
 actdim(t::FluxLayer) = throw(ArgumentError("Not implemented for $t"))
 actrank(t::FluxLayer) = throw(ArgumentError("Not implemented for $t"))
 
-indim(::FluxDense) = 2
-outdim(::FluxDense) = 1
-actdim(::FluxDense) = 1
-actrank(::FluxDense) = 1
+indim(::Flux2D) = 2
+outdim(::Flux2D) = 1
+actdim(::Flux2D) = 1
+actrank(::Flux2D) = 1
 
 indim(::FluxDiagonal) = 1
 outdim(::FluxDiagonal) = 1
