@@ -37,6 +37,12 @@ end
 actdim(nd::Integer) = nd - 1
 
 function NaiveNASlib.Δsize!(m::ActivationContribution, inputs::AbstractVector, outputs::AbstractVector; kwargs...)
+    if m.contribution !== missing
+        # This tends to happen when we are measuring contribution for a concatenation and we have added an extra input edge
+        # TODO: Try to find another fix, perhaps we need to ensure that nout(v) if v wraps an ActivationContribution always return
+        # the length of m.contribution
+        outputs[outputs .> length(m.contribution)] .= -1 
+    end
     m.contribution = select(m.contribution, 1 => outputs; newfun = (args...) -> 0)
     NaiveNASlib.Δsize!(wrapped(m), inputs, outputs; kwargs...)
 end
