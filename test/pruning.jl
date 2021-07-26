@@ -82,6 +82,15 @@
         @test length(params(l)) == length(params(layer(l)))
     end
 
+    @testset "Functor and trainable" begin
+        import NaiveNASflux: weights, bias
+        l = ml(Dense(2,3), ActivationContribution)
+
+        @test params(l) == params(layer(l))
+        l2 = fmap(x -> x isa AbstractArray ? fill(17, size(x)) : x, l)
+        @test unique(neuron_value(l)) == unique(bias(layer(l))) == unique(weights(layer(l))) == [17]
+    end
+
     @testset "Neuron value Dense act contrib" begin
         l = ml(Dense(3,5), ActivationContribution)
         @test neuron_value(l) == zeros(5)

@@ -2,6 +2,7 @@ module NaiveNASflux
 
 using Reexport
 using NaiveNASlib
+using NaiveNASlib: flatten
 using Flux
 import Flux.Zygote: hook
 using Statistics
