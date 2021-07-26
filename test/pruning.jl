@@ -22,6 +22,7 @@
             m = NaiveNASflux.Ewma(0.3, actonly)
             @test m(missing, [1,2,3,4], :ignored) == [1,2,3,4]
             @test m([1,2,3,4], [5,6,7,8], :ignored) ≈ [3.8, 4.8, 5.8, 6.8]
+            @test m(Float32[1,2,3,4], Float32[5,6,7,8], :ignored) ≈ Float32[3.8, 4.8, 5.8, 6.8]
         end
 
         @testset "NeuronValueEvery{3}" begin

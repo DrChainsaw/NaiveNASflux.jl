@@ -14,8 +14,8 @@ mutable struct ActivationContribution{L,M} <: AbstractMutableComp
     contribution # Type of activation not known yet :( Also leave some room for experimenting with things like storing the metric on the GPU
     method::M
 end
-ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05)) = ActivationContribution(l, zeros(Float32, nout(l)), method)
-ActivationContribution(l, method = Ewma(0.05)) = ActivationContribution(l, missing, method)
+ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05f0)) = ActivationContribution(l, zeros(Float32, nout(l)), method)
+ActivationContribution(l, method = Ewma(0.05f0)) = ActivationContribution(l, missing, method)
 
 layer(m::ActivationContribution) = layer(m.layer)
 layertype(m::ActivationContribution) = layertype(m.layer)
@@ -129,8 +129,11 @@ Ewma(α) = Ewma(α, neuronvaluetaylor)
 (m::Ewma)(currval, act, grad) = agg(m, currval, m.method(currval, act, grad))
 
 # Basically for backwards compatibility even though method is not exported
-agg(m::Ewma, x, y) = m.α .* cpu(x) .+ (1 - m.α) .* cpu(y)
-agg(m::Ewma, ::Missing, y) = cpu(y)
+function agg(m::Ewma, x, y) 
+    α = convert(float(eltype(x)), m.α)
+    α .* x .+ (1 - α) .* y
+end
+agg(m::Ewma, ::Missing, y) = y
 
 
 """
