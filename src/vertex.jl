@@ -10,6 +10,8 @@ struct InputShapeVertex{V<:AbstractVertex, L<:FluxLayer} <: AbstractVertex
     t::L
 end
 
+@functor InputShapeVertex
+
 const inputshapemotivation = """
 Providing the input type is not strictly necessary for the package to work and in many cases a normal `inputvertex` 
 will do. 
@@ -114,15 +116,17 @@ NaiveNASlib.base(t::SizeNinNoutConnected) = t.base
 
 NaiveNASlib.all_in_Δsize_graph(::SizeNinNoutConnected, d, v, visited) = all_in_Δsize_graph(SizeInvariant(), d, v, visited)
 
+Flux.trainable(v::CompVertex) = Flux.trainable(v.computation)
+Flux.trainable(g::CompGraph) = Flux.trainable(vertices(g))
+
 # TODO: Move to NaiveNASlib
 @functor InputVertex
 @functor InputSizeVertex
-@functor InputShapeVertex
 @functor CompVertex
-@functor OutputsVertex (base,)
 @functor MutationVertex
 @functor CompGraph
 
+Functors.functor(::Type{<:OutputsVertex}, v) = (base = v.base,), newbase -> OutputsVertex(newbase[1])
 
 """
     fluxvertex(l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated())

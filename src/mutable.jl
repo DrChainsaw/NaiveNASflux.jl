@@ -280,7 +280,7 @@ end
 wrapped(m::LazyMutable) = m.mutable
 layer(m::LazyMutable) = layer(wrapped(m))
 
-function Functors.functor(m::LazyMutable)
+function Functors.functor(::Type{<:LazyMutable}, m)
     forcemutation(m)
     return (mutable=m.mutable,), y -> LazyMutable(y.mutable)
 end
