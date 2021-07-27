@@ -31,10 +31,33 @@ _randoutzeroin(T, d, s::NTuple{N, Int}) where N = d == indim(FluxConv{N-2}()) ? 
 
 
 """
-    KernelSizeAligned(Δsize)
-    KernelSizeAligned(Δs::Integer...)
+    KernelSizeAligned(Δsize; pad)
+    KernelSizeAligned(Δs::Integer...;pad)
 
-Strategy for changing kernel size of convolutional layers where filters remain phase aligned. In other words, the same element indices are removed/added for all filters and only 'outer' elements are dropped or added.
+Strategy for changing kernel size of convolutional layers where filters remain phase aligned. In other words, the same 
+element indices are removed/added for all filters and only 'outer' elements are dropped or added.
+
+Call with vertex as input to change weights.
+
+### Examples
+
+```julia-repl
+julia> cv = fluxvertex(Conv((3,3), 1=>1;pad=SamePad()), conv2dinputvertex("in", 1));
+
+julia> cv(ones(Float32, 4,4,1,1)) |> size
+(4, 4, 1, 1)
+
+julia> layer(cv).weight |> size
+(3, 3, 1, 1)
+
+julia> cv |> KernelSizeAligned(-1, 1; pad=SamePad());
+
+julia> cv(ones(Float32, 4,4,1,1)) |> size
+(4, 4, 1, 1)
+
+julia> layer(cv).weight |> size
+(2, 4, 1, 1)
+```
 """
 struct KernelSizeAligned{T, P}
     Δsize::T
@@ -43,10 +66,11 @@ end
 KernelSizeAligned(Δs::Integer...;pad = ntuple(i -> 0, length(Δs))) = KernelSizeAligned(Δs, pad)
 
 (s::KernelSizeAligned)(l) = selectfilters(layertype(l), l, s)
+(s::KernelSizeAligned)(v::AbstractVertex) = mutate_weights(v, s)
 
-otherpars(s::KernelSizeAligned, l) = paddingfor(layertype(l), s)
-paddingfor(t, s) = ()
-paddingfor(::FluxConvolutional, s) = (pad = s.pad,)
+otherpars(s::KernelSizeAligned, l) = paddingfor(layertype(l), l, s)
+paddingfor(lt, l, s) = ()
+paddingfor(::FluxConvolutional{N}, l, s) where N = (;pad = Flux.calc_padding(typeof(l), s.pad, size(weights(l))[1:N] .+ s.Δsize, l.dilation, l.stride))
 
 selectfilters(t, l, s) = ()
 selectfilters(::FluxConvolutional, l, s) = selectfilters(s, weights(l))

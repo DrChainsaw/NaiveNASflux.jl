@@ -17,9 +17,13 @@
         @test size(weights(layer(m)))[1:2] == (3,4)
         @test size(m(indata)) == size(indata)
 
-        mutate_weights(m, KernelSizeAligned((-1, 2), (1,0,3,2)))
+        KernelSizeAligned((-1, 2), (1,0,3,2))(m)
 
         @test size(weights(layer(m)))[1:2] == (2,6)
+        @test size(m(indata)) == size(indata)
+
+        KernelSizeAligned((1, -1), SamePad())(m)
+        @test size(weights(layer(m)))[1:2] == (3,5)
         @test size(m(indata)) == size(indata)
     end
 
@@ -31,12 +35,12 @@
         @test size(weights(layer(m))) == (3,4,5,6)
         @test size(m(indata))[1:2] == size(indata)[1:2]
 
-        mutate_weights(m, KernelSizeAligned((-1, 2), (1,0,3,2)))
+        KernelSizeAligned((-1, 2), (1,0,3,2))(m)
 
         @test size(m(indata)) == (size(indata,1), size(indata,2), 6, size(indata,4))
         @test size(weights(layer(m))) == (2,6,5,6)
 
-        mutate_weights(m, KernelSizeAligned((2, -1), (1,2,2,2)))
+        KernelSizeAligned((2, -1), (1,2,2,2))(m)
         NaiveNASlib.Δsize!(NaiveNASlib.NeuronIndices(), NaiveNASlib.OnlyFor(), m, [1:nin(m)[]], [1,3,5])
 
         @test size(m(indata)) == (size(indata,1), size(indata,2), 3, size(indata,4))
@@ -49,7 +53,7 @@
         indata = ones(Float32, nin(m)[], 2)
 
         @test size(m(indata)) == (4,2)
-        mutate_weights(m, KernelSizeAligned((-1,-1), (1,1)))
+        KernelSizeAligned((-1,-1), (1,1))(m)
         @test size(m(indata)) == (4,2)
     end
 end

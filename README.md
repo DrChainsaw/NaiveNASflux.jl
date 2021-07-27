@@ -42,8 +42,8 @@ batchnorm = fluxvertex(BatchNorm(nout(conv), relu), conv)
 @test nin(conv) == [3]
 @test nout(conv) == 5
 
-@test layertype(conv) isa FluxConv{2}
-@test layertype(batchnorm) isa FluxBatchNorm
+@test layer(conv) isa Flux.Conv
+@test layer(batchnorm) isa Flux.BatchNorm
 
 # naming vertices is a good idea for debugging and logging purposes
 namedconv = fluxvertex("namedconv", Conv((5,5), 3=>7, pad=(2,2)), invertex)

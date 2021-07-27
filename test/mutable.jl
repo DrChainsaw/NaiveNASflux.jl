@@ -473,6 +473,7 @@
     @testset "LazyMutable" begin
 
         @testset "LazyMutable with Dense MutableLayer" begin
+            import NaiveNASflux: layertype
             m = MutableLayer(Dense(3,4))
             mlazy = LazyMutable(m)
 

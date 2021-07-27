@@ -18,9 +18,9 @@ export convinputvertex, conv1dinputvertex, conv2dinputvertex, conv3dinputvertex
 
 export ActivationContribution, NeuronValueEvery, LazyMutable
 
-export layer, layertype
+export layer
 
-export KernelSizeAligned, mutate_weights
+export KernelSizeAligned
 
 include("types.jl")
 include("util.jl")

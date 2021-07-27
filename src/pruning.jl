@@ -128,7 +128,6 @@ Ewma(α) = Ewma(α, neuronvaluetaylor)
 
 (m::Ewma)(currval, act, grad) = agg(m, currval, m.method(currval, act, grad))
 
-# Basically for backwards compatibility even though method is not exported
 function agg(m::Ewma, x, y) 
     α = convert(float(eltype(x)), m.α)
     α .* x .+ (1 - α) .* y

@@ -34,7 +34,7 @@
 end
 
 @testset "Size mutations" begin
-    import NaiveNASflux: weights, bias
+    import NaiveNASflux: weights, bias, layertype
 
     @testset "Dense to Dense" begin
         inpt = inputvertex("in", 4)
@@ -572,7 +572,7 @@ end
     @test logged(level=Base.CoreLogging.Info, info=NameInfoStr())(SizeAbsorb()) == SizeChangeLogger(Base.CoreLogging.Info, NameInfoStr(), SizeAbsorb())
 end
 
-@testset "Flux functor" begin
+@testset "functor" begin
     import Functors: functor, fmap
     import Flux: params
     import NaiveNASflux: weights, bias, FluxDense

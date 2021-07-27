@@ -66,10 +66,8 @@
         @test nv(graph) == 7
 
         # Change kernel size (and supply new padding)
-        let Δsize = (-2, -2), pad = (1,1)
-            mutate_weights(namedconv, KernelSizeAligned(Δsize, pad))
-        end
-
+        namedconv |> KernelSizeAligned(-2,-2; pad=SamePad())
+     
         # Note: Parameters not changed yet...
         @test size(NaiveNASflux.weights(layer(namedconv))) == (5, 5, 3, 7)
 
