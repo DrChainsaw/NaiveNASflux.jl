@@ -5,11 +5,11 @@ using Reexport
 import Flux
 using Flux: Dense, Conv, ConvTranspose, DepthwiseConv, CrossCor, LayerNorm, BatchNorm, InstanceNorm, GroupNorm, 
             MaxPool, MeanPool, Dropout, AlphaDropout, GlobalMaxPool, GlobalMeanPool, cpu
+import Functors
 using Functors: @functor
 using Statistics
 using Setfield: @set, setproperties
 using LinearAlgebra
-import InteractiveUtils: subtypes
 import JuMP: @variable, @constraint, @expression, SOS1
 
 export denseinputvertex, rnninputvertex, fluxvertex, concat
@@ -31,8 +31,7 @@ include("vertex.jl")
 include("pruning.jl")
 include("weightinit.jl")
 
-# Stuff to integrate with Flux and Zygote
-include("functor.jl")
+# Stuff to integrate with Zygote
 include("zygote.jl")
 
 end # module

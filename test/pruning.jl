@@ -87,9 +87,12 @@
         import NaiveNASflux: weights, bias
         l = ml(Dense(2,3), ActivationContribution)
 
+        neuron_value_org = neuron_value(l)
+
         @test params(l) == params(layer(l))
         l2 = fmap(x -> x isa AbstractArray ? fill(17, size(x)) : x, l)
-        @test unique(neuron_value(l)) == unique(bias(layer(l))) == unique(weights(layer(l))) == [17]
+        @test unique(neuron_value(l2)) == unique(bias(layer(l2))) == unique(weights(layer(l2))) == [17]
+        @test neuron_value_org === neuron_value(l) == zeros(nout(l))
     end
 
     @testset "Neuron value Dense act contrib" begin

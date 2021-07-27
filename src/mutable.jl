@@ -50,6 +50,8 @@ wrapped(m::MutableLayer) = m.layer
 layer(m::MutableLayer) = wrapped(m)
 layertype(m::MutableLayer) = layertype(layer(m))
 
+@functor MutableLayer
+
 # This handles both nin and nout for SizeInvariant layers with params, like BatchNorm
 NaiveNASlib.nin(m::MutableLayer, t::SizeInvariant, v::AbstractVertex) = layernin(layertype(m), layer(m), t, v)
 layernin(lt::FluxParInvLayer, l, t, ::AbstractVertex) = nin(lt, l)
@@ -278,13 +280,9 @@ end
 wrapped(m::LazyMutable) = m.mutable
 layer(m::LazyMutable) = layer(wrapped(m))
 
-function Flux.functor(m::LazyMutable)
+function Functors.functor(m::LazyMutable)
     forcemutation(m)
-    return (mutable=m.mutable,),
-    function(y)
-        m.mutable = y[1]
-        return m
-    end
+    return (mutable=m.mutable,), y -> LazyMutable(y.mutable)
 end
 
 (m::LazyMutable)(x...) = dispatch!(m, m.mutable, x...)

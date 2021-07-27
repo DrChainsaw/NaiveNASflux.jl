@@ -579,24 +579,30 @@ end
     inpt = inputvertex("in", 2, FluxDense())
     v1 = fluxvertex(Dense(2, 3), inpt)
     v2 = fluxvertex(Dense(3, 4), v1)
-    g1 = CompGraph(inpt, v2)
-
-    @test functor(g1)[1] == (inpt, v1, v2)
+    v3 = concat(v2, v1)
+    v4 = fluxvertex(Dense(nout(v3), 2), v3)
+    g1 = CompGraph(inpt, v4)
 
     pars1 = params(g1).order
-    @test pars1[1] == weights(layer(v1))
-    @test pars1[2] == bias(layer(v1))
+    @test pars1[1] == weights(layer(v4))
+    @test pars1[2] == bias(layer(v4))
     @test pars1[3] == weights(layer(v2))
     @test pars1[4] == bias(layer(v2))
+    @test pars1[5] == weights(layer(v1))
+    @test pars1[6] == bias(layer(v1))
 
-    g2 = copy(g1)
     # Basically what Flux.gpu does except function is CuArrays.cu(x) instead of 2 .* x
     testfun(x) = x
     testfun(x::AbstractArray) = 2 .* x
-    fmap(testfun, g2)
+    g2 = fmap(testfun, g1)
 
     pars2 = params(g2).order.data
     @test pars2 == 2 .* pars1
+
+    indata = randn(nout(inpt), 1)
+
+    g3 = Flux.f64(g1)
+    @test g3(indata) ≈ g1(indata) rtol=1e-7
 end
 
 @testset "Trainable insert values" begin
