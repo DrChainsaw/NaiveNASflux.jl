@@ -27,6 +27,7 @@ Check out the basic usage of [NaiveNASlib](https://github.com/DrChainsaw/NaiveNA
 Here is a quick rundown of some common operations:
 
 ```julia
+using NaiveNASflux, Flux, Test
 # Input type: 3 channels 2D image
 invertex = conv2dinputvertex("in", 3)
 
@@ -111,7 +112,7 @@ While NaiveNASflux does not come with any built in search policies, it is still 
 First we need some boilerplate to create the model and do the training:
 
 ```julia
-using NaiveNASflux, Test
+using NaiveNASflux, Flux, Test
 import Flux: train!, mse
 import Random
 Random.seed!(666)

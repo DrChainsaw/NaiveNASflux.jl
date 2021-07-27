@@ -345,7 +345,7 @@ end
 layer(m::MutationTriggered) = layer(m.wrapped)
 layertype(m::MutationTriggered) = layertype(layer(m))
 
-Flux.@functor MutationTriggered
+@functor MutationTriggered
 
 """
     ResetLazyMutable
@@ -370,7 +370,7 @@ end
 layer(m::ResetLazyMutable) = layer(m.wrapped)
 layertype(m::ResetLazyMutable) = layertype(layer(m))
 
-Flux.@functor ResetLazyMutable
+@functor ResetLazyMutable
 
 """
     NoParams

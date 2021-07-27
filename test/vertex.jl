@@ -573,7 +573,8 @@ end
 end
 
 @testset "Flux functor" begin
-    import Flux:functor
+    import Functors: functor, fmap
+    import Flux: params
     import NaiveNASflux: weights, bias, FluxDense
     inpt = inputvertex("in", 2, FluxDense())
     v1 = fluxvertex(Dense(2, 3), inpt)
@@ -601,6 +602,7 @@ end
 @testset "Trainable insert values" begin
     using Random
     import NaiveNASflux: weights, bias
+    import Flux: params, Descent, train!, mse
 
     @testset "Dense-Dense-Dense" begin
         import NaiveNASflux: FluxDense
@@ -620,7 +622,7 @@ end
 
         @test g(indata) ≈ expectedout
 
-        Flux.train!((x,y) -> Flux.mse(g(x), y), params(g), [(randn(nin(v1)[],8), randn(nout(v3) ,8))], Descent(0.5))
+        train!((x,y) -> mse(g(x), y), params(g), [(randn(nin(v1)[],8), randn(nout(v3) ,8))], Descent(0.5))
 
         @test minimum(abs.(weights(layer(v1)))) > 0
         @test minimum(abs.(weights(layer(v2)))) > 0
@@ -645,7 +647,7 @@ end
 
         @test g(indata) == expectedout
 
-        Flux.train!((x,y) -> Flux.mse(g(x), y), params(g), [(randn(Float32,2,2,2,8), randn(Float32,2,2,2,8))], Descent(0.5))
+        train!((x,y) -> mse(g(x), y), params(g), [(randn(Float32,2,2,2,8), randn(Float32,2,2,2,8))], Descent(0.5))
 
         @test minimum(abs.(weights(layer(v1)))) > 0
         @test minimum(abs.(weights(layer(v3)))) > 0
@@ -669,7 +671,7 @@ end
 
         @test g(indata) == expectedout
 
-        Flux.train!((x,y) -> Flux.mse(g(x), y), params(g), [(randn(Float32,2,2,2,8), randn(Float32,2,2,2,8))], Descent(0.5))
+        train!((x,y) -> mse(g(x), y), params(g), [(randn(Float32,2,2,2,8), randn(Float32,2,2,2,8))], Descent(0.5))
 
         @test minimum(abs.(weights(layer(v1)))) > 0
         @test minimum(abs.(weights(layer(v2)))) > 0
@@ -678,7 +680,7 @@ end
 end
 
 @testset "setlayer" begin
-    v = fluxvertex(Dense(3, 4, relu), inputvertex("in", 3))
+    v = fluxvertex(Dense(3, 4, Flux.relu), inputvertex("in", 3))
     NaiveNASflux.setlayer!(v, (;σ=tanh))
     @test layer(v).σ == tanh
 end
