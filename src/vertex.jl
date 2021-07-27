@@ -115,12 +115,12 @@ NaiveNASlib.base(t::SizeNinNoutConnected) = t.base
 NaiveNASlib.all_in_Δsize_graph(::SizeNinNoutConnected, d, v, visited) = all_in_Δsize_graph(SizeInvariant(), d, v, visited)
 
 
-Flux.@functor InputVertex
-Flux.@functor CompVertex
+@functor InputVertex
+@functor CompVertex
 
 # This is a bit of a hack to enable 1) params and 2) gpu. Other uses may not work as expected, especially if one tries to use these methods to view/manipulate things which are not from Flux.
 
-# Problem with using Flux.@functor is that MutationVertices (OutputVertices really) can not be created by just copying their fields as this would create multiple copies of the same vertex if it is input to more than one vertex.
+# Problem with using @functor is that MutationVertices (OutputVertices really) can not be created by just copying their fields as this would create multiple copies of the same vertex if it is input to more than one vertex.
 # Instead, we rely in the internals of the vertices to be mutable (e.g MutableLayer).
 
 Flux.functor(::Type{<:AbstractVector{<:AbstractVertex}}, a) = Tuple(a), y -> a

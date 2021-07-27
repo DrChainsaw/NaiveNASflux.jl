@@ -2,6 +2,7 @@
 @testset "Examples" begin
 
     @testset "Quick reference example" begin
+        using NaiveNASflux, Flux, Test
         # Input type: 3 channels 2D image
         invertex = conv2dinputvertex("in", 3)
 
@@ -82,7 +83,7 @@
     end
 
     @testset "Pruning xor example" begin
-        using NaiveNASflux, Test
+        using NaiveNASflux, Flux, Test
         import Flux: train!, mse
         import Random
         Random.seed!(666)

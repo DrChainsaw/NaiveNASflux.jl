@@ -28,7 +28,7 @@ Flux.trainable(m::ActivationContribution) = Flux.trainable(wrapped(m))
 function(m::ActivationContribution)(x...)
     act = wrapped(m)(x...)
 
-    return hook(act) do grad
+    return Flux.Zygote.hook(act) do grad
         grad === nothing && return grad
         m.contribution = m.method(m.contribution, act, grad)
         return grad

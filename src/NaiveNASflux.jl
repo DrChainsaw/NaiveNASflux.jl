@@ -1,12 +1,13 @@
 module NaiveNASflux
 
 using Reexport
-using NaiveNASlib
-using NaiveNASlib: flatten
-using Flux
-import Flux.Zygote: hook
+@reexport using NaiveNASlib
+import Flux
+using Flux: Dense, Conv, ConvTranspose, DepthwiseConv, CrossCor, LayerNorm, BatchNorm, InstanceNorm, GroupNorm, 
+            MaxPool, MeanPool, Dropout, AlphaDropout, GlobalMaxPool, GlobalMeanPool, cpu
+using Functors: @functor
 using Statistics
-using Setfield
+using Setfield: @set, setproperties
 using LinearAlgebra
 import InteractiveUtils: subtypes
 import JuMP: @variable, @constraint, @expression, SOS1
@@ -33,10 +34,5 @@ include("weightinit.jl")
 # Stuff to integrate with Flux and Zygote
 include("functor.jl")
 include("zygote.jl")
-
-# Reexporting before include("functor.jl") causes a warning about duplicate name (flatten) in NaiveNASlib and Flux when subtypes are called
-# https://discourse.julialang.org/t/avoid-error-message-for-function-name-conflict/37176/10
-@reexport using NaiveNASlib
-@reexport using Flux
 
 end # module
