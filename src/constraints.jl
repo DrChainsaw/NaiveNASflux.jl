@@ -40,6 +40,9 @@ end
 NaiveNASlib.base(s::DepthwiseConvAllowNinChangeStrategy) = s.base
 NaiveNASlib.fallback(s::DepthwiseConvAllowNinChangeStrategy) = s.fallback
 
+NaiveNASlib.add_participants!(s::DepthwiseConvAllowNinChangeStrategy, vs=AbstractVertex[]) = NaiveNASlib.add_participants!(base(s), vs)
+
+
 """
   DepthwiseConvSimpleΔSizeStrategy(base, [fallback])
 
@@ -64,6 +67,8 @@ function DepthwiseConvSimpleΔSizeStrategy(ms::AbstractVector{<:Integer}, base, 
 end
 NaiveNASlib.base(s::DepthwiseConvSimpleΔSizeStrategy) = s.base
 NaiveNASlib.fallback(s::DepthwiseConvSimpleΔSizeStrategy) = s.fallback
+
+NaiveNASlib.add_participants!(s::DepthwiseConvSimpleΔSizeStrategy, vs=AbstractVertex[]) = NaiveNASlib.add_participants!(base(s), vs)
 
 
 recurse_fallback(f, s::NaiveNASlib.AbstractJuMPΔSizeStrategy) = wrap_fallback(f, NaiveNASlib.fallback(s))
