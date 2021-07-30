@@ -132,7 +132,7 @@ function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::NaiveNA
         for d in ds
           iv = inputvertex("in", w, FluxConv{2}())
           dv = reduce((v, i) -> fluxvertex("dv$i", DepthwiseConv((1,1), nout(v) => fld1(i, 3) * nout(v)), v), 1:d; init=iv)   
-          metric = sum(NaiveNASlib.flatten(dv)) do v
+          metric = sum(ancestors(dv)) do v
             layertype(v) isa FluxDepthwiseConv || return 0
             return log2(nout(v))
           end

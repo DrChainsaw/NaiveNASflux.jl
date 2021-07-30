@@ -1,6 +1,6 @@
 @testset "Mutable computation" begin
 
-    import NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, mutate, hiddenweights, hiddenstate, state, outscale
+    using NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, mutate, hiddenweights, hiddenstate, state, outscale
 
     inszero = pairs((insert = (lt, pn) -> (args...) -> 0,))
     _nins(m) = [1:nin(m)[]]
@@ -12,9 +12,6 @@
         @test nin(m) == [2]
         @test nout(m) == nout(m.layer) == 3
         @test m([1.0, 2.0]) == m.layer([1.0, 2.0])
-
-        @test minΔninfactor(m) == 1
-        @test minΔnoutfactor(m) == 1
 
         m.layer = Dense(3,4)
         bias(m.layer)[1:end] = 1:4
@@ -71,8 +68,7 @@
 
             @test nin(m) == [4]
             @test nout(m) == nout(m.layer) == 5
-            @test minΔninfactor(m) == 1
-            @test minΔnoutfactor(m) == 1
+
             input = reshape(collect(Float32, 1:3*4*4), 3, 4, 4, 1)
             @test m(input) == m.layer(input)
 
@@ -141,8 +137,7 @@
 
             @test nin(m) == [4]
             @test nout(m) == nout(m.layer) == 5
-            @test minΔninfactor(m) == 1
-            @test minΔnoutfactor(m) == 1
+
             input = reshape(collect(Float32, 1:3*4*4), 3, 4, 4, 1)
             @test m(input) == m.layer(input)
 
@@ -189,8 +184,7 @@
 
             @test nin(m) == [4]
             @test nout(m) == nout(m.layer) == 5
-            @test minΔninfactor(m) == 1
-            @test minΔnoutfactor(m) == 1
+
             input = reshape(collect(Float32, 1:3*4*4), 3, 4, 4, 1)
             @test m(input) == m.layer(input)
 
@@ -206,8 +200,7 @@
         m = MutableLayer(Flux.Diagonal(4))
 
         @test nin(m) == [nout(m)] == [4]
-        @test minΔninfactor(m) == 1
-        @test minΔnoutfactor(m) == 1
+
         weights(m.layer)[1:end] = 1:4
         bias(m.layer)[1:end] = 1:4
 
@@ -234,8 +227,7 @@
             m = MutableLayer(LayerNorm(3; affine=true))
 
             @test nin(m) == [nout(m)] == [3]
-            @test minΔninfactor(m) == 1
-            @test minΔnoutfactor(m) == 1
+
             weights(m.layer.diag)[1:end] = 1:3
             bias(m.layer.diag)[1:end] = 1:3
 
@@ -279,8 +271,6 @@
             l_orig = layer(m)
 
             @test nin(m) == [nout(m)] == [5]
-            @test minΔninfactor(m) == 1
-            @test minΔnoutfactor(m) == 1
 
             m.layer = Flux.fmap(setpar, layer(m))
 
@@ -349,8 +339,6 @@
 
             @test nin(m) == [3]
             @test nout(m) == nout(m.layer) == 4
-            @test minΔninfactor(m) == 1
-            @test minΔnoutfactor(m) == 1
 
             @testset "Select inputs" begin
                 inds = [1, 3]
@@ -388,8 +376,6 @@
 
             @test nin(m) == [3]
             @test nout(m) == nout(m.layer) == 4
-            @test minΔninfactor(m) == 1
-            @test minΔnoutfactor(m) == 1
 
             @testset "Select inputs" begin
                 inds = [1, 3]
@@ -428,8 +414,6 @@
 
             @test nin(m) == [3]
             @test nout(m) == nout(m.layer) == 4
-            @test minΔninfactor(m) == 1
-            @test minΔnoutfactor(m) == 1
 
             @testset "Select inputs" begin
                 inds = [1, 3]
@@ -479,9 +463,6 @@
 
             Wexp = weights(layer(m))
             bexp = bias(layer(m))
-
-            @test minΔninfactor(m) == 1
-            @test minΔnoutfactor(m) == 1
 
             NaiveNASlib.Δsize!(mlazy, [[1, 3]], 1:nout(m))
             assertlayer(layer(m), Wexp, bexp)

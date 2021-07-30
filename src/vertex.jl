@@ -114,7 +114,7 @@ end
 NaiveNASlib.base(t::SizeNinNoutConnected) = t.base
 
 
-NaiveNASlib.all_in_Δsize_graph(::SizeNinNoutConnected, d, v, visited) = all_in_Δsize_graph(SizeInvariant(), d, v, visited)
+NaiveNASlib.all_in_Δsize_graph(::SizeNinNoutConnected, args...) = NaiveNASlib.all_in_Δsize_graph(SizeInvariant(), args...)
 
 Flux.trainable(v::CompVertex) = Flux.trainable(v.computation)
 Flux.trainable(g::CompGraph) = Flux.trainable(vertices(g))

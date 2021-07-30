@@ -1,4 +1,5 @@
 using NaiveNASflux, Flux, Test
+using NaiveNASlib.Advanced, NaiveNASlib.Extend
 
 function assertlayer(l, Wexp, bexp)
     @test size(Wexp) == size(weights(l))
