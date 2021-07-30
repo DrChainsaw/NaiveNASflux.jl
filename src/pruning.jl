@@ -20,8 +20,7 @@ ActivationContribution(l, method = Ewma(0.05f0)) = ActivationContribution(l, mis
 layer(m::ActivationContribution) = layer(m.layer)
 layertype(m::ActivationContribution) = layertype(m.layer)
 wrapped(m::ActivationContribution) = m.layer
-NaiveNASlib.minΔninfactor(m::ActivationContribution) = minΔninfactor(wrapped(m))
-NaiveNASlib.minΔnoutfactor(m::ActivationContribution) = minΔnoutfactor(wrapped(m))
+
 Flux.trainable(m::ActivationContribution) = Flux.trainable(wrapped(m))
 
 @functor ActivationContribution

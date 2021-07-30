@@ -20,7 +20,7 @@ ratios of `nout / nin`.
 
 If `fallback` is not provided, it will be derived from `base`.
 """
-struct DepthwiseConvAllowNinChangeStrategy{S,F} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
+struct DepthwiseConvAllowNinChangeStrategy{S,F} <: DecoratingJuMPΔSizeStrategy
   allowed_new_outgroups::Vector{Int}
   allowed_multipliers::Vector{Int}
   base::S
@@ -55,7 +55,7 @@ ratios of `nout / nin`.
 
 If `fallback` is not provided, it will be derived from `base`.
 """
-struct DepthwiseConvSimpleΔSizeStrategy{S, F} <: NaiveNASlib.DecoratingJuMPΔSizeStrategy
+struct DepthwiseConvSimpleΔSizeStrategy{S, F} <: DecoratingJuMPΔSizeStrategy
   allowed_multipliers::Vector{Int}
   base::S
   fallback::F
@@ -71,7 +71,7 @@ NaiveNASlib.fallback(s::DepthwiseConvSimpleΔSizeStrategy) = s.fallback
 NaiveNASlib.add_participants!(s::DepthwiseConvSimpleΔSizeStrategy, vs=AbstractVertex[]) = NaiveNASlib.add_participants!(base(s), vs)
 
 
-recurse_fallback(f, s::NaiveNASlib.AbstractJuMPΔSizeStrategy) = wrap_fallback(f, NaiveNASlib.fallback(s))
+recurse_fallback(f, s::AbstractJuMPΔSizeStrategy) = wrap_fallback(f, NaiveNASlib.fallback(s))
 recurse_fallback(f, s::NaiveNASlib.DefaultJuMPΔSizeStrategy) = s
 recurse_fallback(f, s::NaiveNASlib.ThrowΔSizeFailError) = s
 recurse_fallback(f, s::NaiveNASlib.ΔSizeFailNoOp) = s
@@ -82,14 +82,14 @@ wrap_fallback(f, s::NaiveNASlib.LogΔSizeExec) = NaiveNASlib.LogΔSizeExec(s.msg
 
 
 function NaiveNASlib.compconstraint!(case, s, ::FluxLayer, data) end
-function NaiveNASlib.compconstraint!(case, s::NaiveNASlib.DecoratingJuMPΔSizeStrategy, lt::FluxLayer, data) 
+function NaiveNASlib.compconstraint!(case, s::DecoratingJuMPΔSizeStrategy, lt::FluxLayer, data) 
    NaiveNASlib.compconstraint!(case, NaiveNASlib.base(s), lt, data)
 end
 # To avoid ambiguity
-function NaiveNASlib.compconstraint!(case::NaiveNASlib.ScalarSize, s::NaiveNASlib.DecoratingJuMPΔSizeStrategy, lt::FluxDepthwiseConv, data)
+function NaiveNASlib.compconstraint!(case::NaiveNASlib.ScalarSize, s::DecoratingJuMPΔSizeStrategy, lt::FluxDepthwiseConv, data)
   NaiveNASlib.compconstraint!(case, NaiveNASlib.base(s), lt, data)
 end
-function NaiveNASlib.compconstraint!(::NaiveNASlib.ScalarSize, s::NaiveNASlib.AbstractJuMPΔSizeStrategy, ::FluxDepthwiseConv, data, ms=allowed_multipliers(s))
+function NaiveNASlib.compconstraint!(::NaiveNASlib.ScalarSize, s::AbstractJuMPΔSizeStrategy, ::FluxDepthwiseConv, data, ms=allowed_multipliers(s))
 
   # Add constraint that nout(l) == n * nin(l) where n is integer
   ins = filter(vin -> vin in keys(data.noutdict), inputs(data.vertex))
@@ -119,7 +119,7 @@ allowed_multipliers(s::DepthwiseConvSimpleΔSizeStrategy) = s.allowed_multiplier
 allowed_multipliers(::AbstractJuMPΔSizeStrategy) = 1:10
 
 
-function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::NaiveNASlib.AbstractJuMPΔSizeStrategy, t::FluxDepthwiseConv, data)
+function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::AbstractJuMPΔSizeStrategy, t::FluxDepthwiseConv, data)
   # Fallbacks don't matter here since we won't call it from below here, just add default so we don't accidentally crash due to some
   # strategy which hasn't defined a fallback
   if 15 < sum(keys(data.outselectvars)) do v

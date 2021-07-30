@@ -197,8 +197,8 @@ end
             end
 
             @testset "DepthwiseConvSimpleΔSizeStrategy" begin
-                import NaiveNASflux: DepthwiseConvSimpleΔSizeStrategy
-                import NaiveNASlib: ΔNout
+                using NaiveNASflux: DepthwiseConvSimpleΔSizeStrategy
+                using NaiveNASlib: ΔNout
                 inpt = inputvertex("in", 2, FluxConv{2}())
                 dc = fluxvertex("dc", DepthwiseConv((1,1), nout(inpt) => 3*nout(inpt)), inpt)
                 

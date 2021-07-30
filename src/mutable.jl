@@ -28,10 +28,7 @@ NaiveNASlib.clone(m::T;cf=clone) where T <: AbstractMutableComp = T(map(cf, getf
 
 mutate_weights(m::AbstractMutableComp, w) = mutate_weights(wrapped(m), w)
 
-NaiveNASlib.minΔninfactor(m::AbstractMutableComp) = minΔninfactor(layertype(m), layer(m))
-NaiveNASlib.minΔnoutfactor(m::AbstractMutableComp) = minΔnoutfactor(layertype(m), layer(m))
-
-function NaiveNASlib.compconstraint!(case, s::NaiveNASlib.AbstractJuMPΔSizeStrategy, m::AbstractMutableComp, data) 
+function NaiveNASlib.compconstraint!(case, s::AbstractJuMPΔSizeStrategy, m::AbstractMutableComp, data) 
      NaiveNASlib.compconstraint!(case, s, layertype(m), data)
 end
 
@@ -388,5 +385,3 @@ layertype(i::NoParams) = layertype(layer(i))
 LazyMutable(m::NoParams) = m
 
 function mutate_weights(::NoParams, w) end
-NaiveNASlib.minΔninfactor(m::NoParams) = minΔninfactor(layertype(m), layer(m))
-NaiveNASlib.minΔnoutfactor(m::NoParams) = minΔnoutfactor(layertype(m), layer(m))
