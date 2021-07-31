@@ -189,7 +189,7 @@ function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::Depthwi
   # 
   ins = filter(vin -> vin in keys(data.noutdict), inputs(v))
   # If inputs to v are not part of problem we have to keep nin(v) fixed!
-  isempty(ins) && return NaiveNASlib.compconstraint!(case, DepthwiseConvSimpleΔSizeStrategy(base(s)), t, data)
+  isempty(ins) && return NaiveNASlib.compconstraint!(case, DepthwiseConvSimpleΔSizeStrategy(allowed_multipliers(s), base(s)), t, data)
   # TODO: Check if input is immutable and do simple strat then too?
   inselect = data.outselectvars[ins[]]
   ininsert = data.outinsertvars[ins[]]
