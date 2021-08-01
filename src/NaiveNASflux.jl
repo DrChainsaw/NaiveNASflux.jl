@@ -17,11 +17,13 @@ export denseinputvertex, rnninputvertex, fluxvertex, concat
 
 export convinputvertex, conv1dinputvertex, conv2dinputvertex, conv3dinputvertex
 
-export ActivationContribution, NeuronValueEvery, LazyMutable
+export ActivationContribution, LazyMutable
 
 export layer
 
 export KernelSizeAligned
+
+export neuron_value, NeuronValueEvery
 
 include("types.jl")
 include("util.jl")
@@ -29,7 +31,7 @@ include("constraints.jl")
 include("select.jl")
 include("mutable.jl")
 include("vertex.jl")
-include("pruning.jl")
+include("neuronvalue.jl")
 include("weightinit.jl")
 
 # Stuff to integrate with Zygote

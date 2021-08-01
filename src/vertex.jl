@@ -119,15 +119,6 @@ NaiveNASlib.all_in_Δsize_graph(mode, ::SizeNinNoutConnected, args...) = NaiveNA
 Flux.trainable(v::CompVertex) = Flux.trainable(v.computation)
 Flux.trainable(g::CompGraph) = Flux.trainable(vertices(g))
 
-# TODO: Move to NaiveNASlib
-@functor InputVertex
-@functor InputSizeVertex
-@functor CompVertex
-@functor MutationVertex
-@functor CompGraph
-
-Functors.functor(::Type{<:OutputsVertex}, v) = (base = v.base,), newbase -> OutputsVertex(newbase[1])
-
 """
     fluxvertex(l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated())
 

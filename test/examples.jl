@@ -49,7 +49,7 @@
         @test size(graph(x)) == (7, 7, nout(add), 2) == (7 ,7, 12 ,2)
 
         # Graphs can be copied
-        graphcopy = copy(graph)
+        graphcopy = deepcopy(graph)
 
         # Mutate number of neurons
         @test nout(add) == nout(residualconv) == nout(conv) + nout(namedconv) == 12
@@ -116,19 +116,19 @@
 
         # Prune the least valuable neurons according to the metric in ActivationContribution
         # This is the default if no value function is provided.
-        pruned_least = copy(original)
+        pruned_least = deepcopy(original)
         Δnout!(vertices(pruned_least)[2] => -nprune)
         
         # Prune the most valuable neurons according to the metric in ActivationContribution
         # This is obviously not a good idea if you want to preserve the accuracy
-        pruned_most = copy(original)
+        pruned_most = deepcopy(original)
         Δnout!(vertices(pruned_most)[2] => -nprune) do v
             vals = NaiveNASlib.default_outvalue(v)
             return 2*sum(vals) .- vals # Ensure all values are still > 0, even for last vertex
         end
         
         # Prune randomly selected neurons
-        pruned_random = copy(original)
+        pruned_random = deepcopy(original)
         Δnout!(v -> rand(nout(v)), vertices(pruned_random)[2] => -nprune)
 
         # Can I have my free lunch now please?!
@@ -205,7 +205,7 @@
         # Hyperparameters are tuned to strongly favor 2 in order to avoid sporadic failures
 
         # Add two layers after the conv layer
-        add_layers = copy(original)
+        add_layers = deepcopy(original)
         function add2conv(in)
             l = convvertex(in, nout(in), relu, init=Flux.identity_init)
             return convvertex(l, nout(in), relu, init=Flux.identity_init)
