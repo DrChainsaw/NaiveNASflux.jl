@@ -146,11 +146,6 @@ fluxvertex(::FluxParInvLayer, l, in::AbstractVertex, layerfun, traitfun) = invar
 
 fluxvertex(::FluxNoParLayer, l, in::AbstractVertex, layerfun, traitfun) = invariantvertex(layerfun(NoParams(l)), in, traitdecoration=traitfun)
 
-# Decorate trait with extra stuff like logging of size changes or validation.
-# Meant to be composable, e.g. using ∘
-named(name) = t -> NamedTrait(t, name)
-validated() = t -> SizeChangeValidation(t)
-logged(;level = Base.CoreLogging.Debug, info = FullInfoStr()) = t -> SizeChangeLogger(level, info, t)
 
 """
    concat(v::AbstractVertex, vs::AbstractVertex...; traitfun=identity)

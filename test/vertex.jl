@@ -570,14 +570,6 @@ end
     end
 end
 
-@testset "Trait functions" begin
-    import NaiveNASflux: named, validated, logged
-    using NaiveNASlib: NameInfoStr
-    @test named("test")(SizeAbsorb()) == NamedTrait(SizeAbsorb(), "test")
-    @test validated()(SizeAbsorb()) == SizeChangeValidation(SizeAbsorb())
-    @test logged(level=Base.CoreLogging.Info, info=NameInfoStr())(SizeAbsorb()) == SizeChangeLogger(Base.CoreLogging.Info, NameInfoStr(), SizeAbsorb())
-end
-
 @testset "functor" begin
     import Functors: functor, fmap
     import Flux: params
