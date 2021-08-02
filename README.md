@@ -155,7 +155,7 @@ pruned_least = copy(original)
 # This is obviously not a good idea if you want to preserve the accuracy
 pruned_most = copy(original)
 Δnout!(vertices(pruned_most)[2] => -nprune) do v
-    vals = NaiveNASlib.default_outvalue(v)
+    vals = NaiveNASlib.defaultutility(v)
     return 2*sum(vals) .- vals
 end
 

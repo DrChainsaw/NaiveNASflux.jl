@@ -117,12 +117,12 @@ end
         lazyins(v) = lazymutable(v).inputs
 
         @testset "Depthwise single layer" begin
-            import NaiveNASflux: neuron_value
+            import NaiveNASflux: neuronutility
             # just to check that I have understood the wiring of the weight
             @testset "4 inputs times 2" begin
                 inpt = inputvertex("in", 4, FluxConv{2}())
                 dc = fluxvertex("dc", DepthwiseConv(reshape(Float32[10 10 10 10;20 20 20 20], 1, 1, 2, 4), Float32[0,0,0,0,1,1,1,1]), inpt)
-                @test neuron_value(dc) == [10,20,10,20,11,21,11,21]
+                @test neuronutility(dc) == [10,20,10,20,11,21,11,21]
                 @test reshape(dc(fill(1f0, (1,1,4,1))), :) == [10, 20, 10, 20, 11, 21, 11, 21]
                 @test Δnout!( dc => -4)
                 @test lazyouts(dc) == [2, 4, 6, 8] 
@@ -270,7 +270,7 @@ end
 
             @test lazyins(dc1) == [1:nout(inpt)]
             # NaiveNASlib might not pick non-new indices (i.e not -1) due to our artificial weight function above
-            # default neuron value function would give zero value to new neurons 
+            # default neuron utility function would give zero value to new neurons 
             @test [lazyouts(dc1)] == lazyins(dc2) == [[2, 3, -1, 5, 6, -1, 8, 9, -1, 11, 12, -1]]
 
             # All neurons had a positive value, so NaiveNASlib should inrease to next valid size

@@ -123,7 +123,7 @@
         # This is obviously not a good idea if you want to preserve the accuracy
         pruned_most = deepcopy(original)
         Δnout!(vertices(pruned_most)[2] => -nprune) do v
-            vals = NaiveNASlib.default_outvalue(v)
+            vals = NaiveNASlib.defaultutility(v)
             return 2*sum(vals) .- vals # Ensure all values are still > 0, even for last vertex
         end
         

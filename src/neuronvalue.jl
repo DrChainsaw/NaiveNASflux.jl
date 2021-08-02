@@ -3,11 +3,11 @@
     ActivationContribution(l)
     ActivationContribution(l, method)
 
-Calculate neuron value based on activations and gradients using `method` (default EWMA of [`NeuronValueTaylor`](@ref)).
+Calculate neuron utility based on activations and gradients using `method` (default EWMA of [`NeuronUtilityTaylor`](@ref)).
 
 High value of `contribution` means that the neuron of that index has a high contribution to the loss score.
 
-Can be a performance bottleneck in cases with large activations. Use [`NeuronValueEvery`](@ref) to mitigate.
+Can be a performance bottleneck in cases with large activations. Use [`NeuronUtilityEvery`](@ref) to mitigate.
 """
 mutable struct ActivationContribution{L,M} <: AbstractMutableComp
     layer::L
@@ -59,21 +59,21 @@ function mean_squeeze(f, x, dimskeep)
 end
 
 # To peel the onion...
-neuron_value(v::AbstractVertex) = neuron_value(base(v))
-neuron_value(v::InputSizeVertex) = ones(nout(v))
-neuron_value(v::CompVertex) = neuron_value(v.computation)
-neuron_value(m::AbstractMutableComp) = neuron_value(wrapped(m))
-function neuron_value(lm::LazyMutable)
+neuronutility(v::AbstractVertex) = neuronutility(base(v))
+neuronutility(v::InputSizeVertex) = ones(nout(v))
+neuronutility(v::CompVertex) = neuronutility(v.computation)
+neuronutility(m::AbstractMutableComp) = neuronutility(wrapped(m))
+function neuronutility(lm::LazyMutable)
    forcemutation(lm)
-   neuron_value(wrapped(lm)) 
+   neuronutility(wrapped(lm)) 
 end
-neuron_value(m::ActivationContribution) = m.contribution
-neuron_value(l) = neuron_value(layertype(l), l)
+neuronutility(m::ActivationContribution) = m.contribution
+neuronutility(l) = neuronutility(layertype(l), l)
 
 # Default: mean of abs of weights + bias. Not a very good metric, but should be better than random
 # Maybe do something about state in recurrent layers as well, but CBA to do it right now
-neuron_value(::FluxParLayer, l) = mean_squeeze(abs, weights(l), outdim(l)) .+ bcabsz(bias(l))
-function neuron_value(::FluxDepthwiseConv, l)
+neuronutility(::FluxParLayer, l) = mean_squeeze(abs, weights(l), outdim(l)) .+ bcabsz(bias(l))
+function neuronutility(::FluxDepthwiseConv, l)
     wm = mean_squeeze(abs, weights(l), outdim(l))
     bm = bcabsz(bias(l))
 
@@ -87,32 +87,33 @@ bcabsz(x) = abs.(x)
 bcabsz(z::Flux.Zeros) = z
 
 # Not possible to do anything since we don't know the size. Implementors can however use this to fallback to other ways if this is not an error
-neuron_value(lt, l) = missing
+neuronutility(lt, l) = missing
 
-neuron_value_safe(v) = neuron_value_safe(trait(v), v) 
-neuron_value_safe(t::DecoratingTrait, v) = neuron_value_safe(base(t), v)
-neuron_value_safe(::Immutable, v) = 1
-neuron_value_safe(::MutationSizeTrait, v) = clean_values(cpu(neuron_value(v)),v)
-neuron_value_safe(m::AbstractMutableComp) = clean_values(cpu(neuron_value(m)), m)
+neuronutility_safe(v) = neuronutility_safe(trait(v), v) 
+neuronutility_safe(t::DecoratingTrait, v) = neuronutility_safe(base(t), v)
+neuronutility_safe(::Immutable, v) = 1
+neuronutility_safe(::MutationSizeTrait, v) = clean_values(cpu(neuronutility(v)))
+neuronutility_safe(m::AbstractMutableComp) = clean_values(cpu(neuronutility(m)))
 
-clean_values(::Missing, v) = 1 # Not sure if 1 is appropriate since other neuron values are typically much smaller
-clean_values(a::AbstractArray, v) = replace(a, NaN => -100, Inf => -100, -Inf => -100)
+clean_values(::Missing) = 1
+clean_values(a::AbstractArray) = replace(a, NaN => -100, Inf => -100, -Inf => -100)
 
 """
-    neuronvaluetaylor(currval, act, grad)
+    neuronutilitytaylor(currval, act, grad)
 
 Calculate contribution of activations towards loss according to https://arxiv.org/abs/1611.06440.
 
-Short summary is that the first order taylor approximation of the optimization problem: "which neurons shall I remove to minimize impact on the loss function?" boils down to: "the ones which minimize abs(gradient * activation)" (assuming parameter independence).
+Short summary is that the first order taylor approximation of the optimization problem: "which neurons shall I remove to minimize impact on the loss function?" 
+boils down to: "the ones which minimize abs(gradient * activation)" (assuming parameter independence).
 """
-neuronvaluetaylor(currval, act, grad) = mean_squeeze(abs, (mean_squeeze(identity, act .* grad, (actdim(ndims(act)), ndims(act)))), 1)
-
+neuronutilitytaylor(currval, act, grad) = mean_squeeze(abs, (mean_squeeze(identity, act .* grad, (actdim(ndims(act)), ndims(act)))), 1)
+# Kinda wished they had branded this better as 'taylor' can mean many things. 
 
 """
     Ewma{R<:Real, M}
     Ewma(α::Real, method)
 
-Exponential moving average of neuron value calculated by `method`.
+Exponential moving average of neuron utility calculated by `method`.
 
 Parameter `α` acts as a forgetting factor, i.e larger values means faster convergence but more noisy estimate.
 """
@@ -124,7 +125,7 @@ struct Ewma{R<:Real, M}
         new{R,M}(α, method)
     end
 end
-Ewma(α) = Ewma(α, neuronvaluetaylor)
+Ewma(α) = Ewma(α, neuronutilitytaylor)
 
 (m::Ewma)(currval, act, grad) = agg(m, currval, m.method(currval, act, grad))
 
@@ -136,21 +137,21 @@ agg(m::Ewma, ::Missing, y) = y
 
 
 """
-    NeuronValueEvery{N,T}
-    NeuronValueEvery(n::Int, method::T)
+    NeuronUtilityEvery{N,T}
+    NeuronUtilityEvery(n::Int, method::T)
 
-Calculate neuron value using `method` every `n`:th call.
+Calculate neuron utility using `method` every `n`:th call.
 
 Useful to reduce runtime overhead.
 """
-mutable struct NeuronValueEvery{N,T}
+mutable struct NeuronUtilityEvery{N,T}
     cnt::Int
     method::T
-    NeuronValueEvery(N::Int, method::T) where T = new{N, T}(0, method)
+    NeuronUtilityEvery(N::Int, method::T) where T = new{N, T}(0, method)
 end
-NeuronValueEvery(n::Int) = NeuronValueEvery(n, Ewma(0.05))
+NeuronUtilityEvery(n::Int) = NeuronUtilityEvery(n, Ewma(0.05))
 
-function (m::NeuronValueEvery{N})(currval, act, grad) where N
+function (m::NeuronUtilityEvery{N})(currval, act, grad) where N
     ret = m.cnt % N == 0 ? m.method(currval, act, grad) : currval
     m.cnt += 1
     return ret

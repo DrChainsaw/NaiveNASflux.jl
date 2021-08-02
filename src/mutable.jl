@@ -29,7 +29,10 @@ function NaiveNASlib.compconstraint!(case, s::AbstractJuMPΔSizeStrategy, m::Abs
      NaiveNASlib.compconstraint!(case, s, layertype(m), data)
 end
 
-NaiveNASlib.default_outvalue(m::AbstractMutableComp) = neuron_value_safe(m)
+function NaiveNASlib.defaultutility(m::AbstractMutableComp) 
+    util = neuronutility_safe(m)
+    return util === 1 ? NaiveNASlib.NoDefaultUtility() : util
+end
 
 """
     MutableLayer

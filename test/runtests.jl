@@ -26,7 +26,7 @@ end
     @info "Testing vertex"
     include("vertex.jl")
 
-    @info "Testing neuronvalue"
+    @info "Testing neuronutility"
     include("neuronvalue.jl")
 
     @info "Testing examples"
