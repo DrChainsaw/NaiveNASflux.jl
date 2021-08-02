@@ -7,10 +7,15 @@
     @test name(v) == "in"
     @test nout(v) == 3
 
-    c = clone(v)
-    @test layertype(c) == FluxDense()
-    @test name(c) == "in"
-    @test nout(c) == 3
+    @testset "Copy with $label" for (label, cfun) in (
+        (deepcopy, deepcopy),
+        ("fmap", g -> fmap(identity, g))
+    )
+        c = cfun(v)
+        @test layertype(c) == FluxDense()
+        @test name(c) == "in"
+        @test nout(c) == 3
+    end
 
     @test nout(inputvertex("in", 4, FluxDense()))   == nout(denseinputvertex("in", 4))
     @test nout(inputvertex("in", 3, FluxConv{1}())) == nout(conv1dinputvertex("in", 3))

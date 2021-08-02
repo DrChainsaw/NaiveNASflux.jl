@@ -23,9 +23,6 @@ function NaiveNASlib.Δsize!(m::AbstractMutableComp, inputs::AbstractVector, out
      NaiveNASlib.Δsize!(wrapped(m), inputs, outputs;kwargs...)
 end
 
-# Leave some room to override clone. TODO: replace with fmap?
-NaiveNASlib.clone(m::T;cf=clone) where T <: AbstractMutableComp = T(map(cf, getfield.(m, fieldnames(T)))...)
-
 mutate_weights(m::AbstractMutableComp, w) = mutate_weights(wrapped(m), w)
 
 function NaiveNASlib.compconstraint!(case, s::AbstractJuMPΔSizeStrategy, m::AbstractMutableComp, data) 

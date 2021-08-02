@@ -88,7 +88,6 @@ NaiveNASlib.nout(v::InputShapeVertex) = nout(base(v))
 NaiveNASlib.nin(v::InputShapeVertex) = nin(base(v))
 NaiveNASlib.outputs(v::InputShapeVertex) = outputs(base(v))
 NaiveNASlib.inputs(::InputShapeVertex) = []
-NaiveNASlib.clone(v::InputShapeVertex, ins::AbstractVertex...;cf=clone) = InputShapeVertex(cf(base(v), ins...;cf=cf), layertype(v))
 
 # Only to prevent stack overflow above
 struct LayerTypeWrapper{L}

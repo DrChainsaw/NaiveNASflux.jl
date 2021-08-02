@@ -1,6 +1,7 @@
 @testset "Mutable computation" begin
 
     using NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, mutate, hiddenweights, hiddenstate, state, outscale
+    using Functors: fmap
 
     inszero = pairs((insert = (lt, pn) -> (args...) -> 0,))
     _nins(m) = [1:nin(m)[]]
@@ -447,9 +448,12 @@
         end
     end
 
-    @testset "Clone MutableLayer" begin
+    @testset "Copy MutableLayer with $label" for (label, cfun) in (
+        (deepcopy, deepcopy),
+        ("fmap", g -> fmap(deepcopy, g))
+    )
             m = MutableLayer(Dense(2,3))
-            cloned = clone(m)
+            cloned = cfun(m)
             @test layer(cloned) !== layer(m)
             @test cloned([1, 2]) == m([1, 2])
     end
@@ -521,9 +525,12 @@
             @test m(Float32[1,3,5,7]) == layer(m)(Float32[1,3,5,7])
         end
 
-        @testset "Clone" begin
+        @testset "Copy LazyMutable with $label" for (label, cfun) in (
+            (deepcopy, deepcopy),
+            ("fmap", g -> fmap(deepcopy, g))
+        )
             mlazy = LazyMutable(MutableLayer(Dense(2,3)))
-            cloned = clone(mlazy)
+            cloned = cfun(mlazy)
             @test layer(cloned) !== layer(mlazy)
             @test cloned([1, 2]) == mlazy([1, 2])
         end
