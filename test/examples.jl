@@ -57,13 +57,13 @@
         @test nout(add) == nout(residualconv) == nout(conv) + nout(namedconv) == 9
 
         # Remove layer
-        @test nv(graph) == 7
+        @test nvertices(graph) == 7
         remove!(batchnorm)
-        @test nv(graph) == 6
+        @test nvertices(graph) == 6
 
         # Add layer
         insert!(residualconv, v -> fluxvertex(BatchNorm(nout(v), relu), v))
-        @test nv(graph) == 7
+        @test nvertices(graph) == 7
 
         # Change kernel size (and supply new padding)
         namedconv |> KernelSizeAligned(-2,-2; pad=SamePad())

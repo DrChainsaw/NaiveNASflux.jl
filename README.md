@@ -82,13 +82,13 @@ graphcopy = copy(graph)
 @test nout(add) == nout(residualconv) == nout(conv) + nout(namedconv) == 9
 
 # Remove layer
-@test nv(graph) == 7
+@test nvertices(graph) == 7
 remove!(batchnorm)
-@test nv(graph) == 6
+@test nvertices(graph) == 6
 
 # Add layer
 insert!(residualconv, v -> fluxvertex(BatchNorm(nout(v), relu), v))
-@test nv(graph) == 7
+@test nvertices(graph) == 7
 
 # Change kernel size (and supply new padding)
 let Δsize = (-2, -2), pad = (1,1)

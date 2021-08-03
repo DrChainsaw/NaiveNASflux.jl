@@ -609,9 +609,8 @@ end
     import Flux: params, Descent, train!, mse
 
     @testset "Dense-Dense-Dense" begin
-        import NaiveNASflux: FluxDense
         Random.seed!(0)
-        iv = inputvertex("in", 3, FluxDense())
+        iv = denseinputvertex("in", 3)
         v1 = fluxvertex("v1", Dense(3,3), iv)
         v2 = fluxvertex("v2", Dense(3,4), v1)
         v3 = fluxvertex("v3", Dense(4,2), v2)
