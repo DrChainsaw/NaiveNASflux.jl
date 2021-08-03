@@ -48,15 +48,28 @@ function NaiveNASlib.Δsize!(m::ActivationContribution, inputs::AbstractVector, 
     NaiveNASlib.Δsize!(wrapped(m), inputs, outputs; kwargs...)
 end
 
-"""
-    mean_squeeze(x, dimkeep)
 
-Return mean value of `x` along all dimensions except `dimkeep` as a 1D array (singleton dimensions are removed).
 """
-function mean_squeeze(f, x, dimskeep)
+    l2_squeeze(x, dimkeep)
+
+Return l2 norm of `x` along all dimensions except `dimkeep` as a 1D array (singleton dimensions are removed).
+"""
+function l2_squeeze(x, dimskeep=1:ndims(x))
+    dims = filter(i -> i ∉ dimskeep, 1:ndims(x))
+    return sqrt.(dropdims(sum(x -> x^2, x, dims=dims), dims=Tuple(dims)))
+end
+l2_squeeze(z::Flux.Zeros, args...) = z
+
+"""
+    mean_squeeze(f, x, dimkeep)
+
+Return mean value of `f.(x)` along all dimensions except `dimkeep` as a 1D array (singleton dimensions are removed).
+"""
+function mean_squeeze(f, x, dimskeep=1:ndims(x))
     dims = filter(i -> i ∉ dimskeep, 1:ndims(x))
     return dropdims(mean(f, x, dims=dims), dims=Tuple(dims))
 end
+
 
 # To peel the onion...
 neuronutility(v::AbstractVertex) = neuronutility(base(v))
@@ -72,10 +85,10 @@ neuronutility(l) = neuronutility(layertype(l), l)
 
 # Default: mean of abs of weights + bias. Not a very good metric, but should be better than random
 # Maybe do something about state in recurrent layers as well, but CBA to do it right now
-neuronutility(::FluxParLayer, l) = mean_squeeze(abs, weights(l), outdim(l)) .+ bcabsz(bias(l))
+neuronutility(::FluxParLayer, l) = l2_squeeze(weights(l), outdim(l)) .+ l2_squeeze(bias(l))
 function neuronutility(::FluxDepthwiseConv, l)
-    wm = mean_squeeze(abs, weights(l), outdim(l))
-    bm = bcabsz(bias(l))
+    wm = l2_squeeze(weights(l), outdim(l))
+    bm = l2_squeeze(bias(l))
 
     (length(wm) == 1 || length(wm) == length(bm)) && return wm .+ bm
     # use this to get insight on whether to repeat inner or outer:
@@ -83,8 +96,8 @@ function neuronutility(::FluxDepthwiseConv, l)
     # cc(fill(10, (1,1,4,1)))
     return repeat(wm, length(bm) ÷ length(wm)) .+ bm
 end
-bcabsz(x) = abs.(x)
-bcabsz(z::Flux.Zeros) = z
+
+neuronutility(::FluxParNorm, l) = l.affine ? l2_squeeze(l.γ) .+ l2_squeeze(l.β) : missing 
 
 # Not possible to do anything since we don't know the size. Implementors can however use this to fallback to other ways if this is not an error
 neuronutility(lt, l) = missing

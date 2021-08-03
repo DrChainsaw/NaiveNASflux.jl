@@ -132,16 +132,17 @@ function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::Abstrac
   return NaiveNASlib.compconstraint!(case, DepthwiseConvAllowNinChangeStrategy(10, 10, s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
   #=
   For benchmarking:
+    using NaiveNASflux, Flux, NaiveNASlib.Advanced
     function timedwc(ds, ws)
       for w in ws
         for d in ds
-          iv = inputvertex("in", w, FluxConv{2}())
+          iv = conv2dinputvertex("in", w)
           dv = reduce((v, i) -> fluxvertex("dv$i", DepthwiseConv((1,1), nout(v) => fld1(i, 3) * nout(v)), v), 1:d; init=iv)   
           metric = sum(ancestors(dv)) do v
-            layertype(v) isa FluxDepthwiseConv || return 0
+            layer(v) isa DepthwiseConv || return 0
             return log2(nout(v))
           end
-          res = @timed Δnout!(outputs(iv)[1] => w)
+          res = @timed Δsize!(ΔNoutRelaxed(outputs(iv)[1] => w; fallback = ΔSizeFailNoOp()))
           println((width=w, depth = d, metric=metric, time=res.time))
           res.time < 5 || break
         end
