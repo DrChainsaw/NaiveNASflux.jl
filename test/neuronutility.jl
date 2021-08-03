@@ -1,5 +1,5 @@
 
-@testset "Neuron value tests" begin
+@testset "Neuron utility tests" begin
     import NaiveNASflux: neuronutility_safe, neuronutility
 
     ml(l, lfun=LazyMutable; insize=nin(l)[]) = fluxvertex(l, inputvertex("in", insize, layertype(l)), layerfun = lfun)
@@ -39,7 +39,7 @@
         end
     end
 
-    @testset "Neuron value Dense default" begin
+    @testset "Neuron utility Dense default" begin
         l = ml(Dense(3,5))
         @test size(neuronutility(l)) == (5,)
         Δnout!(v -> 1, l => 3)
@@ -49,25 +49,25 @@
         @test neuronutility(l) ≈ neuronutility_safe(l)
     end
 
-    @testset "Neuron value Dense default no bias" begin
+    @testset "Neuron utility Dense default no bias" begin
         l = ml(Dense(ones(5, 3), Flux.Zeros()))
         @test size(neuronutility(l)) == (5,)
         @test neuronutility(l) ≈ neuronutility_safe(l)
     end
 
-    @testset "Neuron value RNN default" begin
+    @testset "Neuron utility RNN default" begin
         l = ml(RNN(3,5))
         @test size(neuronutility(l)) == (5,)
         @test neuronutility(l) ≈ neuronutility_safe(l)
     end
 
-    @testset "Neuron value Conv default" begin
+    @testset "Neuron utility Conv default" begin
         l = ml(Conv((2,3), 4=>5))
         @test size(neuronutility(l)) == (5,)
         @test neuronutility(l) ≈ neuronutility_safe(l)
     end
 
-    @testset "Neuron value unkown default" begin
+    @testset "Neuron utility unkown default" begin
         l = ml(MeanPool((2,2)); insize = 3)
         @test ismissing(neuronutility(l))
         @test neuronutility_safe(l) == 1 
@@ -95,7 +95,7 @@
         @test neuronutility_org === neuronutility(l) == zeros(nout(l))
     end
 
-    @testset "Neuron value Dense act contrib" begin
+    @testset "Neuron utility Dense act contrib" begin
         l = ml(Dense(3,5), ActivationContribution)
         @test neuronutility(l) == zeros(5)
         tr(l, ones(Float32, 3, 4))
@@ -103,7 +103,7 @@
         @test length(params(l)) == length(params(layer(l)))
     end
 
-    @testset "Neuron value Dense act contrib every 4" begin
+    @testset "Neuron utility Dense act contrib every 4" begin
         l = ml(Dense(3,5), l -> ActivationContribution(l, NeuronUtilityEvery(4)))
         @test neuronutility(l) == zeros(5)
         nvprev = copy(neuronutility(l))
@@ -120,7 +120,7 @@
         @test nvprev != neuronutility(l)
     end
 
-    @testset "Neuron value RNN act contrib" begin
+    @testset "Neuron utility RNN act contrib" begin
         l = ml(RNN(3,5), ActivationContribution)
         @test neuronutility(l) == zeros(5)
         tr(l, ones(Float32, 3, 8))
@@ -128,7 +128,7 @@
         @test length(params(l)) == length(params(layer(l)))
     end
 
-    @testset "Neuron value Conv act contrib" begin
+    @testset "Neuron utility Conv act contrib" begin
         l = ml(Conv((3,3), 2=>5, pad=(1,1)), ActivationContribution)
         @test neuronutility(l) == zeros(5)
         tr(l, ones(Float32, 4,4,2,5))
@@ -136,7 +136,7 @@
         @test length(params(l)) == length(params(layer(l)))
     end
 
-    @testset "Neuron value MaxPool act contrib" begin
+    @testset "Neuron utility MaxPool act contrib" begin
         l = ml(MaxPool((3,3)), ActivationContribution, insize=2)
         @test ismissing(neuronutility(l))
         tr(l, ones(Float32, 4,4,2,5))
@@ -144,7 +144,7 @@
         @test size(neuronutility(l)) == (2,)
     end
 
-    @testset "Neuron value GlobalMeanPool act contrib" begin
+    @testset "Neuron utility GlobalMeanPool act contrib" begin
         l = ml(GlobalMeanPool(), ActivationContribution, insize=2)
         @test ismissing(neuronutility(l))
         tr(l, ones(Float32, 4,4,2,5))
@@ -221,7 +221,7 @@
         g = CompGraph(v0, v5)
         Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
 
-        # make sure values have materialized so we don't accidentally have a scalar value
+        # make sure values have materialized so we don't accidentally have a scalar utility
         @test length(NaiveNASlib.defaultutility(v3)) == nout(v3) == nout(v1)
 
         @test create_edge!(v2, v3)
@@ -245,7 +245,7 @@
         g = CompGraph(v0, v5)
         Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
 
-        # make sure values have materialized so we don't accidentally have a scalar value
+        # make sure values have materialized so we don't accidentally have a scalar utility
         @test length(NaiveNASlib.defaultutility(v3)) == nout(v3) == nout(v1)
 
         nvbefore_v3 = copy(neuronutility(v3))
@@ -275,7 +275,7 @@
         g = CompGraph(v0, v6)
         Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
 
-        # make sure values have materialized so we don't accidentally have a scalar value
+        # make sure values have materialized so we don't accidentally have a scalar utility
         @test length(NaiveNASlib.defaultutility(v3)) == nout(v3) == nout(v1)
 
         @test create_edge!(v2, v3; strategy=PostAlign())
@@ -299,7 +299,7 @@
         g = CompGraph(v0, v5)
         Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
 
-        # make sure values have materialized so we don't accidentally have a scalar value
+        # make sure values have materialized so we don't accidentally have a scalar utility
         @test length(NaiveNASlib.defaultutility(v3)) == nout(v3) == nout(v1) + nout(v2)
 
         @test remove_edge!(v2, v3)
@@ -325,7 +325,7 @@
         g = CompGraph(v0, v5)
         Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
 
-        # make sure values have materialized so we don't accidentally have a scalar value
+        # make sure values have materialized so we don't accidentally have a scalar utility
         @test length(NaiveNASlib.defaultutility(v3)) == nout(v3) == nout(v1) + nout(v2)
 
         nvbefore_v3 = copy(neuronutility(v3))
@@ -355,7 +355,7 @@
         g = CompGraph(v0, v6)
         Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
 
-        # make sure values have materialized so we don't accidentally have a scalar value
+        # make sure values have materialized so we don't accidentally have a scalar utility
         @test length(NaiveNASlib.defaultutility(v3)) == nout(v3) == nout(v1) + nout(v2)
 
         @test remove_edge!(v2, v3; strategy=PostAlign())

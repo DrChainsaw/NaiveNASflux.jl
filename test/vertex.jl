@@ -230,7 +230,7 @@ end
             @test lazyins(dc1) == [1:nout(inpt)]
             @test [lazyouts(dc1)] == lazyins(dc2) == [[1, 2, -1, 3, 4, -1, 5, 6, -1, 7, 8, -1]]
 
-            # Add deterministic valuefunction which wants to do non-contiguous selection across groups
+            # Add deterministic utilityfunction which wants to do non-contiguous selection across groups
             @test  @test_logs (:warn, r"Could not change nout of") Δnout!(dc1 => -2) do v
                 vals = repeat([1, 2], nout(v) ÷ 2)
                 vals[3] = -10 # don't want group 3 to make testcase stable
@@ -261,7 +261,7 @@ end
             @test [nout(dc1)] == nin(dc2) == [16]
             @test [nout(dc2)] == nin(dc3) == [96] # TODO: Why so big??
 
-           # Add deterministic valuefunction which wants to do non-contiguous selection across groups
+           # Add deterministic utilityfunction which wants to do non-contiguous selection across groups
             @test @test_logs (:warn, r"Could not change nout of") Δnout!(dc1 => -2) do v
                 repeat([1, 2], nout(v) ÷ 2)
             end
@@ -270,10 +270,10 @@ end
 
             @test lazyins(dc1) == [1:nout(inpt)]
             # NaiveNASlib might not pick non-new indices (i.e not -1) due to our artificial weight function above
-            # default neuron utility function would give zero value to new neurons 
+            # default neuron utility function would give zero utility to new neurons 
             @test [lazyouts(dc1)] == lazyins(dc2) == [[2, 3, -1, 5, 6, -1, 8, 9, -1, 11, 12, -1]]
 
-            # All neurons had a positive value, so NaiveNASlib should inrease to next valid size
+            # All neurons had a positive utility, so NaiveNASlib should inrease to next valid size
             @test [lazyouts(dc2)] == lazyins(dc3)
             
             # Test that we actually succeeded in making a valid model

@@ -147,7 +147,7 @@ With that out of the way, lets try three different ways to prune the hidden laye
 nprune = 16
 
 # Prune the least valuable neurons according to the metric in ActivationContribution
-# This is the default if no value function is provided.
+# This is the default if no utility function is provided.
 pruned_least = copy(original)
 Δnout!(vertices(pruned_least)[2] => -nprune)
 

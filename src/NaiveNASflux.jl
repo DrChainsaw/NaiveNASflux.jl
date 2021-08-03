@@ -23,7 +23,7 @@ export layer
 
 export KernelSizeAligned
 
-export neuronutility, NeuronUtilityEvery
+export NeuronUtilityEvery
 
 include("types.jl")
 include("util.jl")
