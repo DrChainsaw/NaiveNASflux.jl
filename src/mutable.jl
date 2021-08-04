@@ -232,7 +232,7 @@ julia> struct DenseConfig end
 julia> lazy = LazyMutable(DenseConfig(), 2,3)
 LazyMutable(DenseConfig(), 1:2, 1:3)
 
-julia> function NaiveNASflux.dispatch(m::LazyMutable, ::DenseConfig, x)
+julia> function NaiveNASflux.dispatch!(m::LazyMutable, ::DenseConfig, x)
        m.mutable = MutableLayer(Dense(nin(m), nout(m), relu))
        return m.mutable(x)
        end
@@ -248,7 +248,7 @@ LazyMutable(MutableLayer(Dense(2, 3, NNlib.relu)), 1:2, 1:3)
 ```
 """
 mutable struct LazyMutable <: AbstractMutableComp
-    mutable # May change at any time
+    mutable # May change at any time (see example)
     inputs::Vector{Vector{Int}}
     outputs::Vector{Int}
     other # May change at any time
