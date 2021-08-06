@@ -4,7 +4,5 @@ NaiveNASflux wraps Flux layers in mutable wrapper types by default so that the v
 
 ```@docs
 ActivationContribution
-```
-```@docs
 LazyMutable
 ```
