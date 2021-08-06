@@ -41,24 +41,25 @@ $inputshapemotivation
 """
 convinputvertex(name, nchannel, ndim) = inputvertex(name, nchannel, GenericFluxConvolutional{ndim}())
 
-"""
-    conv1dinputvertex(name, nchannel)
-    conv2dinputvertex(name, nchannel)
-    conv3dinputvertex(name, nchannel)
+doc_convninputvertex(n) = """
+    conv$(n)dinputvertex(name, nchannel)
+
 
 Return an input type vertex with the given `name` which promises convolution shaped input 
 with `nchannel` channels suitable for `Flux`s convolution layers.
 
-Equivalent to [`convinputvertex(name, nchannel, ndim)`](@ref) with the appropriate value 
-for `ndim`. 
+Equivalent to [`convinputvertex(name, nchannel, $(n))`](@ref). 
 
 $inputshapemotivation
 """
+
+@doc doc_convninputvertex(1)
 conv1dinputvertex(name, nchannel) = convinputvertex(name, nchannel, 1)
-@doc (@doc conv1dinputvertex) 
+@doc doc_convninputvertex(2)
 conv2dinputvertex(name, nchannel) = convinputvertex(name, nchannel, 2)
-@doc (@doc conv1dinputvertex) 
+@doc doc_convninputvertex(3)
 conv3dinputvertex(name, nchannel) = convinputvertex(name, nchannel, 3)
+
 
 """
     denseinputvertex(name, size)
@@ -118,12 +119,18 @@ NaiveNASlib.all_in_Δsize_graph(mode, ::SizeNinNoutConnected, args...) = NaiveNA
 Flux.trainable(v::CompVertex) = Flux.trainable(v.computation)
 Flux.trainable(g::CompGraph) = Flux.trainable(vertices(g))
 
+const doc_layerfun_and_traitfun = """
+Keyword argument `layerfun` can be used to wrap the computation, e.g. in an [`ActivationContribution`](@ref). 
+
+Keyword argument `traitfun` can be used to wrap the `MutationTrait` of the vertex in a `DecoratingTrait`
+"""
+
 """
     fluxvertex(l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated())
 
 Return a vertex wrapping the layer `l` with input vertex `in`.
 
-Extra arguments `layerfun`, and `traitfun` can be used to add extra info about the vertex.
+$doc_layerfun_and_traitfun
 """
 fluxvertex(l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated()) = fluxvertex(layertype(l), l, in, layerfun, traitfun)
 
@@ -134,7 +141,7 @@ Return a vertex wrapping the layer `l` with input vertex `in` with name `name`.
 
 Name is only used when displaying or logging and does not have to be unique (although it probably is a good idea).
 
-Extra arguments `layerfun` and `traitfun` can be used to add extra info about the vertex.
+$doc_layerfun_and_traitfun
 """
 fluxvertex(name::String, l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated()) = fluxvertex(layertype(l), l, in, layerfun, traitfun ∘ named(name))
 
@@ -148,15 +155,15 @@ fluxvertex(::FluxNoParLayer, l, in::AbstractVertex, layerfun, traitfun) = invari
 
 
 """
-   concat(v::AbstractVertex, vs::AbstractVertex...; traitfun=identity)
+    concat(v::AbstractVertex, vs::AbstractVertex...; traitfun=identity, layerfun=identity)
 
 Return a vertex which concatenates input along the activation (e.g. channel if convolution, first dimension if dense) dimension.
 
 Inputs must have compatible activation shapes or an exception will be thrown.
 
-Extra arguments `layerfun` and `traitfun` can be used to add extra info about the vertex.
+$doc_layerfun_and_traitfun
 
-See also [`NaiveNASlib.conc`](@ref). 
+See also `NaiveNASlib.conc`. 
 """
 function concat(v::AbstractVertex, vs::AbstractVertex...; traitfun=identity, layerfun=identity)
     allactdims = unique(mapreduce(actdim, vcat, [v, vs...]))
@@ -173,7 +180,7 @@ function concat(v::AbstractVertex, vs::AbstractVertex...; traitfun=identity, lay
 end
 
 """
-    concat(name::String, v::AbstractVertex, vs::AbstractVertex...; traitfun=identity)
+    concat(name::String, v::AbstractVertex, vs::AbstractVertex...; traitfun=identity, layerfun=identity)
 
 Return a vertex with name `name` which concatenates input along the activation (e.g. channel if convolution, first dimension if dense) dimension.
 
@@ -181,12 +188,23 @@ Name is only used when displaying or logging and does not have to be unique (alt
 
 Inputs must have compatible activation shapes or an exception will be thrown.
 
-Extra arguments `layerfun` and `traitfun` can be used to add extra info about the vertex.
+$doc_layerfun_and_traitfun
 
-See also [`NaiveNASlib.conc`](@ref). 
+See also `NaiveNASlib.conc`. 
 """
 concat(name::String, v::AbstractVertex, vs::AbstractVertex...; traitfun = identity, layerfun=identity) = concat(v, vs..., traitfun=traitfun ∘ named(name), layerfun=layerfun)
 
+"""
+    layer(v)
+
+Return the computation wrapped inside `v` and inside any mutable wrappers.
+
+# Examples
+```julia-repl
+julia> layer(fluxvertex(Dense(2,3), inputvertex("in", 2)))
+Dense(2, 3)         # 9 parameters
+```
+"""
 layer(v::AbstractVertex) = layer(base(v))
 layer(v::CompVertex) = layer(v.computation)
 layer(::InputVertex) = nothing

@@ -209,16 +209,13 @@ newlayer(::FluxDiagonal, m::MutableLayer, w, b, other) = Flux.Diagonal(w, b)
 
 """
     LazyMutable
+    LazyMutable(m::AbstractMutableComp)
 
 Lazy version of MutableLayer in the sense that it does not perform any mutations
 until invoked to perform a computation.
 
-This is done by calling the method trigger_mutation on the mutable, meaning that
-there must exist a method for the the mutable type in order for something to
-happen.
-
-This reduces the need to garbage collect intermediate parameters when both inputs
-and outputs are mutated.
+This reduces the need to garbage collect when multiple mutations might be applied
+to a vertex before evaluating the model.
 
 Also useable for factory-like designs where the actual layers of a computation graph
 are not instantiated until the graph is used.

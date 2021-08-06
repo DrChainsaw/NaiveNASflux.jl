@@ -3,11 +3,17 @@
     ActivationContribution(l)
     ActivationContribution(l, method)
 
-Calculate neuron utility based on activations and gradients using `method` (default EWMA of [`NeuronUtilityTaylor`](@ref)).
+Calculate neuron utility based on activations and gradients using `method`.
 
 High value of `contribution` means that the neuron of that index has a high contribution to the loss score.
 
 Can be a performance bottleneck in cases with large activations. Use [`NeuronUtilityEvery`](@ref) to mitigate.
+
+Default `method` is described in <https://arxiv.org/abs/1611.06440>.
+
+Short summary is that the first order taylor approximation of the optimization problem: "which neurons shall I remove to minimize impact on the loss function?" 
+boils down to: "the ones which minimize `abs(gradient * activation)`" (assuming parameter independence).
+
 """
 mutable struct ActivationContribution{L,M} <: AbstractMutableComp
     layer::L
