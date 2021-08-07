@@ -149,7 +149,7 @@ fluxvertex(::FluxParLayer, l, in::AbstractVertex, layerfun, traitfun) = absorbve
 
 fluxvertex(::FluxDepthwiseConv, l, in::AbstractVertex, layerfun, traitfun) = absorbvertex(layerfun(MutableLayer(l)), in; traitdecoration=traitfun ∘ SizeNinNoutConnected)
 
-fluxvertex(::FluxParInvLayer, l, in::AbstractVertex, layerfun, traitfun) = invariantvertex(layerfun(MutableLayer(l)), in, traitdecoration=traitfun)
+fluxvertex(::FluxParInvLayer, l, in::AbstractVertex, layerfun, traitfun) = invariantvertex(layerfun(MutableLayer(l)), in, traitdecoration=traitfun ∘ FixedSizeTrait)
 
 fluxvertex(::FluxNoParLayer, l, in::AbstractVertex, layerfun, traitfun) = invariantvertex(layerfun(NoParams(l)), in, traitdecoration=traitfun)
 

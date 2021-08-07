@@ -86,13 +86,20 @@ end
     @testset "Invariant parametric layer" begin
         inpt = inputvertex("in", 3)
         cv = fluxvertex(Conv((1,1), nout(inpt) => 4), inpt)
-        bv = fluxvertex(BatchNorm(nout(cv)), cv)
+        # layerfun = identity or else LazyMutable will take case or the sizes for us
+        bv = fluxvertex(BatchNorm(nout(cv)), cv; layerfun=identity)
 
         @test nin(bv) == [nout(cv)] == [4]
 
         Δnin!(v -> 1, bv, -1)
 
         @test nin(bv) == [nout(cv)] == [3]
+
+        # Lets go out of our way to make it size inconsistent to verify that nin/nout is the size of the BatchNorm parameters.
+        Δsize!(NaiveNASlib.NeuronIndices(), NaiveNASlib.OnlyFor(), bv, [1:2], 1:2)
+
+        @test [nout(bv)] == nin(bv) == [2]
+        @test nout(cv) == 3
     end
 
     @testset "Invariant non-parametric layer" begin
