@@ -32,7 +32,6 @@ include("select.jl")
 include("mutable.jl")
 include("vertex.jl")
 include("neuronutility.jl")
-include("weightinit.jl")
 
 # Stuff to integrate with Zygote
 include("zygote.jl")
