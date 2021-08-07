@@ -33,7 +33,11 @@ makedocs(   sitename="NaiveNASflux",
 function touchfile(filename, rootdir=nndir, destdir="test/examples")
     filepath = joinpath(rootdir, destdir, filename)
     isfile(filepath) && return
-    write(filepath, "md\"\"\" # A Header \"\"\"")
+    write(filepath, """
+    md\"\"\"
+    # Markdown header
+    \"\"\"
+    """)
 end
 
 if get(ENV, "CI", nothing) == "true"
