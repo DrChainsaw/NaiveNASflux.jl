@@ -119,6 +119,9 @@ allowed_multipliers(s::DepthwiseConvSimpleΔSizeStrategy) = s.allowed_multiplier
 allowed_multipliers(::AbstractJuMPΔSizeStrategy) = 1:10
 
 
+function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::DecoratingJuMPΔSizeStrategy, t::FluxDepthwiseConv, data) 
+  NaiveNASlib.compconstraint!(case, base(s), t, data)
+end
 function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::AbstractJuMPΔSizeStrategy, t::FluxDepthwiseConv, data)
   # Fallbacks don't matter here since we won't call it from below here, just add default so we don't accidentally crash due to some
   # strategy which hasn't defined a fallback

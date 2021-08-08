@@ -96,7 +96,7 @@ end
         @test nin(bv) == [nout(cv)] == [3]
 
         # Lets go out of our way to make it size inconsistent to verify that nin/nout is the size of the BatchNorm parameters.
-        Δsize!(NaiveNASlib.NeuronIndices(), NaiveNASlib.OnlyFor(), bv, [1:2], 1:2)
+        Δsize!(NaiveNASlib.NeuronIndices(), bv, [1:2], 1:2)
 
         @test [nout(bv)] == nin(bv) == [2]
         @test nout(cv) == 3
@@ -134,13 +134,10 @@ end
                 @test Δnout!( dc => -4)
                 @test lazyouts(dc) == [2, 4, 6, 8] 
                 @test reshape(dc(fill(1f0, (1,1,4,1))), :) == [20, 20, 21, 21] 
-                @test Δnout!(dc, 4)   
-                @test lazyouts(dc) == [1,-1, 2,-1, 3,-1, 4,-1] 
-                # TODO: Add kwargs to NaiveNASlib mutation functions
-                # In the meantime, we just create a new MutableLayer instead of trying to dig up the right one from dc
-                mdc = MutableLayer(layer(dc))
-                NaiveNASflux.mutate(mdc, inputs=lazyins(dc)[1], outputs=lazyouts(dc), insert=(args...) -> (args...) -> 0)
-                @test reshape(mdc(fill(1f0, (1,1,4,1))), :) == [20, 0, 20, 0, 21, 0, 21, 0] 
+                # pass insert function so we get zeros instead of randn
+                @test Δsize!(WithKwargs(ΔNout(dc, 4); insert =(args...) -> (args...) -> 0))
+                @test lazyouts(dc) ==                         [ 1,-1,  2,-1,  3,-1,  4,-1] 
+                @test reshape(dc(fill(1f0, (1,1,4,1))), :) == [20, 0, 20, 0, 21, 0, 21, 0] 
             end
 
             @testset "2 inputs times 3" begin
@@ -150,11 +147,10 @@ end
                 @test Δnout!(dc => -2)
                 @test lazyouts(dc) == [2,3,5,6] 
                 @test reshape(dc(fill(1f0, (1,1,2,1))), :) == [20, 31, 22, 32]
-                @test Δnout!(dc, 4)   
-                @test lazyouts(dc) == [1, 2, -1, -1, 3, 4, -1, -1]
-                mdc = MutableLayer(layer(dc))
-                NaiveNASflux.mutate(mdc, inputs=lazyins(dc)[1], outputs=lazyouts(dc), insert=(args...) -> (args...) -> 0)
-                @test reshape(mdc(fill(1f0, (1,1,2,1))), :) == [20, 31, 0, 0, 22, 32, 0, 0]
+                # pass insert function so we get zeros instead of randn
+                @test Δsize!(WithKwargs(ΔNout(dc, 4); insert =(args...) -> (args...) -> 0)) 
+                @test lazyouts(dc) ==                         [ 1,  2, -1,-1,  3,  4, -1,-1]
+                @test reshape(dc(fill(1f0, (1,1,2,1))), :) == [20, 31,  0, 0, 22, 32,  0, 0]
             end
 
             @testset "1 input times 5" begin
@@ -164,11 +160,10 @@ end
                 @test Δnout!(dc=>-2)
                 @test lazyouts(dc) == 3:5 
                 @test reshape(dc(fill(1f0, (1,1,1,1))), :) == [33, 44, 55]
-                @test Δnout!(dc=>3)
-                @test lazyouts(dc) == vcat(1:3, fill(-1, 3)) 
-                mdc = MutableLayer(layer(dc))
-                NaiveNASflux.mutate(mdc, inputs=lazyins(dc)[1], outputs=lazyouts(dc), insert=(args...) -> (args...) -> 0)
-                @test reshape(mdc(fill(1f0, (1,1,1,1))), :) == [33, 44, 55, 0, 0, 0]
+                # pass insert function so we get zeros instead of randn
+                @test Δsize!(WithKwargs(ΔNout(dc, 3); insert =(args...) -> (args...) -> 0)) 
+                @test lazyouts(dc) ==                     vcat(1:3,        fill(-1, 3)) 
+                @test reshape(dc(fill(1f0, (1,1,1,1))), :) == [33, 44, 55, 0, 0, 0]
             end
 
             @testset "3 inputs times 7" begin
@@ -185,11 +180,10 @@ end
                 # TODO: Examine failure and expected result more carefully when not tired af
                 @test lazyouts(dc) == [1,3,4,5,8,10,11,12,15,17,18,19]
                 @test reshape(dc(fill(10f0, (1,1,3,1))), :) == [101,303,404,505,108,310,411,512,115,317,418,519]
-                @test Δnout!(dc => 6)
-                @test lazyouts(dc) == vcat(1:4, -1, -1, 5:8, -1, -1, 9:12, -1, -1)
-                mdc = MutableLayer(layer(dc))
-                NaiveNASflux.mutate(mdc, inputs=lazyins(dc)[1], outputs=lazyouts(dc), insert=(args...) -> (args...) -> 0)
-                @test reshape(mdc(fill(10f0, (1,1,3,1))), :) == [101,303,404,505,0,0,108,310,411,512,0,0,115,317,418,519,0,0]
+                # pass insert function so we get zeros instead of randn
+                @test Δsize!(WithKwargs(ΔNout(dc, 6); insert =(args...) -> (args...) -> 0)) 
+                @test lazyouts(dc) ==                      vcat(1:4,           -1,-1, 5:8,           -1,-1, 9:12,          -1,-1)
+                @test reshape(dc(fill(10f0, (1,1,3,1))), :) == [101,303,404,505,0, 0, 108,310,411,512,0 ,0, 115,317,418,519,0, 0]
             end
 
             @testset "DepthwiseConvAllowNinChangeStrategy" begin
