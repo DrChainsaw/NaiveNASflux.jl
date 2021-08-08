@@ -7,7 +7,7 @@ Below is a very simple example of parameter pruning of a model trained on the `x
 First we need some boilerplate to create the model and do the training:
 
 """
-@testset "Pruning xor example" begin #hide
+@testset "Pruning xor example" begin #src
 using NaiveNASflux, Flux, Test
 using Flux: train!, mse
 import Random
@@ -43,12 +43,12 @@ train!(loss(original), params(original), Iterators.repeated((x,y), niters), opt)
 # and try out three different ways of how to select which ones to remove.  
 nprune = 16
 
-# Prune the neurons with lowest utility according to the metric in ActivationContribution.
+# Prune the neurons with lowest utility according to the metric in [`ActivationContribution`](@ref).
 # This is the default if no utility function is provided.
 pruned_least = deepcopy(original)
 Δnout!(pruned_least[2] => -nprune)
 
-# Prune the neurons with hiest utility according to the metric in ActivationContribution.
+# Prune the neurons with higest utility according to the metric in [`ActivationContribution`](@ref).
 # This is obviously not a good idea if you want to preserve the accuracy.
 pruned_most = deepcopy(original)
 Δnout!(pruned_most[2] => -nprune) do v
@@ -66,9 +66,9 @@ pruned_random = deepcopy(original)
         loss(pruned_least)(x, y)  >= 
         loss(original)(x, y)
 
-# The metric calculated by ActivationContribution is actually quite good in this case.
+# The metric calculated by [`ActivationContribution`](@ref) is actually quite good in this case.
 @test loss(pruned_least)(x, y) ≈ loss(original)(x, y) atol = 1e-5
-end #hide
+end #src
 
 
 

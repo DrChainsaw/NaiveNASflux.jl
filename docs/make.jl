@@ -3,7 +3,7 @@ using Documenter, Literate, NaiveNASflux
 const nndir = joinpath(dirname(pathof(NaiveNASflux)), "..")
 
 function literate_example(sourcefile; rootdir=nndir, sourcedir = "test/examples", destdir="docs/src/examples")
-    fullpath = Literate.markdown(joinpath(rootdir, sourcedir, sourcefile), joinpath(rootdir, destdir); flavor=Literate.CommonMarkFlavor(), mdstrings=true)
+    fullpath = Literate.markdown(joinpath(rootdir, sourcedir, sourcefile), joinpath(rootdir, destdir); flavor=Literate.DocumenterFlavor(), mdstrings=true, codefence="````julia" => "````")
     dirs = splitpath(fullpath)
     srcind = findfirst(==("src"), dirs)
     joinpath(dirs[srcind+1:end]...)

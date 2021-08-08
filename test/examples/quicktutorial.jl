@@ -6,7 +6,7 @@ Check out the basic usage of [NaiveNASlib](https://github.com/DrChainsaw/NaiveNA
 Here is a quick rundown of some common operations:
 
 """
-@testset "Quick tutorial" begin #hide
+@testset "Quick tutorial" begin #src
 using NaiveNASflux, Flux, Test
 
 # Create an input vertex which tells its output vertices that they can expect 2D convolutional input (i.e 4D arrays).
@@ -76,7 +76,7 @@ namedconv |> KernelSizeAligned(-2,-2; pad=SamePad())
 
 # ... because mutations are lazy by default so that no new layers are created until the graph is evaluated.
 @test size(NaiveNASflux.weights(layer(namedconv))) == (3, 3, 3, 4)
-end #hide
+end #src
 
 
 
