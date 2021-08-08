@@ -118,7 +118,7 @@ end
         import NaiveNASflux: outdim, wrapped, FluxConv
         lazymutable(v::AbstractVertex) = lazymutable(base(v))
         lazymutable(v::CompVertex) = lazymutable(v.computation)
-        lazymutable(m::AbstractMutableComp) = lazymutable(wrapped(m)) 
+        lazymutable(m::NaiveNASflux.AbstractMutableComp) = lazymutable(wrapped(m)) 
         lazymutable(m::LazyMutable) = m
         lazyouts(v) = lazymutable(v).outputs
         lazyins(v) = lazymutable(v).inputs
@@ -205,7 +205,7 @@ end
                 @test nin(dc) == [2]
 
                 failstrat = DepthwiseConvAllowNinChangeStrategy([10], [0], ΔNout(dc => 2))
-                @test_logs (:warn, r"Could not change nout of dc") @test_throws NaiveNASlib.ΔSizeFailError Δsize!(failstrat, dc)
+                @test @test_logs (:warn, r"Could not change nout of dc") match_mode=:any Δsize!(failstrat, dc) == false
             end
 
             @testset "DepthwiseConvSimpleΔSizeStrategy" begin
