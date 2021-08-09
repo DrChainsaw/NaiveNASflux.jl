@@ -41,7 +41,7 @@
         @test size(weights(layer(m))) == (2,6,5,6)
 
         KernelSizeAligned((2, -1), (1,2,2,2))(m)
-        NaiveNASlib.Δsize!(NaiveNASlib.NeuronIndices(), m, [1:nin(m)[]], [1,3,5])
+        NaiveNASlib.applyΔsize!(NaiveNASlib.NeuronIndices(), m, [1:nin(m)[]], [1,3,5])
 
         @test size(m(indata)) == (size(indata,1), size(indata,2), 3, size(indata,4))
         @test size(weights(layer(m))) == (4,5,5,3)

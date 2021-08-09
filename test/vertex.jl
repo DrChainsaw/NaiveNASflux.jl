@@ -122,7 +122,7 @@ end
         @test nin(bv) == [nout(cv)] == [3]
 
         # Lets go out of our way to make it size inconsistent to verify that nin/nout is the size of the BatchNorm parameters.
-        Δsize!(NaiveNASlib.NeuronIndices(), bv, [1:2], 1:2)
+        NaiveNASlib.applyΔsize!(NaiveNASlib.NeuronIndices(), bv, [1:2], 1:2)
 
         @test [nout(bv)] == nin(bv) == [2]
         @test nout(cv) == 3
