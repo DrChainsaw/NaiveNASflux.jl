@@ -135,7 +135,7 @@ $doc_layerfun_and_traitfun
 fluxvertex(l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated()) = fluxvertex(layertype(l), l, in, layerfun, traitfun)
 
 """
-    fluxvertex(name::String, l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated())
+    fluxvertex(name::AbstractString, l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated())
 
 Return a vertex wrapping the layer `l` with input vertex `in` with name `name`.
 
@@ -143,7 +143,7 @@ Name is only used when displaying or logging and does not have to be unique (alt
 
 $doc_layerfun_and_traitfun
 """
-fluxvertex(name::String, l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated()) = fluxvertex(layertype(l), l, in, layerfun, traitfun ∘ named(name))
+fluxvertex(name::AbstractString, l, in::AbstractVertex; layerfun=LazyMutable, traitfun=validated()) = fluxvertex(layertype(l), l, in, layerfun, traitfun ∘ named(name))
 
 fluxvertex(::FluxParLayer, l, in::AbstractVertex, layerfun, traitfun) = absorbvertex(layerfun(MutableLayer(l)), in, traitdecoration = traitfun)
 
@@ -180,7 +180,7 @@ function concat(v::AbstractVertex, vs::AbstractVertex...; traitfun=identity, lay
 end
 
 """
-    concat(name::String, v::AbstractVertex, vs::AbstractVertex...; traitfun=identity, layerfun=identity)
+    concat(name::AbstractString, v::AbstractVertex, vs::AbstractVertex...; traitfun=identity, layerfun=identity)
 
 Return a vertex with name `name` which concatenates input along the activation (e.g. channel if convolution, first dimension if dense) dimension.
 
@@ -192,7 +192,7 @@ $doc_layerfun_and_traitfun
 
 See also `NaiveNASlib.conc`. 
 """
-concat(name::String, v::AbstractVertex, vs::AbstractVertex...; traitfun = identity, layerfun=identity) = concat(v, vs..., traitfun=traitfun ∘ named(name), layerfun=layerfun)
+concat(name::AbstractString, v::AbstractVertex, vs::AbstractVertex...; traitfun = identity, layerfun=identity) = concat(v, vs..., traitfun=traitfun ∘ named(name), layerfun=layerfun)
 
 """
     layer(v)
