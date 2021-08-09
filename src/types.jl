@@ -54,13 +54,16 @@ NaiveNASlib.shapetrait(::InstanceNorm) = FluxInstanceNorm()
 NaiveNASlib.shapetrait(::GroupNorm) = FluxGroupNorm()
 
 # Transparent layers, i.e nin == nout always and there are no parameters
-struct FluxNoParLayer <: FluxTransparentLayer end
-NaiveNASlib.shapetrait(::MaxPool) = FluxNoParLayer()
-NaiveNASlib.shapetrait(::MeanPool) = FluxNoParLayer()
-NaiveNASlib.shapetrait(::Dropout) = FluxNoParLayer()
-NaiveNASlib.shapetrait(::AlphaDropout) = FluxNoParLayer()
-NaiveNASlib.shapetrait(::GlobalMaxPool) = FluxNoParLayer()
-NaiveNASlib.shapetrait(::GlobalMeanPool) = FluxNoParLayer()
+abstract type FluxNoParLayer <: FluxTransparentLayer end
+struct FluxPoolLayer <: FluxNoParLayer end
+struct FluxDropOut <: FluxNoParLayer end
+
+layertype(l::MaxPool) = FluxPoolLayer()
+layertype(l::MeanPool) = FluxPoolLayer()
+layertype(l::Dropout) = FluxDropOut()
+layertype(l::AlphaDropout) = FluxDropOut()
+layertype(l::GlobalMaxPool) = FluxPoolLayer()
+layertype(l::GlobalMeanPool) = FluxPoolLayer()
 
 # Compositions? Might not have any common methods...
 # MaxOut, Chain?

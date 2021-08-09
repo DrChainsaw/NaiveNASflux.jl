@@ -38,6 +38,32 @@
     @test actrank(inputvertex("in", 2, FluxRnn()))     == actrank(rnninputvertex("in", 2))
 end
 
+@testset "$pt Vertex" for (pt, arg) in (
+    (MaxPool, ((4,4),)),
+    (MeanPool, ((4,4),)),
+    (GlobalMaxPool, ()),
+    (GlobalMeanPool, ()))
+    using Random
+    l = pt(arg...)
+    v = fluxvertex(l, conv2dinputvertex("in", 3))
+
+    @test NaiveNASflux.layertype(v) isa NaiveNASflux.FluxPoolLayer
+    indata = randn(MersenneTwister(1), 6,6,3,2)
+
+    @test l(indata) == v(indata)
+end
+
+@testset "$dt Vertex" for dt in (Dropout, AlphaDropout)
+    using Random
+    l = dt(0.4)
+    v = fluxvertex(l, conv2dinputvertex("in", 3))
+
+    @test NaiveNASflux.layertype(v) isa NaiveNASflux.FluxDropOut
+    indata = randn(MersenneTwister(1), 3,2)
+
+    @test l(indata) == v(indata)
+end
+
 @testset "Size mutations" begin
     import NaiveNASflux: weights, bias, layertype
 
