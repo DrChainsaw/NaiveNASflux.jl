@@ -41,7 +41,9 @@ Call with vertex as input to change weights.
 
 ### Examples
 
-```julia-repl
+```jldoctest
+julia> using NaiveNASflux, Flux
+
 julia> cv = fluxvertex(Conv((3,3), 1=>1;pad=SamePad()), conv2dinputvertex("in", 1));
 
 julia> cv(ones(Float32, 4,4,1,1)) |> size

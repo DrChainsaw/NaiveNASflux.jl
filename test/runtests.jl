@@ -31,4 +31,9 @@ end
 
     @info "Testing examples"
     include("examples.jl")
+
+    if Int !== Int32
+        import Documenter
+        Documenter.doctest(NaiveNASflux)
+    end
 end

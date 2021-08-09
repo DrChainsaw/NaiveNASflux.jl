@@ -214,27 +214,26 @@ Also useable for factory-like designs where the actual layers of a computation g
 are not instantiated until the graph is used.
 
 # Examples
-```julia-repl
-julia> using NaiveNASflux
+```jldoctest
+julia> using NaiveNASflux, Flux
 
 julia> struct DenseConfig end
 
-julia> lazy = LazyMutable(DenseConfig(), 2,3)
-LazyMutable(DenseConfig(), 1:2, 1:3)
+julia> lazy = LazyMutable(DenseConfig(), 2, 3);
+
+julia> layer(lazy)
+DenseConfig()
 
 julia> function NaiveNASflux.dispatch!(m::LazyMutable, ::DenseConfig, x)
-       m.mutable = MutableLayer(Dense(nin(m), nout(m), relu))
+       m.mutable = Dense(nin(m)[1], nout(m), relu)
        return m.mutable(x)
-       end
+       end;
 
-julia> lazy(Float32[1,2])
-Tracked 3-element Array{Float32,1}:
- 1.568902f0
- 0.556749f0
- 2.0417972f0
+julia> lazy(ones(Float32, 2, 5)) |> size
+(3, 5)
 
-julia> lazy
-LazyMutable(MutableLayer(Dense(2, 3, NNlib.relu)), 1:2, 1:3)
+julia> layer(lazy)
+Dense(2, 3, relu)   # 9 parameters
 ```
 """
 mutable struct LazyMutable <: AbstractMutableComp
@@ -245,7 +244,7 @@ mutable struct LazyMutable <: AbstractMutableComp
     insert # May change at any time
 end
 LazyMutable(m::AbstractMutableComp) = LazyMutable(m, nin(m), nout(m))
-LazyMutable(m, nin::Integer, nout::Integer) = LazyMutable(m, 1:nin, nout)
+LazyMutable(m, nin::Integer, nout::Integer) = LazyMutable(m, [nin], nout)
 function LazyMutable(m, nins::AbstractVector{<:Integer}, nout::Integer)  
     inputs = map(nin -> collect(Int, 1:nin), nins)
     outputs = collect(Int, 1:nout)
