@@ -63,14 +63,20 @@ bias(::FluxConvolutional, l) = l.bias
 weights(::FluxDiagonal, l) = l.α
 bias(::FluxDiagonal, l) = l.β
 
-weights(::FluxRecurrent, l) = l.cell.Wi
-bias(::FluxRecurrent, l) = l.cell.b
+weights(lt::FluxRecurrent, l::Flux.Recur) = weights(lt, l.cell)
+bias(lt::FluxRecurrent, l::Flux.Recur) = bias(lt, l.cell)
+weights(::FluxRecurrent, cell) = cell.Wi
+bias(::FluxRecurrent, cell) = cell.b
 
 hiddenweights(l) = hiddenweights(layertype(l), l)
-hiddenweights(::FluxRecurrent, l) = l.cell.Wh
+hiddenweights(lt::FluxRecurrent, l::Flux.Recur) = hiddenweights(lt, l.cell)
+hiddenweights(::FluxRecurrent, cell) = cell.Wh
+
 hiddenstate(l) = hiddenstate(layertype(l), l)
-hiddenstate(::FluxRecurrent, l) = l.cell.state0
-hiddenstate(::FluxLstm, l) = [h for h in l.cell.state0]
+hiddenstate(lt::FluxRecurrent, l::Flux.Recur) = hiddenstate(lt, l.cell)
+hiddenstate(::FluxRecurrent, cell) = cell.state0
+hiddenstate(::FluxLstm, cell::Flux.LSTMCell) = [h for h in cell.state0]
+
 state(l) = state(layertype(l), l)
 state(::FluxRecurrent, l) = l.state
 state(::FluxLstm, l) = [h for h in l.state]

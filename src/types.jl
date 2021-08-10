@@ -20,9 +20,11 @@ struct GenericFluxRecurrent <: FluxRecurrent end
 struct FluxRnn <: FluxRecurrent end
 struct FluxLstm <: FluxRecurrent end
 struct FluxGru <: FluxRecurrent end
-NaiveNASlib.shapetrait(::Flux.Recur{<:Flux.RNNCell}) = FluxRnn()
-NaiveNASlib.shapetrait(::Flux.Recur{<:Flux.LSTMCell}) = FluxLstm()
-NaiveNASlib.shapetrait(::Flux.Recur{<:Flux.GRUCell}) = FluxGru()
+
+NaiveNASlib.shapetrait(l::Flux.Recur) = NaiveNASlib.shapetrait(l.cell)
+NaiveNASlib.shapetrait(::Flux.RNNCell) = FluxRnn()
+NaiveNASlib.shapetrait(::Flux.LSTMCell) = FluxLstm()
+NaiveNASlib.shapetrait(::Flux.GRUCell) = FluxGru()
 
 abstract type FluxConvolutional{N} <: FluxParLayer end
 struct GenericFluxConvolutional{N} <: FluxConvolutional{N} end
