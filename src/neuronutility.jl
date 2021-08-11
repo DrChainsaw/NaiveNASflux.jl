@@ -5,8 +5,6 @@
 
 Calculate neuron utility based on activations and gradients using `method`.
 
-High value of `contribution` means that the neuron of that index has a high contribution to the loss score.
-
 Can be a performance bottleneck in cases with large activations. Use [`NeuronUtilityEvery`](@ref) to mitigate.
 
 Default `method` is described in <https://arxiv.org/abs/1611.06440>.

@@ -3,7 +3,7 @@ md"""
 
 Check out the basic usage of [NaiveNASlib](https://github.com/DrChainsaw/NaiveNASlib.jl) for less verbose examples.
 
-Here is a quick rundown of some common operations:
+Here is a quick rundown of some common operations.
 
 """
 @testset "Quick tutorial" begin #src
@@ -48,7 +48,7 @@ graph = CompGraph(invertex, add)
 # Access the vertices of the graph.
 @test vertices(graph) == [invertex, namedconv, conv, batchnorm, conc, residualconv, add]
 
-# Can be evaluated just like any function.
+# `CompGraph`s can be evaluated just like any function.
 x = ones(Float32, 7, 7, nout(invertex), 2)
 @test size(graph(x)) == (7, 7, nout(add), 2) == (7 ,7, 12 ,2)
 
@@ -72,9 +72,8 @@ namedconv |> KernelSizeAligned(-2,-2; pad=SamePad())
 # Note: Parameters not changed yet...
 @test size(NaiveNASflux.weights(layer(namedconv))) == (5, 5, 3, 7)
 
+# ... because mutations are lazy by default so that no new parameters are created until the graph is evaluated.
 @test size(graph(x)) == (7, 7, nout(add), 2) == (7, 7, 9, 2)
-
-# ... because mutations are lazy by default so that no new layers are created until the graph is evaluated.
 @test size(NaiveNASflux.weights(layer(namedconv))) == (3, 3, 3, 4)
 end #src
 
