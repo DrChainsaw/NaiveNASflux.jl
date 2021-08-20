@@ -16,7 +16,7 @@ invertex = conv2dinputvertex("in", 3)
 conv = fluxvertex(Conv((3,3), 3 => 5, pad=(1,1)), invertex)
 batchnorm = fluxvertex(BatchNorm(nout(conv), relu), conv)
 
-# Explore graph.
+# Explore the graph.
 @test inputs(conv) == [invertex]
 @test outputs(conv) == [batchnorm]
 

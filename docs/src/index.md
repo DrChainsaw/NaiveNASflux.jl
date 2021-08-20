@@ -6,6 +6,6 @@ NaiveNASflux is an extension of [NaiveNASlib](https://github.com/DrChainsaw/Naiv
 
 Due to how NaiveNASflux just glues Flux and NaiveNASlib, most of the things one can use NaiveNASflux for is described in the [documentation for NaiveNASlib](https://DrChainsaw.github.io/NaiveNASlib.jl/stable).
 
-The [Quick Tutorial](@ref) gives a quick overview of what using NaiveNASflux might look like while the [Model Pruning Example](@ref) show lightweight usage of NaiveNASflux without bringing in full fledged neural architecture search.
+The [Quick Tutorial](@ref) gives an overview of some basic operations while the [Model Pruning Example](@ref) show simple usage without bringing in full fledged neural architecture search.
 
 The API reference is split up into categories in an attempt to make it easy to answer "how do I achieve X?"-type questions.
