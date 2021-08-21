@@ -42,7 +42,7 @@ add = "add" >> conc + residualconv
 @test name(add) == "add"
 @test inputs(add) == [conc, residualconv]
 
-# Computation graph for evaluation. It is basically a more generic version of `Flux.Chain`.
+# Computation graph for evaluation. It is basically a more general version of `Flux.Chain`.
 graph = CompGraph(invertex, add)
 
 # Access the vertices of the graph.
@@ -57,12 +57,12 @@ x = ones(Float32, 7, 7, nout(invertex), 2)
 Δnout!(add => -3)
 @test nout(add) == nout(residualconv) == nout(conv) + nout(namedconv) == 9
 
-# Remove layer.
+# Remove a layer.
 @test nvertices(graph) == 7
 remove!(batchnorm)
 @test nvertices(graph) == 6
 
-# Add layer.
+# Add a layer.
 insert!(residualconv, v -> fluxvertex(BatchNorm(nout(v), relu), v))
 @test nvertices(graph) == 7
 

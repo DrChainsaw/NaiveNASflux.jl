@@ -2,7 +2,7 @@ md"""
 # Model Pruning Example
 
 While NaiveNASflux does not come with any built in search policies, it is still possible to do some cool stuff with it. 
-Below is a very simple example of parameter pruning of a model trained on the `xor` function.
+Below is a very simple example of parameter pruning.
 
 First we need some boilerplate to create the model and do the training:
 
@@ -29,7 +29,7 @@ original = CompGraph(invertex, layer2)
 opt = ADAM(0.1)
 loss(g) = (x, y) -> mse(g(x), y)
 
-## Training data: xor truth table: y = xor(x)
+## Training data: xor truth table: y = xor(x) just so we don't need to download a dataset.
 x = Float32[0 0 1 1;
             0 1 0 1]
 y = Float32[0 1 1 0]
