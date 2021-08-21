@@ -289,7 +289,7 @@ end
             @test [nout(dc2)] == nin(dc3) == [96] # TODO: Why so big??
 
            # Add deterministic utilityfunction which wants to do non-contiguous selection across groups
-            @test @test_logs (:warn, r"Could not change nout of") Δnout!(v -> 1:nout(v), dc1 => -2) do v
+            @test @test_logs (:warn, r"Could not change nout of") Δnout!(dc1 => -2) do v
                 repeat([1, 2], nout(v) ÷ 2)
             end
             @test [nout(dc1)] == nin(dc2) == [12]
