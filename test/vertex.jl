@@ -259,9 +259,9 @@ end
 
             # Add deterministic utilityfunction which wants to do non-contiguous selection across groups
             @test  @test_logs (:warn, r"Could not change nout of") Δnout!(dc1 => -2) do v
-                vals = repeat([1, 2], nout(v) ÷ 2)
-                vals[3] = -10 # don't want group 3 to make testcase stable
-                return vals
+                util = repeat([1, 2], nout(v) ÷ 2)
+                util[3] = -10 # don't want group 3 to make testcase deterministic
+                return util
             end
             @test [nout(dc1)] == nin(dc2) == [nout(dc2)] == [8]
 
@@ -290,7 +290,9 @@ end
 
            # Add deterministic utilityfunction which wants to do non-contiguous selection across groups
             @test @test_logs (:warn, r"Could not change nout of") Δnout!(dc1 => -2) do v
-                repeat([1, 2], nout(v) ÷ 2)
+                util = repeat([1, 2], nout(v) ÷ 2)
+                util[1] = -10 # don't want group 1 to make testcase deterministic
+                return util
             end
             @test [nout(dc1)] == nin(dc2) == [12]
             @test [nout(dc2)] == nin(dc3) == [96]
