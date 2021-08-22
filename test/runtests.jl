@@ -1,5 +1,5 @@
-using NaiveNASflux
-using Test
+using NaiveNASflux, Flux, Test
+using NaiveNASlib.Advanced, NaiveNASlib.Extend
 
 function assertlayer(l, Wexp, bexp)
     @test size(Wexp) == size(weights(l))
@@ -26,9 +26,14 @@ end
     @info "Testing vertex"
     include("vertex.jl")
 
-    @info "Testing pruning"
-    include("pruning.jl")
+    @info "Testing neuronutility"
+    include("neuronutility.jl")
 
     @info "Testing examples"
     include("examples.jl")
+
+    if Int !== Int32
+        import Documenter
+        Documenter.doctest(NaiveNASflux)
+    end
 end

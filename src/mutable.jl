@@ -13,21 +13,23 @@ Base.Broadcast.broadcastable(m::AbstractMutableComp) = Ref(m)
 # (m::AbstractMutableComp)(x...) = layer(m)(x...)
 layertype(m::AbstractMutableComp) = layertype(layer(m))
 
-NaiveNASlib.nin(m::AbstractMutableComp) = nin(layer(m))
-NaiveNASlib.nout(m::AbstractMutableComp) = nout(layer(m))
+NaiveNASlib.nin(m::AbstractMutableComp) = nin(wrapped(m))
+NaiveNASlib.nout(m::AbstractMutableComp) = nout(wrapped(m))
 
-# Leave some room to override clone
-NaiveNASlib.clone(m::AbstractMutableComp;cf=clone) = typeof(m)(map(cf, getfield.(m, fieldnames(typeof(m))))...)
-
-NaiveNASlib.mutate_inputs(m::AbstractMutableComp, inputs::AbstractArray{<:Integer,1}...;kwargs...) = mutate_inputs(wrapped(m), inputs...;kwargs...)
-NaiveNASlib.mutate_outputs(m::AbstractMutableComp, outputs; kwargs...) = mutate_outputs(wrapped(m), outputs; kwargs...)
+function NaiveNASlib.Δsize!(m::AbstractMutableComp, inputs::AbstractVector, outputs::AbstractVector;kwargs...) 
+     NaiveNASlib.Δsize!(wrapped(m), inputs, outputs;kwargs...)
+end
 
 mutate_weights(m::AbstractMutableComp, w) = mutate_weights(wrapped(m), w)
 
-NaiveNASlib.minΔninfactor(m::AbstractMutableComp) = minΔninfactor(layertype(m), layer(m))
-NaiveNASlib.minΔnoutfactor(m::AbstractMutableComp) = minΔnoutfactor(layertype(m), layer(m))
+function NaiveNASlib.compconstraint!(case, s::AbstractJuMPΔSizeStrategy, m::AbstractMutableComp, data) 
+     NaiveNASlib.compconstraint!(case, s, layertype(m), data)
+end
 
-NaiveNASlib.compconstraint!(s, m::AbstractMutableComp, data) = NaiveNASlib.compconstraint!(s, layertype(m), data)
+function NaiveNASlib.defaultutility(m::AbstractMutableComp) 
+    util = neuronutility_safe(m)
+    return util === 1 ? NaiveNASlib.NoDefaultUtility() : util
+end
 
 """
     MutableLayer
@@ -35,25 +37,33 @@ NaiveNASlib.compconstraint!(s, m::AbstractMutableComp, data) = NaiveNASlib.compc
 Wraps a layer in order to allow for mutation as layer structures are typically immutable
 """
 mutable struct MutableLayer <: AbstractMutableComp
-    layer
+    layer # Can't specialize as this might mutate into something else, e.g. Dense{Float32} -> Dense{Float64} thanks to mutable functor. Try to make functor rebuild everything?
 end
 (m::MutableLayer)(x...) = layer(m)(x...)
 wrapped(m::MutableLayer) = m.layer
 layer(m::MutableLayer) = wrapped(m)
 layertype(m::MutableLayer) = layertype(layer(m))
 
-function NaiveNASlib.mutate_inputs(m::MutableLayer, inputs::AbstractArray{<:Integer,1}...; insert=neuroninsert)
-    @assert length(inputs) == 1 "Only one input per layer!"
-    mutate(layertype(m), m; inputs=inputs[1], insert=insert)
-end
+@functor MutableLayer
 
-NaiveNASlib.mutate_outputs(m::MutableLayer, outputs; insert=neuroninsert) = mutate(layertype(m), m; outputs=outputs, insert=insert)
+
+function NaiveNASlib.Δsize!(m::MutableLayer, inputs::AbstractVector, outputs::AbstractVector; insert=neuroninsert, kwargs...) 
+    @assert length(inputs) == 1 "Only one input per layer!"
+    mutate(m; inputs=inputs[1], outputs=outputs, insert=insert, kwargs...)
+    nothing
+end
 
 mutate_weights(m::MutableLayer, w) = mutate(layertype(m), m, other=w)
 
-mutate(m::MutableLayer; inputs, outputs, other = l -> (), insert=neuroninsert) = mutate(layertype(m), m, inputs=inputs, outputs=outputs, other=other, insert=insert)
+function mutate(m::MutableLayer; inputs, outputs, other = l -> (), insert=neuroninsert) 
+    if inputs === missing
+        mutate(layertype(m), m; outputs, other, insert)
+    else
+        mutate(layertype(m), m; inputs, outputs, other, insert)
+    end
+end
 
-function mutate(lt::FluxParLayer, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m), other= l -> (), insert=neuroninsert)
+function mutate(lt::FluxParLayer, m::MutableLayer; inputs=1:nin(m)[], outputs=1:nout(m), other= l -> (), insert=neuroninsert)
     l = layer(m)
     otherdims = other(l)
     w = select(weights(l), indim(l) => inputs, outdim(l) => outputs, otherdims...; newfun=insert(lt, WeightParam()))
@@ -62,20 +72,22 @@ function mutate(lt::FluxParLayer, m::MutableLayer; inputs=1:nin(m), outputs=1:no
 end
 otherpars(o, l) = ()
 
-function mutate(lt::FluxDepthwiseConv, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m), other= l -> (), insert=neuroninsert)
+function mutate(lt::FluxDepthwiseConv{N}, m::MutableLayer; inputs=1:nin(m)[], outputs=1:nout(m), other= l -> (), insert=neuroninsert) where N
     l = layer(m)
     otherdims = other(l)
-    weightouts = map(Iterators.partition(outputs, length(inputs))) do group
-        all(group .< 0) && return group[1]
-        return (maximum(group) - 1) ÷ length(inputs) + 1
-    end
 
-    w = select(weights(l), indim(l) => inputs, outdim(l) => weightouts, otherdims...; newfun=insert(lt, WeightParam()))
+    ngroups = div(length(outputs), length(inputs))
+
+    # inputs and outputs are coupled through the constraints (which hopefully were enforced) so we only need to consider outputs
+    currsize =size(weights(l))
+    wo = select(reshape(weights(l), currsize[1:N]...,:), N+1 => outputs, otherdims...; newfun=insert(lt, WeightParam()))
+    newks = size(wo)[1:N]
+    w = collect(reshape(wo, newks...,ngroups, :))
     b = select(bias(l), 1 => outputs; newfun=insert(lt, BiasParam()))
     newlayer(m, w, b, otherpars(other, l))
 end
 
-function mutate(lt::FluxRecurrent, m::MutableLayer; inputs=1:nin(m), outputs=1:nout(m), other=missing, insert=neuroninsert)
+function mutate(lt::FluxRecurrent, m::MutableLayer; inputs=1:nin(m)[], outputs=1:nout(m), other=missing, insert=neuroninsert)
     l = layer(m)
     outputs_scaled = mapfoldl(vcat, 1:outscale(l)) do i
         offs = (i-1) * nout(l)
@@ -166,7 +178,7 @@ function mutate(lt::FluxGroupNorm, m::MutableLayer, inds; insert=neuroninsert)
     # TODO: Select the most commonly occuring index in each column (except -1)
     inds_groups = reshape(inds_groups, nchannels_per_group, ngroups)[1,:]
 
-    sizetoinds = Dict(nin(l) => inds, l.G => inds_groups)
+    sizetoinds = Dict(nin(l)[] => inds, l.G => inds_groups)
 
     parselect(p::Pair) = parselect(p...)
     parselect(pname, x::AbstractArray) = select(x, 1 => sizetoinds[length(x)]; newfun = insert(lt, pname))
@@ -190,87 +202,91 @@ newlayer(::FluxDiagonal, m::MutableLayer, w, b, other) = Flux.Diagonal(w, b)
 
 """
     LazyMutable
+    LazyMutable(m::AbstractMutableComp)
 
 Lazy version of MutableLayer in the sense that it does not perform any mutations
 until invoked to perform a computation.
 
-This is done by calling the method trigger_mutation on the mutable, meaning that
-there must exist a method for the the mutable type in order for something to
-happen.
-
-This reduces the need to garbage collect intermediate parameters when both inputs
-and outputs are mutated.
+This reduces the need to garbage collect when multiple mutations might be applied
+to a vertex before evaluating the model.
 
 Also useable for factory-like designs where the actual layers of a computation graph
 are not instantiated until the graph is used.
 
 # Examples
-```julia-repl
-julia> using NaiveNASflux
+```jldoctest
+julia> using NaiveNASflux, Flux
 
 julia> struct DenseConfig end
 
-julia> lazy = LazyMutable(DenseConfig(), 2,3)
-LazyMutable(DenseConfig(), 1:2, 1:3)
+julia> lazy = LazyMutable(DenseConfig(), 2, 3);
 
-julia> function NaiveNASflux.dispatch(m::LazyMutable, ::DenseConfig, x)
-       m.mutable = MutableLayer(Dense(nin(m), nout(m), relu))
+julia> layer(lazy)
+DenseConfig()
+
+julia> function NaiveNASflux.dispatch!(m::LazyMutable, ::DenseConfig, x)
+       m.mutable = Dense(nin(m)[1], nout(m), relu)
        return m.mutable(x)
-       end
+       end;
 
-julia> lazy(Float32[1,2])
-Tracked 3-element Array{Float32,1}:
- 1.568902f0
- 0.556749f0
- 2.0417972f0
+julia> lazy(ones(Float32, 2, 5)) |> size
+(3, 5)
 
-julia> lazy
-LazyMutable(MutableLayer(Dense(2, 3, NNlib.relu)), 1:2, 1:3)
+julia> layer(lazy)
+Dense(2, 3, relu)   # 9 parameters
 ```
 """
 mutable struct LazyMutable <: AbstractMutableComp
-    mutable
-    inputs::AbstractVector{<:Integer}
-    outputs::AbstractVector{<:Integer}
-    other
-    insert
+    mutable # May change at any time (see example)
+    inputs::Vector{Vector{Int}}
+    outputs::Vector{Int}
+    other # May change at any time
+    insert # May change at any time
 end
 LazyMutable(m::AbstractMutableComp) = LazyMutable(m, nin(m), nout(m))
-LazyMutable(m, nin::Integer, nout::Integer) = LazyMutable(m, 1:nin, 1:nout, m -> (), neuroninsert)
+LazyMutable(m, nin::Integer, nout::Integer) = LazyMutable(m, [nin], nout)
+function LazyMutable(m, nins::AbstractVector{<:Integer}, nout::Integer)  
+    inputs = map(nin -> collect(Int, 1:nin), nins)
+    outputs = collect(Int, 1:nout)
+    LazyMutable(m, inputs, outputs, m -> (), neuroninsert)
+end
+
+function Base.show(io::IO, lm::LazyMutable)
+    print(io, "LazyMutable(")
+    show(io, lm.mutable)
+    print(io, '[')
+    for inpt in lm.inputs
+        print(io, NaiveNASlib.compressed_string(inpt))
+    end
+    print(io, ']', NaiveNASlib.compressed_string(lm.outputs))
+    show(io, lm.other)
+    show(io, lm.insert)
+end
 
 wrapped(m::LazyMutable) = m.mutable
 layer(m::LazyMutable) = layer(wrapped(m))
 
-function Flux.functor(m::LazyMutable)
+function Functors.functor(::Type{<:LazyMutable}, m)
     forcemutation(m)
-    return (mutable=m.mutable,),
-    function(y)
-        m.mutable = y[1]
-        return m
-    end
+    return (mutable=m.mutable,), y -> LazyMutable(y.mutable)
 end
 
 (m::LazyMutable)(x...) = dispatch!(m, m.mutable, x...)
-dispatch!(m::LazyMutable, mutable::AbstractMutableComp, x...) = mutable(x...)
+dispatch!(::LazyMutable, m::AbstractMutableComp, x...) = m(x...)
 
-NaiveNASlib.nin(m::LazyMutable) = length(m.inputs)
+NaiveNASlib.nin(m::LazyMutable) = length.(m.inputs)
 NaiveNASlib.nout(m::LazyMutable) = length(m.outputs)
 
-function NaiveNASlib.mutate_inputs(m::LazyMutable, inputs::AbstractArray{<:Integer,1}...; insert=neuroninsert)
-    @assert length(inputs) == 1 "Only one input per layer!"
-    m.inputs == inputs[1] && return
-
+function NaiveNASlib.Δsize!(m::LazyMutable, inputs::AbstractVector, outputs::AbstractVector; insert=neuroninsert)
+    (all((i,k)::Tuple -> ismissing(i) || i == 1:k, zip(inputs, nin(m))) && outputs == 1:nout(m)) && return
     m.insert = insert
     m.mutable = ResetLazyMutable(trigger_mutation(m.mutable))
-    m.inputs = select(m.inputs, 1 => inputs[1], newfun = (args...) -> -1)
-end
-
-function NaiveNASlib.mutate_outputs(m::LazyMutable, outputs::AbstractArray{<:Integer,1}; insert=neuroninsert)
-    outputs == m.outputs && return
-
-    m.insert = insert
-    m.mutable = ResetLazyMutable(trigger_mutation(m.mutable))
+    m.inputs = map(m.inputs, inputs) do currins, newins
+        ismissing(newins) && return currins
+        select(currins, 1 => newins, newfun = (args...) -> -1)
+    end
     m.outputs = select(m.outputs, 1=>outputs, newfun = (args...) -> -1)
+    nothing
 end
 
 function mutate_weights(m::LazyMutable, w)
@@ -280,19 +296,8 @@ function mutate_weights(m::LazyMutable, w)
     m.other = w
 end
 
-NaiveNASlib.mutate_inputs(m::LazyMutable, nin::Integer...; insert=neuroninsert) = mutate_inputs(m, trunc_or_pad.(length(m.inputs), nin)...;insert=insert)
-
-NaiveNASlib.mutate_outputs(m::LazyMutable, nout::Integer; insert=neuroninsert) = mutate_outputs(m, trunc_or_pad(length(m.outputs), nout); insert=insert)
-
-function trunc_or_pad(maxselect, size)
-    res = -ones(Int, size)
-    lastselected = min(size, maxselect)
-    res[1:lastselected] = 1:lastselected
-    return res
-end
-
 function forcemutation(x) end
-function forcemutation(v::InputVertex) end
+function forcemutation(::InputVertex) end
 forcemutation(g::CompGraph) = forcemutation.(vertices(g::CompGraph))
 forcemutation(v::AbstractVertex) = forcemutation(base(v))
 forcemutation(v::CompVertex) = forcemutation(v.computation)
@@ -300,22 +305,22 @@ forcemutation(m::AbstractMutableComp) = forcemutation(NaiveNASflux.wrapped(m))
 forcemutation(m::LazyMutable) = m(NoComp())
 
 struct NoComp end
-function (::MutableLayer)(x::NoComp) end
+function (::MutableLayer)(::NoComp) end
 
 """
     MutationTriggered
 
 Dispatches mutation for LazyMutable.
 """
-struct MutationTriggered
-    wrapped
+struct MutationTriggered{T}
+    wrapped::T
 end
 # Functionality is opt-in
 trigger_mutation(m) = m
 trigger_mutation(m::AbstractMutableComp) = MutationTriggered(m)
 
 function dispatch!(lm::LazyMutable, m::MutationTriggered, x...)
-    mutate(m.wrapped; inputs=lm.inputs, outputs=lm.outputs, other=lm.other, insert=lm.insert)
+    NaiveNASlib.Δsize!(m.wrapped, lm.inputs, lm.outputs; other=lm.other, insert=lm.insert)
     lm.mutable = m.wrapped
     return lm(x...)
 end
@@ -323,22 +328,22 @@ end
 layer(m::MutationTriggered) = layer(m.wrapped)
 layertype(m::MutationTriggered) = layertype(layer(m))
 
-Flux.@functor MutationTriggered
+@functor MutationTriggered
 
 """
     ResetLazyMutable
 
 Reset a `LazyMutable` when dispatching.
 """
-struct ResetLazyMutable
-    wrapped
+struct ResetLazyMutable{T}
+    wrapped::T
 end
 ResetLazyMutable(r::ResetLazyMutable) = r
 
 function dispatch!(lm::LazyMutable, m::ResetLazyMutable, x...)
     lm.mutable = m.wrapped
     output = lm(x...)
-    lm.inputs = 1:nin(lm)
+    lm.inputs = map(i -> collect(1:i), nin(lm))
     lm.outputs = 1:nout(lm)
     lm.other = m -> ()
     lm.insert = neuroninsert
@@ -348,7 +353,7 @@ end
 layer(m::ResetLazyMutable) = layer(m.wrapped)
 layertype(m::ResetLazyMutable) = layertype(layer(m))
 
-Flux.@functor ResetLazyMutable
+@functor ResetLazyMutable
 
 """
     NoParams
@@ -357,8 +362,8 @@ Ignores size mutation.
 
 Useful for layers which don't have parameters.
 """
-struct NoParams
-    layer
+struct NoParams{T}
+    layer::T
 end
 
 (i::NoParams)(x...) = layer(i)(x...)
@@ -367,8 +372,4 @@ layertype(i::NoParams) = layertype(layer(i))
 
 LazyMutable(m::NoParams) = m
 
-function NaiveNASlib.mutate_inputs(::NoParams, inputs;insert=missing) end
-function NaiveNASlib.mutate_outputs(::NoParams, outputs;insert=missing) end
 function mutate_weights(::NoParams, w) end
-NaiveNASlib.minΔninfactor(m::NoParams) = minΔninfactor(layertype(m), layer(m))
-NaiveNASlib.minΔnoutfactor(m::NoParams) = minΔnoutfactor(layertype(m), layer(m))

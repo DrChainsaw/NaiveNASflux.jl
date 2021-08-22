@@ -1,45 +1,39 @@
 module NaiveNASflux
 
 using Reexport
-using NaiveNASlib
-using Flux
-import Flux.Zygote: hook
+@reexport using NaiveNASlib
+using NaiveNASlib.Extend, NaiveNASlib.Advanced
+import Flux
+using Flux: Dense, Conv, ConvTranspose, DepthwiseConv, CrossCor, LayerNorm, BatchNorm, InstanceNorm, GroupNorm, 
+            MaxPool, MeanPool, Dropout, AlphaDropout, GlobalMaxPool, GlobalMeanPool, cpu
+import Functors
+using Functors: @functor
 using Statistics
-using Setfield
+using Setfield: @set, setproperties
 using LinearAlgebra
-import InteractiveUtils: subtypes
-import JuMP: @variable, @constraint
+import JuMP: @variable, @constraint, @expression, SOS1
 
-export FluxLayer, FluxParLayer, FluxDense, FluxRecurrent, FluxRnn, FluxGru, FluxLstm, FluxConvolutional, FluxConv, FluxConvTranspose, FluxDepthwiseConv, FluxCrossCor, FluxTransparentLayer, FluxParInvLayer, FluxDiagonal, FluxLayerNorm, FluxParNorm, FluxBatchNorm, FluxInstanceNorm, FluxGroupNorm, FluxNoParLayer
+export denseinputvertex, rnninputvertex, fluxvertex, concat
 
-export mutable, concat, AbstractMutableComp, MutableLayer, LazyMutable, NoParams
+export convinputvertex, conv1dinputvertex, conv2dinputvertex, conv3dinputvertex
 
-export named, validated, logged
+export ActivationContribution, LazyMutable
 
-export ActivationContribution, neuron_value, neuronvaluetaylor, Ewma, NeuronValueEvery
+export layer
 
-export indim, outdim, actdim, layer, layertype
+export KernelSizeAligned
 
-export idmapping, idmapping_nowarn
-
-export KernelSizeAligned, mutate_weights
-
+export NeuronUtilityEvery
 
 include("types.jl")
 include("util.jl")
+include("constraints.jl")
 include("select.jl")
 include("mutable.jl")
 include("vertex.jl")
-include("pruning.jl")
-include("weightinit.jl")
+include("neuronutility.jl")
 
-# Stuff to integrate with Flux and Zygote
-include("functor.jl")
+# Stuff to integrate with Zygote
 include("zygote.jl")
-
-# Reexporting before include("functor.jl") causes a warning about duplicate name (flatten) in NaiveNASlib and Flux when subtypes are called
-# https://discourse.julialang.org/t/avoid-error-message-for-function-name-conflict/37176/10
-@reexport using NaiveNASlib
-@reexport using Flux
 
 end # module
