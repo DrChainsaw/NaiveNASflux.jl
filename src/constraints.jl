@@ -274,14 +274,14 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
 
   # This variable handles the constraint that if we add a new input, we need to add noutgroups new outputs
   # Note that for now, it is only connected to the insert variable through the sum constraint below.
-  insert_new_inoutgroups = @variable(model, [1, 1:ningroups], Int, lower_bound=0, upper_bound=ningroups * maximum(allowed_multipliers))
+  insert_new_inoutgroups = @variable(model, [[1], 1:ningroups], Int, lower_bound=0, upper_bound=ningroups * maximum(allowed_multipliers))
 
   insize = @expression(model, sum(inselect) + sum(ininsert))
   outsize = @expression(model, sum(select) + sum(insert))
 
   # inmultipliers[j] == 1 if nout(v) == allowed_multipliers[j] * nin(v)[]
   inmultipliers = @variable(model, [1:length(allowed_multipliers)], Bin)
-  #SOS1 == Only one can be non-zero
+  #SOS1 == Only one can be non-zero. Not strictly needed, but it seems like it speeds up the solver
   @constraint(model, inmultipliers in SOS1(1:length(inmultipliers)))
   @constraint(model, sum(inmultipliers) == 1)
 
@@ -311,7 +311,7 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   # new_outgroup[g,j] == 1 if we are inserting allowed_new_outgroups[j] new output groups after output group g
   noutmults = 1:length(allowed_new_outgroups)
   new_outgroup = @variable(model, [1:noutgroups, noutmults], Bin)
-  #SOS1 == Only one can be non-zero
+  #SOS1 == Only one can be non-zero. Not strictly needed, but it seems like it speeds up the solver
   @constraint(model,[g=1:noutgroups], new_outgroup[g,:] in SOS1(1:length(allowed_new_outgroups)))
   @constraint(model,[g=1:noutgroups], sum(new_outgroup[g,:]) == 1)
 

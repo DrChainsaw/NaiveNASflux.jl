@@ -11,7 +11,7 @@ First we need some boilerplate to create the model and do the training:
 using NaiveNASflux, Flux, Test
 using Flux: train!, mse
 import Random
-Random.seed!(666)
+Random.seed!(0)
 niters = 50
 
 # To cut down on the verbosity, start by making a  helper function for creating a Dense layer as a graph vertex.
