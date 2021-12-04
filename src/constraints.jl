@@ -281,7 +281,7 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
 
   # inmultipliers[j] == 1 if nout(v) == allowed_multipliers[j] * nin(v)[]
   inmultipliers = @variable(model, [1:length(allowed_multipliers)], Bin)
-  #SOS1 == Only one can be non-zero
+  #SOS1 == Only one can be non-zero. Not strictly needed, but it seems like it speeds up the solver
   @constraint(model, inmultipliers in SOS1(1:length(inmultipliers)))
   @constraint(model, sum(inmultipliers) == 1)
 
@@ -311,11 +311,8 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   # new_outgroup[g,j] == 1 if we are inserting allowed_new_outgroups[j] new output groups after output group g
   noutmults = 1:length(allowed_new_outgroups)
   new_outgroup = @variable(model, [1:noutgroups, noutmults], Bin)
-  #SOS1 == Only one can be non-zero
-  # Testcases segfault with Cbc 0.9.0 if this is used. See https://github.com/jump-dev/Cbc.jl/issues/183
-  # Double check speeds if/when adding back. 
-  # Seems to cause slowdown with Cbc 0.9.0 when not crashing (SOS1 above seems to speed up solver though).
-  # @constraint(model,[g=1:noutgroups], new_outgroup[g,:] in SOS1(1:length(allowed_new_outgroups)))
+  #SOS1 == Only one can be non-zero. Not strictly needed, but it seems like it speeds up the solver
+  @constraint(model,[g=1:noutgroups], new_outgroup[g,:] in SOS1(1:length(allowed_new_outgroups)))
   @constraint(model,[g=1:noutgroups], sum(new_outgroup[g,:]) == 1)
 
   groupsum = @expression(model, [g=1:noutgroups], sum(insert_new_outgroups[g,:]) - sum(insert_new_inoutgroups_all_inds[g,:]))
