@@ -1,6 +1,6 @@
 name = "NaiveNASflux"
 uuid = "85610aed-7d32-5e57-bb50-4c2e1c9e7997"
-version = "2.0.3"
+version = "2.0.4"
 
 [deps]
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
