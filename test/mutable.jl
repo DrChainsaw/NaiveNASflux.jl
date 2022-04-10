@@ -198,8 +198,8 @@
         end
     end
 
-    @testset "Diagonal MutableLayer" begin
-        m = MutableLayer(Flux.Diagonal(4))
+    @testset "Scale MutableLayer" begin
+        m = MutableLayer(Flux.Scale(4))
 
         @test nin(m) == [nout(m)] == [4]
 

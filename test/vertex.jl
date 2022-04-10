@@ -212,35 +212,35 @@ end
                 @test reshape(dc(fill(10f0, (1,1,3,1))), :) == [101,303,404,505,0, 0, 108,310,411,512,0 ,0, 115,317,418,519,0, 0]
             end
 
-            @testset "DepthwiseConvAllowNinChangeStrategy" begin
-                import NaiveNASflux: DepthwiseConvAllowNinChangeStrategy
+            @testset "GroupedConvAllowNinChangeStrategy" begin
+                import NaiveNASflux: GroupedConvAllowNinChangeStrategy
                 import NaiveNASlib: ΔNout
                 inpt = inputvertex("in", 2, FluxConv{2}())
                 dc = fluxvertex("dc", DepthwiseConv((1,1), nout(inpt) => 3*nout(inpt)), inpt)
                 
                 # Get output multiplier == 4 (nout = 4 * nin) by adding one more outgroup (4 = 3 + 1)
-                okstrat = DepthwiseConvAllowNinChangeStrategy([1], [4], ΔNout(dc => 2))
+                okstrat = GroupedConvAllowNinChangeStrategy([1], [4], ΔNout(dc => 2))
                 @test Δsize!(okstrat, dc)
                 @test nout(dc) == 8
                 @test nin(dc) == [2]
 
-                failstrat = DepthwiseConvAllowNinChangeStrategy([10], [0], ΔNout(dc => 2))
+                failstrat = GroupedConvAllowNinChangeStrategy([10], [0], ΔNout(dc => 2))
                 @test @test_logs (:warn, r"Could not change nout of dc") match_mode=:any Δsize!(failstrat, dc) == false
             end
 
-            @testset "DepthwiseConvSimpleΔSizeStrategy" begin
-                using NaiveNASflux: DepthwiseConvSimpleΔSizeStrategy
+            @testset "GroupedConvSimpleΔSizeStrategy" begin
+                using NaiveNASflux: GroupedConvSimpleΔSizeStrategy
                 using NaiveNASlib: ΔNout
                 inpt = inputvertex("in", 2, FluxConv{2}())
                 dc = fluxvertex("dc", DepthwiseConv((1,1), nout(inpt) => 3*nout(inpt)), inpt)
                 
-                okstrat = DepthwiseConvSimpleΔSizeStrategy(4, ΔNout(dc => 2))
+                okstrat = GroupedConvSimpleΔSizeStrategy(4, ΔNout(dc => 2))
                 @test Δsize!(okstrat, dc)
                 @test nout(dc) == 8
                 @test nin(dc) == [2]
 
                 # We tested complete failure above, so lets make the relaxation work here
-                failstrat = DepthwiseConvSimpleΔSizeStrategy(5, ΔNout(dc => 3))
+                failstrat = GroupedConvSimpleΔSizeStrategy(5, ΔNout(dc => 3))
                 @test_logs (:warn, r"Could not change nout of dc") Δsize!(failstrat, dc)
                 @test nout(dc) == 10
                 @test nin(dc) == [2]

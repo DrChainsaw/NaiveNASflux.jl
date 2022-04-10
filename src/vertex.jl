@@ -204,7 +204,7 @@ Return the computation wrapped inside `v` and inside any mutable wrappers.
 julia> using NaiveNASflux, Flux
 
 julia> layer(fluxvertex(Dense(2,3), inputvertex("in", 2)))
-Dense(2, 3)         # 9 parameters
+Dense(2 => 3)         # 9 parameters
 ```
 """
 layer(v::AbstractVertex) = layer(base(v))
@@ -235,12 +235,12 @@ This typically means create a new layer with the given values and set the wrappe
 julia> v = fluxvertex(Dense(3, 4, relu), inputvertex("in", 3));
 
 julia> layer(v)
-Dense(3, 4, relu)   # 16 parameters
+Dense(3 => 4, relu)   # 16 parameters
 
 julia> NaiveNASflux.setlayer!(v, (;σ=tanh));
 
 julia> layer(v)
-Dense(3, 4, tanh)   # 16 parameters
+Dense(3 => 4, tanh)   # 16 parameters
 ```
 """
 function setlayer!(x, propval) end
