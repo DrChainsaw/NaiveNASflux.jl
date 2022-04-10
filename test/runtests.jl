@@ -3,11 +3,8 @@ using NaiveNASlib.Advanced, NaiveNASlib.Extend
 
 function assertlayer(l, Wexp, bexp)
     @test size(Wexp) == size(weights(l))
-    if bexp isa Flux.Zeros
-        @test bias(l) isa Flux.Zeros
-    else
-        @test size(bexp) == size(bias(l))
-    end
+    @test size(bexp) == size(bias(l))
+    
     @test Wexp == weights(l)
     @test bexp == bias(l)
 end

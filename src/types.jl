@@ -28,13 +28,19 @@ NaiveNASlib.shapetrait(::Flux.GRUCell) = FluxGru()
 
 abstract type FluxConvolutional{N} <: FluxParLayer end
 struct GenericFluxConvolutional{N} <: FluxConvolutional{N} end
-struct FluxConv{N} <: FluxConvolutional{N} end
-struct FluxConvTranspose{N}  <: FluxConvolutional{N} end
-struct FluxDepthwiseConv{N} <: FluxConvolutional{N}  end
+# Groups here is an eyesore. Its just to not have to tag a breaking version for Flux 0.13 due 
+# to some functions needing to tell the number of groups from the layertype alone
+struct FluxConv{N} <: FluxConvolutional{N} 
+    groups::Int
+end
+FluxConv{N}() where N = FluxConv{N}(1)
+struct FluxConvTranspose{N}  <: FluxConvolutional{N} 
+    groups::Int
+end
+FluxConvTranspose{N}() where N = FluxConvTranspose{N}(1)
 struct FluxCrossCor{N} <: FluxConvolutional{N}  end
-NaiveNASlib.shapetrait(::Conv{N}) where N = FluxConv{N}()
-NaiveNASlib.shapetrait(::ConvTranspose{N}) where N = FluxConvTranspose{N}()
-NaiveNASlib.shapetrait(::DepthwiseConv{N}) where N = FluxDepthwiseConv{N}()
+NaiveNASlib.shapetrait(l::Conv{N}) where N = FluxConv{N}(l.groups)
+NaiveNASlib.shapetrait(l::ConvTranspose{N}) where N = FluxConvTranspose{N}(l.groups)
 NaiveNASlib.shapetrait(::CrossCor{N}) where N = FluxCrossCor{N}()
 
 
@@ -42,14 +48,14 @@ abstract type FluxTransparentLayer <: FluxLayer end
 # Invariant layers with parameters, i.e nin == nout always and parameter selection must
 # be performed
 abstract type FluxParInvLayer <: FluxTransparentLayer end
-struct FluxDiagonal <: FluxParInvLayer end
+struct FluxScale <: FluxParInvLayer end
 struct FluxLayerNorm <: FluxParInvLayer end
 abstract type FluxParNorm <: FluxParInvLayer end
 struct FluxBatchNorm <: FluxParNorm end
 struct FluxInstanceNorm <: FluxParNorm end
 struct FluxGroupNorm <: FluxParNorm end
 
-NaiveNASlib.shapetrait(::Flux.Diagonal) = FluxDiagonal()
+NaiveNASlib.shapetrait(::Flux.Scale) = FluxScale()
 NaiveNASlib.shapetrait(::LayerNorm) = FluxLayerNorm()
 NaiveNASlib.shapetrait(::BatchNorm) = FluxBatchNorm()
 NaiveNASlib.shapetrait(::InstanceNorm) = FluxInstanceNorm()

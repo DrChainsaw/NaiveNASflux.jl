@@ -154,7 +154,7 @@ end
             # just to check that I have understood the wiring of the weight
             @testset "4 inputs times 2" begin
                 inpt = inputvertex("in", 4, FluxConv{2}())
-                dc = fluxvertex("dc", DepthwiseConv(reshape(Float32[10 10 10 10;20 20 20 20], 1, 1, 2, 4), Float32[0,0,0,0,1,1,1,1]), inpt)
+                dc = fluxvertex("dc", DepthwiseConv(reshape(Float32[10 10 10 10;20 20 20 20], 1, 1, 4, 2), Float32[0,0,0,0,1,1,1,1]), inpt)
                 @test neuronutility(dc) == [20, 40, 20, 40, 21, 41, 21, 41]
                 @test reshape(dc(fill(1f0, (1,1,4,1))), :) == [10, 20, 10, 20, 11, 21, 11, 21]
                 @test Δnout!( dc => -4)
@@ -168,7 +168,7 @@ end
 
             @testset "2 inputs times 3" begin
                 inpt = inputvertex("in", 2, FluxConv{2}())
-                dc = fluxvertex("dc", DepthwiseConv(reshape(Float32[10 10;20 20;30 30], 1, 1, 3, 2), Float32[0,0,1,1,2,2]), inpt)
+                dc = fluxvertex("dc", DepthwiseConv(reshape(Float32[10 10;20 20;30 30], 1, 1, 2, 3), Float32[0,0,1,1,2,2]), inpt)
                 @test reshape(dc(fill(1f0, (1,1,2,1))), :) == [10, 20, 31, 11, 22, 32]
                 @test Δnout!(dc => -2)
                 @test lazyouts(dc) == [2,3,5,6] 
@@ -181,7 +181,7 @@ end
 
             @testset "1 input times 5" begin
                 inpt = inputvertex("in", 1, FluxConv{2}())
-                dc = fluxvertex("dc", DepthwiseConv(reshape(Float32.(10:10:50), 1, 1, 5, 1), Float32.(1:5)), inpt)
+                dc = fluxvertex("dc", DepthwiseConv(reshape(Float32.(10:10:50), 1, 1, 1, 5), Float32.(1:5)), inpt)
                 @test reshape(dc(fill(1f0, (1,1,1,1))), :) == [11, 22, 33, 44, 55]
                 @test Δnout!(dc=>-2)
                 @test lazyouts(dc) == 3:5 
@@ -194,7 +194,7 @@ end
 
             @testset "3 inputs times 7" begin
                 inpt = inputvertex("in", 3, FluxConv{2}())
-                dc = fluxvertex("dc", DepthwiseConv(reshape(repeat(Float32.(10:10:70), 3), 1,1,7,3), Float32.(1:21)), inpt)
+                dc = fluxvertex("dc", DepthwiseConv(reshape(repeat(Float32.(10:10:70), 3), 1,1,3,7), Float32.(1:21)), inpt)
                 @test reshape(dc(fill(10f0, (1,1,3,1))), :) == repeat(100:100:700, 3) .+ (1:21)
                 @test Δnout!(dc => -9) do v
                     v == dc || return 1
@@ -212,35 +212,35 @@ end
                 @test reshape(dc(fill(10f0, (1,1,3,1))), :) == [101,303,404,505,0, 0, 108,310,411,512,0 ,0, 115,317,418,519,0, 0]
             end
 
-            @testset "DepthwiseConvAllowNinChangeStrategy" begin
-                import NaiveNASflux: DepthwiseConvAllowNinChangeStrategy
+            @testset "GroupedConvAllowNinChangeStrategy" begin
+                import NaiveNASflux: GroupedConvAllowNinChangeStrategy
                 import NaiveNASlib: ΔNout
                 inpt = inputvertex("in", 2, FluxConv{2}())
                 dc = fluxvertex("dc", DepthwiseConv((1,1), nout(inpt) => 3*nout(inpt)), inpt)
                 
                 # Get output multiplier == 4 (nout = 4 * nin) by adding one more outgroup (4 = 3 + 1)
-                okstrat = DepthwiseConvAllowNinChangeStrategy([1], [4], ΔNout(dc => 2))
+                okstrat = GroupedConvAllowNinChangeStrategy([1], [4], ΔNout(dc => 2))
                 @test Δsize!(okstrat, dc)
                 @test nout(dc) == 8
                 @test nin(dc) == [2]
 
-                failstrat = DepthwiseConvAllowNinChangeStrategy([10], [0], ΔNout(dc => 2))
+                failstrat = GroupedConvAllowNinChangeStrategy([10], [0], ΔNout(dc => 2))
                 @test @test_logs (:warn, r"Could not change nout of dc") match_mode=:any Δsize!(failstrat, dc) == false
             end
 
-            @testset "DepthwiseConvSimpleΔSizeStrategy" begin
-                using NaiveNASflux: DepthwiseConvSimpleΔSizeStrategy
+            @testset "GroupedConvSimpleΔSizeStrategy" begin
+                using NaiveNASflux: GroupedConvSimpleΔSizeStrategy
                 using NaiveNASlib: ΔNout
                 inpt = inputvertex("in", 2, FluxConv{2}())
                 dc = fluxvertex("dc", DepthwiseConv((1,1), nout(inpt) => 3*nout(inpt)), inpt)
                 
-                okstrat = DepthwiseConvSimpleΔSizeStrategy(4, ΔNout(dc => 2))
+                okstrat = GroupedConvSimpleΔSizeStrategy(4, ΔNout(dc => 2))
                 @test Δsize!(okstrat, dc)
                 @test nout(dc) == 8
                 @test nin(dc) == [2]
 
                 # We tested complete failure above, so lets make the relaxation work here
-                failstrat = DepthwiseConvSimpleΔSizeStrategy(5, ΔNout(dc => 3))
+                failstrat = GroupedConvSimpleΔSizeStrategy(5, ΔNout(dc => 3))
                 @test_logs (:warn, r"Could not change nout of dc") Δsize!(failstrat, dc)
                 @test nout(dc) == 10
                 @test nin(dc) == [2]
@@ -270,9 +270,9 @@ end
 
             # Test that we actually succeeded in making a valid model
             y1 = dc1(ones(Float32, 3,3, nout(inpt), 2))
-            @test size(y1, outdim(dc1)) == nout(dc1)
+            @test size(y1)[end-1] == nout(dc1)
             y2 = dc2(y1)
-            @test size(y2, outdim(dc2)) == nout(dc2)
+            @test size(y2)[end-1] == nout(dc2)
         end
 
         @testset "DepthwiseConv groupsize 3 into groupsize 5" begin
@@ -307,11 +307,11 @@ end
             
             # Test that we actually succeeded in making a valid model
             y1 = dc1(ones(Float32,5,5, nout(inpt), 2))
-            @test size(y1, outdim(dc1)) == nout(dc1)
+            @test size(y1)[end-1] == nout(dc1)
             y2 = dc2(y1)
-            @test size(y2, outdim(dc2)) == nout(dc2)
+            @test size(y2)[end-1] == nout(dc2)
             y3 = dc3(y2)
-            @test size(y3, outdim(dc3)) == nout(dc3)
+            @test size(y3)[end-1] == nout(dc3)
         end
 
         @testset "Depthwise conv change input size from Conv" begin

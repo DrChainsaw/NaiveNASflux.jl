@@ -1,74 +1,72 @@
 
 """
   
-  DepthwiseConvAllowNinChangeStrategy(newoutputsmax::Integer, multipliersmax::Integer, base, [fallback])  
-  DepthwiseConvAllowNinChangeStrategy(allowed_new_outgroups::AbstractVector{<:Integer}, allowed_multipliers::AbstractVector{<:Integer}, base, [fallback])
+  GroupedConvAllowNinChangeStrategy(newoutputsmax::Integer, multipliersmax::Integer, base, [fallback])  
+  GroupedConvAllowNinChangeStrategy(allowed_new_outgroups::AbstractVector{<:Integer}, allowed_multipliers::AbstractVector{<:Integer}, base, [fallback])
   
-`DecoratingJuMPΔSizeStrategy` which allows both nin and nout of `DepthwiseConv` layers to change independently.
+`DecoratingJuMPΔSizeStrategy` which allows both nin and nout of grouped `Conv` layers (i.e `Conv` with `groups` != 1) to change independently.
 
-Might cause optimization to take very long time so use with care! Use [`DepthwiseConvSimpleΔSizeStrategy`](@ref)
-if `DepthwiseConvAllowNinChangeStrategy` takes too long.
+Might cause optimization to take very long time so use with care! Use [`GroupedConvSimpleΔSizeStrategy`](@ref)
+if `GroupedConvAllowNinChangeStrategy` takes too long.
 
 The elements of `allowed_new_outgroups` determine how many extra elements in the output dimension of the weight 
-shall be tried for each existing output element. For example, for a `DepthwiseConv((k1,k2), nin=>nout))` there 
-are `nout / nin` elements in the output dimension. With `allowed_new_outgroups = 0:3` it is allowed to insert
-0, 1, 2 or 3 new elements in the output dimension between each already existing element (so with `nout / nin` 
-elements the maximum increase is `3 * nout / nin`). 
+shall be tried for each existing output element. For example, for a `Conv((k1,k2), nin=>nout; groups=nin))` one 
+must insert integer multiples of `nout / nin` elements at the time. With `nin/nout = k` and `allowed_new_outgroups = 0:3` it is allowed to insert 0, `k`, `2k` or `3k` new elements in the output dimension between each already existing element.
 
 The elements of `allowed_multipliers` determine the total number of allowed output elements, i.e the allowed 
 ratios of `nout / nin`.
 
 If `fallback` is not provided, it will be derived from `base`.
 """
-struct DepthwiseConvAllowNinChangeStrategy{S,F} <: DecoratingJuMPΔSizeStrategy
+struct GroupedConvAllowNinChangeStrategy{S,F} <: DecoratingJuMPΔSizeStrategy
   allowed_new_outgroups::Vector{Int}
   allowed_multipliers::Vector{Int}
   base::S
   fallback::F
 end
-DepthwiseConvAllowNinChangeStrategy(newoutputsmax::Integer, multipliersmax::Integer,base,fb...) = DepthwiseConvAllowNinChangeStrategy(0:newoutputsmax, 1:multipliersmax, base, fb...)
+GroupedConvAllowNinChangeStrategy(newoutputsmax::Integer, multipliersmax::Integer,base,fb...) = GroupedConvAllowNinChangeStrategy(0:newoutputsmax, 1:multipliersmax, base, fb...)
 
 
-function DepthwiseConvAllowNinChangeStrategy(
+function GroupedConvAllowNinChangeStrategy(
   allowed_new_outgroups::AbstractVector{<:Integer},
   allowed_multipliers::AbstractVector{<:Integer}, 
-  base, fb= recurse_fallback(s -> DepthwiseConvAllowNinChangeStrategy(allowed_new_outgroups, allowed_multipliers, s), base)) 
-  return DepthwiseConvAllowNinChangeStrategy(collect(Int, allowed_new_outgroups), collect(Int, allowed_multipliers), base, fb)
+  base, fb= recurse_fallback(s -> GroupedConvAllowNinChangeStrategy(allowed_new_outgroups, allowed_multipliers, s), base)) 
+  return GroupedConvAllowNinChangeStrategy(collect(Int, allowed_new_outgroups), collect(Int, allowed_multipliers), base, fb)
 end
 
 
-NaiveNASlib.base(s::DepthwiseConvAllowNinChangeStrategy) = s.base
-NaiveNASlib.fallback(s::DepthwiseConvAllowNinChangeStrategy) = s.fallback
+NaiveNASlib.base(s::GroupedConvAllowNinChangeStrategy) = s.base
+NaiveNASlib.fallback(s::GroupedConvAllowNinChangeStrategy) = s.fallback
 
-NaiveNASlib.add_participants!(s::DepthwiseConvAllowNinChangeStrategy, vs=AbstractVertex[]) = NaiveNASlib.add_participants!(base(s), vs)
+NaiveNASlib.add_participants!(s::GroupedConvAllowNinChangeStrategy, vs=AbstractVertex[]) = NaiveNASlib.add_participants!(base(s), vs)
 
 
 """
-  DepthwiseConvSimpleΔSizeStrategy(base, [fallback])
+  GroupedConvSimpleΔSizeStrategy(base, [fallback])
 
-`DecoratingJuMPΔSizeStrategy` which only allows nout of `DepthwiseConv` layers to change.
+`DecoratingJuMPΔSizeStrategy` which only allows nout of grouped `Conv` layers (i.e `Conv` with `groups` != 1) to change.
 
-Use if [`DepthwiseConvAllowNinChangeStrategy`](@ref) takes too long to solve.
+Use if [`GroupedConvAllowNinChangeStrategy`](@ref) takes too long to solve.
 
 The elements of `allowed_multipliers` determine the total number of allowed output elements, i.e the allowed 
-ratios of `nout / nin`.
+ratios of `nout / nin` (where `nin` is fixed).
 
 If `fallback` is not provided, it will be derived from `base`.
 """
-struct DepthwiseConvSimpleΔSizeStrategy{S, F} <: DecoratingJuMPΔSizeStrategy
+struct GroupedConvSimpleΔSizeStrategy{S, F} <: DecoratingJuMPΔSizeStrategy
   allowed_multipliers::Vector{Int}
   base::S
   fallback::F
 end
 
-DepthwiseConvSimpleΔSizeStrategy(maxms::Integer, base, fb...) = DepthwiseConvSimpleΔSizeStrategy(1:maxms, base, fb...)
-function DepthwiseConvSimpleΔSizeStrategy(ms::AbstractVector{<:Integer}, base, fb=recurse_fallback(s -> DepthwiseConvSimpleΔSizeStrategy(ms, s), base)) 
-  return DepthwiseConvSimpleΔSizeStrategy(collect(Int, ms), base, fb)
+GroupedConvSimpleΔSizeStrategy(maxms::Integer, base, fb...) = GroupedConvSimpleΔSizeStrategy(1:maxms, base, fb...)
+function GroupedConvSimpleΔSizeStrategy(ms::AbstractVector{<:Integer}, base, fb=recurse_fallback(s -> GroupedConvSimpleΔSizeStrategy(ms, s), base)) 
+  return GroupedConvSimpleΔSizeStrategy(collect(Int, ms), base, fb)
 end
-NaiveNASlib.base(s::DepthwiseConvSimpleΔSizeStrategy) = s.base
-NaiveNASlib.fallback(s::DepthwiseConvSimpleΔSizeStrategy) = s.fallback
+NaiveNASlib.base(s::GroupedConvSimpleΔSizeStrategy) = s.base
+NaiveNASlib.fallback(s::GroupedConvSimpleΔSizeStrategy) = s.fallback
 
-NaiveNASlib.add_participants!(s::DepthwiseConvSimpleΔSizeStrategy, vs=AbstractVertex[]) = NaiveNASlib.add_participants!(base(s), vs)
+NaiveNASlib.add_participants!(s::GroupedConvSimpleΔSizeStrategy, vs=AbstractVertex[]) = NaiveNASlib.add_participants!(base(s), vs)
 
 
 recurse_fallback(f, s::AbstractJuMPΔSizeStrategy) = wrap_fallback(f, NaiveNASlib.fallback(s))
@@ -86,10 +84,11 @@ function NaiveNASlib.compconstraint!(case, s::DecoratingJuMPΔSizeStrategy, lt::
    NaiveNASlib.compconstraint!(case, NaiveNASlib.base(s), lt, data)
 end
 # To avoid ambiguity
-function NaiveNASlib.compconstraint!(case::NaiveNASlib.ScalarSize, s::DecoratingJuMPΔSizeStrategy, lt::FluxDepthwiseConv, data)
+function NaiveNASlib.compconstraint!(case::NaiveNASlib.ScalarSize, s::DecoratingJuMPΔSizeStrategy, lt::FluxConvolutional, data)
   NaiveNASlib.compconstraint!(case, NaiveNASlib.base(s), lt, data)
 end
-function NaiveNASlib.compconstraint!(::NaiveNASlib.ScalarSize, s::AbstractJuMPΔSizeStrategy, ::FluxDepthwiseConv, data, ms=allowed_multipliers(s))
+function NaiveNASlib.compconstraint!(::NaiveNASlib.ScalarSize, s::AbstractJuMPΔSizeStrategy, ::FluxConvolutional, data, ms=allowed_multipliers(s))
+  ngroups(data.vertex) == 1 && return
 
   # Add constraint that nout(l) == n * nin(l) where n is integer
   ins = filter(vin -> vin in keys(data.noutdict), inputs(data.vertex))
@@ -114,25 +113,26 @@ function NaiveNASlib.compconstraint!(::NaiveNASlib.ScalarSize, s::AbstractJuMPΔ
   end
 end
 
-allowed_multipliers(s::DepthwiseConvAllowNinChangeStrategy) = s.allowed_multipliers
-allowed_multipliers(s::DepthwiseConvSimpleΔSizeStrategy) = s.allowed_multipliers
+allowed_multipliers(s::GroupedConvAllowNinChangeStrategy) = s.allowed_multipliers
+allowed_multipliers(s::GroupedConvSimpleΔSizeStrategy) = s.allowed_multipliers
 allowed_multipliers(::AbstractJuMPΔSizeStrategy) = 1:10
 
 
-function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::DecoratingJuMPΔSizeStrategy, t::FluxDepthwiseConv, data) 
+function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::DecoratingJuMPΔSizeStrategy, t::FluxConvolutional, data) 
   NaiveNASlib.compconstraint!(case, base(s), t, data)
 end
-function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::AbstractJuMPΔSizeStrategy, t::FluxDepthwiseConv, data)
+function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::AbstractJuMPΔSizeStrategy, t::FluxConvolutional, data)
+  ngroups(data.vertex) == 1 && return
   # Fallbacks don't matter here since we won't call it from below here, just add default so we don't accidentally crash due to some
   # strategy which hasn't defined a fallback
   if 15 < sum(keys(data.outselectvars)) do v
-      layertype(v) isa FluxDepthwiseConv || return 0
+      ngroups(v) == 1 && return 0
       return log2(nout(v)) # Very roughly determined...
   end
-    return NaiveNASlib.compconstraint!(case, DepthwiseConvSimpleΔSizeStrategy(10, s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
+    return NaiveNASlib.compconstraint!(case, GroupedConvSimpleΔSizeStrategy(10, s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
   end
   # The number of allowed multipliers can probably be better tuned, perhaps based on current size.
-  return NaiveNASlib.compconstraint!(case, DepthwiseConvAllowNinChangeStrategy(10, 10, s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
+  return NaiveNASlib.compconstraint!(case, GroupedConvAllowNinChangeStrategy(10, 10, s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
   #=
   For benchmarking:
     using NaiveNASflux, Flux, NaiveNASlib.Advanced
@@ -154,22 +154,29 @@ function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::Abstrac
   =#
 end
 
-function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthwiseConvSimpleΔSizeStrategy, t::FluxDepthwiseConv, data)
+function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::GroupedConvSimpleΔSizeStrategy, t::FluxConvolutional, data)
   model = data.model
   v = data.vertex
   select = data.outselectvars[v]
   insert = data.outinsertvars[v]
 
+
+  ngroups(v) == 1 && return
   nin(v)[] == 1 && return # Special case, no restrictions as we only need to be an integer multple of 1
 
-  ngroups = div(nout(v), nin(v)[])
+  if size(weights(layer(v)), indim(v)) != 1
+    @warn "Handling of convolutional layers with groups != nin not implemented. Model might not be size aligned after mutation!"
+  end
+
   # Neurons mapped to the same weight are interleaved, i.e layer.weight[:,:,1,:] maps to y[1:ngroups:end] where y = layer(x)
-  for group in 1:ngroups
-    neurons_in_group = select[group : ngroups : end]
+  ngrps = div(nout(v), nin(v)[])
+
+  for group in 1:ngrps
+    neurons_in_group = select[group : ngrps : end]
     @constraint(model, neurons_in_group[1] == neurons_in_group[end])
     @constraint(model, [i=2:length(neurons_in_group)], neurons_in_group[i] == neurons_in_group[i-1])
 
-    insert_in_group = insert[group : ngroups : end]
+    insert_in_group = insert[group : ngrps : end]
     @constraint(model, insert_in_group[1] == insert_in_group[end])
     @constraint(model, [i=2:length(insert_in_group)], insert_in_group[i] == insert_in_group[i-1])
   end
@@ -177,14 +184,18 @@ function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthwiseCo
   NaiveNASlib.compconstraint!(NaiveNASlib.ScalarSize(), s, t, data, allowed_multipliers(s))
 end
 
-function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::DepthwiseConvAllowNinChangeStrategy, t::FluxDepthwiseConv, data)
+function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::GroupedConvAllowNinChangeStrategy, t::FluxConvolutional, data)
   model = data.model
   v = data.vertex
   select = data.outselectvars[v]
   insert = data.outinsertvars[v]
 
+  ngroups(v) == 1 && return
   nin(v)[] == 1 && return # Special case, no restrictions as we only need to be an integer multple of 1?
 
+  # Step 0:
+  # Flux 0.13 changed the grouping of weigths so that size(layer.weight) = (..., nin / ngroups, nout)
+  # We can get back the shape expected here through weightgroups = reshape(layer.weight, ..., nout / groups, nin)
   # Step 1: 
   # Neurons mapped to the same weight are interleaved, i.e layer.weight[:,:,1,:] maps to y[1:ngroups:end] where y = layer(x)
   # where ngroups = nout / nin. For example, nout = 12 and nin = 4 mean size(layer.weight) == (..,3, 4)
@@ -193,12 +204,15 @@ function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::Depthwi
   # 
   ins = filter(vin -> vin in keys(data.noutdict), inputs(v))
   # If inputs to v are not part of problem we have to keep nin(v) fixed!
-  isempty(ins) && return NaiveNASlib.compconstraint!(case, DepthwiseConvSimpleΔSizeStrategy(allowed_multipliers(s), base(s)), t, data)
+  isempty(ins) && return NaiveNASlib.compconstraint!(case, GroupedConvSimpleΔSizeStrategy(allowed_multipliers(s), base(s)), t, data)
   # TODO: Check if input is immutable and do simple strat then too?
   inselect = data.outselectvars[ins[]]
   ininsert = data.outinsertvars[ins[]]
 
   #ngroups = div(nout(v), nin(v)[])
+  if size(weights(layer(v)), indim(v)) != 1
+    @warn "Handling of convolutional layers with groups != nin not implemented. Model might not be size aligned after mutation!"
+  end
   ningroups = nin(v)[]
   add_depthwise_constraints(model, inselect, ininsert, select, insert, ningroups, s.allowed_new_outgroups, s.allowed_multipliers)
 end
@@ -212,6 +226,10 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   # When changing nin by Δ, we will get ningroups += Δ which just means that we insert/remove Δ input elements.
   # Inserting one new input element at position i will get us noutgroups new consecutive outputputs at position i
   # Thus nout change by Δ * noutgroups.
+
+  # Note: Flux 0.13 changed the grouping of weigths so that size(layer.weight) = (..., nin / ngroups, nout)
+  # We can get back the shape expected here through weightgroups = reshape(layer.weight, ..., nout / groups, nin)
+  # All examples below assume the pre-0.13 representation!
 
   # Example:
 

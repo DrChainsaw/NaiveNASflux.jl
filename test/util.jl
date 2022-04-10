@@ -35,7 +35,7 @@
         @test nin(CrossCor((1,2,3), 4=>5)) == [4]
         @test nout(CrossCor((1,2,3), 4=>5)) == 5
 
-        @test nin(Flux.Diagonal(3)) == [nout(Flux.Diagonal(3))] == [3]
+        @test nin(Flux.Scale(3)) == [nout(Flux.Scale(3))] == [3]
 
         @test nin(LayerNorm(3)) == [nout(LayerNorm(3))] == [3]
         @test nin(BatchNorm(3)) == [nout(BatchNorm(3))] == [3]
@@ -61,7 +61,7 @@
         @test actdim(DepthwiseConv((1,2), 3=>6)) == 3
         @test actdim(CrossCor((1,2), 3=>6)) == 3
 
-        @test actdim(Flux.Diagonal(1)) == indim(Flux.Diagonal(2)) == outdim(Flux.Diagonal(3)) == 1
+        @test actdim(Flux.Scale(1)) == indim(Flux.Scale(2)) == outdim(Flux.Scale(3)) == 1
 
         @test actdim(GenericFluxRecurrent()) == 1
         @test actdim(RNN(3,4)) ==  1
@@ -72,4 +72,12 @@
         @test_throws ArgumentError indim(BogusLayer())
         @test_throws ArgumentError outdim(BogusLayer())
     end
+
+    @testset "ngroups" begin
+        import NaiveNASflux: ngroups
+
+        @test ngroups(DepthwiseConv((2,), 3 => 9)) == ngroups(Conv((2,), 3 => 9; groups=3)) == ngroups(ConvTranspose((2,), 3 => 9; groups=3)) == 3
+        @test ngroups(Conv((3,3), 10 => 30; groups=5)) == ngroups(ConvTranspose((3,3), 10 => 30; groups=5)) == 5
+        @test ngroups(Conv((3,3), 10 => 30; groups=2)) == ngroups(ConvTranspose((3,3), 10 => 30; groups=2)) == 2
+    end 
 end
