@@ -62,7 +62,7 @@ function l2_squeeze(x, dimskeep=1:ndims(x))
     dims = filter(i -> i ∉ dimskeep, 1:ndims(x))
     return sqrt.(dropdims(sum(x -> x^2, x, dims=dims), dims=Tuple(dims)))
 end
-l2_squeeze(z::Flux.Zeros, args...) = z
+l2_squeeze(z::Number, args...) = z
 
 """
     mean_squeeze(f, x, dimkeep)
@@ -90,14 +90,19 @@ neuronutility(l) = neuronutility(layertype(l), l)
 # Default: mean of abs of weights + bias. Not a very good metric, but should be better than random
 # Maybe do something about state in recurrent layers as well, but CBA to do it right now
 neuronutility(::FluxParLayer, l) = l2_squeeze(weights(l), outdim(l)) .+ l2_squeeze(bias(l))
-function neuronutility(::FluxDepthwiseConv, l)
-    wm = l2_squeeze(weights(l), outdim(l))
+function neuronutility(::FluxConvolutional{N}, l) where N
+    ngroups(l) == 1 && return l2_squeeze(weights(l), outdim(l)) .+ l2_squeeze(bias(l))
+
+    kernelsize = size(weights(l))[1:N]
+    weightgroups = reshape(weights(l), kernelsize..., nout(l) ÷ ngroups(l), nin(l)[])
+
+    wm = l2_squeeze(weightgroups, indim(l))
     bm = l2_squeeze(bias(l))
 
     (length(wm) == 1 || length(wm) == length(bm)) && return wm .+ bm
     # use this to get insight on whether to repeat inner or outer:
-    # cc = DepthwiseConv(reshape([1 1 1 1;2 2 2 2], 1, 1, 2, 4), [0,0,0,0,1,1,1,1])
-    # cc(fill(10, (1,1,4,1)))
+    # cc = DepthwiseConv(reshape(Float32[1 1 1 1;2 2 2 2], 1, 1, 4, 2), Float32[0,0,0,0,1,1,1,1])
+    # cc(fill(10f0, (1,1,4,1)))
     return repeat(wm, length(bm) ÷ length(wm)) .+ bm
 end
 

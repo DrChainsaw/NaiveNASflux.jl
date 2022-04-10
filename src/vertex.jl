@@ -103,7 +103,7 @@ layertype(l::LayerTypeWrapper) = l.t
 Trait for computations for which a change in output size results in a change in input size but which 
 is not fully `SizeTransparent`.
 
-Example of this is DepthWiseConv where output size must be an integer multiple of the input size.
+Example of this is grouped convolutions where output size must be an integer multiple of the input size.
 
 Does not create any constraints or objectives, only signals that vertices after a 
 `SizeNinNoutConnected` might need to change size if the size of the `SizeNinNoutConnected` vertex changes.
@@ -147,7 +147,7 @@ fluxvertex(name::AbstractString, l, in::AbstractVertex; layerfun=LazyMutable, tr
 
 fluxvertex(::FluxParLayer, l, in::AbstractVertex, layerfun, traitfun) = absorbvertex(layerfun(MutableLayer(l)), in, traitdecoration = traitfun)
 
-fluxvertex(::FluxDepthwiseConv, l, in::AbstractVertex, layerfun, traitfun) = absorbvertex(layerfun(MutableLayer(l)), in; traitdecoration=traitfun ∘ SizeNinNoutConnected)
+fluxvertex(::FluxConvolutional, l, in::AbstractVertex, layerfun, traitfun) = absorbvertex(layerfun(MutableLayer(l)), in; traitdecoration= ngroups(l) == 1 ? traitfun : traitfun ∘ SizeNinNoutConnected)
 
 fluxvertex(::FluxParInvLayer, l, in::AbstractVertex, layerfun, traitfun) = invariantvertex(layerfun(MutableLayer(l)), in, traitdecoration=traitfun ∘ FixedSizeTrait)
 

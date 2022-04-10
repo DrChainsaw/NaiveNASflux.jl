@@ -4,7 +4,7 @@ using Reexport
 @reexport using NaiveNASlib
 using NaiveNASlib.Extend, NaiveNASlib.Advanced
 import Flux
-using Flux: Dense, Conv, ConvTranspose, DepthwiseConv, CrossCor, LayerNorm, BatchNorm, InstanceNorm, GroupNorm, 
+using Flux: Dense, Conv, ConvTranspose, CrossCor, LayerNorm, BatchNorm, InstanceNorm, GroupNorm, 
             MaxPool, MeanPool, Dropout, AlphaDropout, GlobalMaxPool, GlobalMeanPool, cpu
 import Functors
 using Functors: @functor

@@ -72,4 +72,12 @@
         @test_throws ArgumentError indim(BogusLayer())
         @test_throws ArgumentError outdim(BogusLayer())
     end
+
+    @testset "ngroups" begin
+        import NaiveNASflux: ngroups
+
+        @test ngroups(DepthwiseConv((2,), 3 => 9)) == ngroups(Conv((2,), 3 => 9; groups=3)) == ngroups(ConvTranspose((2,), 3 => 9; groups=3)) == 3
+        @test ngroups(Conv((3,3), 10 => 30; groups=5)) == ngroups(ConvTranspose((3,3), 10 => 30; groups=5)) == 5
+        @test ngroups(Conv((3,3), 10 => 30; groups=2)) == ngroups(ConvTranspose((3,3), 10 => 30; groups=2)) == 2
+    end 
 end

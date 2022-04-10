@@ -63,7 +63,9 @@ function mutate(m::MutableLayer; inputs, outputs, other = l -> (), insert=neuron
     end
 end
 
-function mutate(lt::FluxParLayer, m::MutableLayer; inputs=1:nin(m)[], outputs=1:nout(m), other= l -> (), insert=neuroninsert)
+mutate(lt::FluxParLayer, m::MutableLayer; kwargs...) = _mutate(lt, m; kwargs...)
+
+function _mutate(lt::FluxParLayer, m::MutableLayer; inputs=1:nin(m)[], outputs=1:nout(m), other= l -> (), insert=neuroninsert)
     l = layer(m)
     otherdims = other(l)
     w = select(weights(l), indim(l) => inputs, outdim(l) => outputs, otherdims...; newfun=insert(lt, WeightParam()))
@@ -72,19 +74,25 @@ function mutate(lt::FluxParLayer, m::MutableLayer; inputs=1:nin(m)[], outputs=1:
 end
 otherpars(o, l) = ()
 
-function mutate(lt::FluxDepthwiseConv{N}, m::MutableLayer; inputs=1:nin(m)[], outputs=1:nout(m), other= l -> (), insert=neuroninsert) where N
+function mutate(lt::FluxConvolutional{N}, m::MutableLayer; inputs=1:nin(m)[], outputs=1:nout(m), other= l -> (), insert=neuroninsert) where N
+
+    if ngroups(lt, layer(m)) == 1
+        return _mutate(lt, m; inputs, outputs, other, insert)
+    end
+
     l = layer(m)
     otherdims = other(l)
 
-    ngroups = div(length(outputs), length(inputs))
+    # TODO: Handle other cases than ngroups == nin
+    newingroups = 1
 
     # inputs and outputs are coupled through the constraints (which hopefully were enforced) so we only need to consider outputs
     currsize =size(weights(l))
     wo = select(reshape(weights(l), currsize[1:N]...,:), N+1 => outputs, otherdims...; newfun=insert(lt, WeightParam()))
     newks = size(wo)[1:N]
-    w = collect(reshape(wo, newks...,ngroups, :))
+    w = collect(reshape(wo, newks...,newingroups, :))
     b = select(bias(l), 1 => outputs; newfun=insert(lt, BiasParam()))
-    newlayer(m, w, b, otherpars(other, l))
+    newlayer(m, w, b, (;groups= length(inputs) ÷ newingroups, otherpars(other, l)...))
 end
 
 function mutate(lt::FluxRecurrent, m::MutableLayer; inputs=1:nin(m)[], outputs=1:nout(m), other=missing, insert=neuroninsert)
@@ -131,7 +139,7 @@ function mutate(t::FluxParInvLayer, m::MutableLayer; inputs=missing, outputs=mis
     ismissing(outputs) || return mutate(t, m, outputs; insert=insert)
 end
 
-function mutate(lt::FluxDiagonal, m::MutableLayer, inds; insert=neuroninsert)
+function mutate(lt::FluxScale, m::MutableLayer, inds; insert=neuroninsert)
     l = layer(m)
     w = select(weights(l), 1 => inds, newfun=insert(lt, WeightParam()))
     b = select(bias(l), 1 => inds; newfun=insert(lt, BiasParam()))
@@ -139,7 +147,7 @@ function mutate(lt::FluxDiagonal, m::MutableLayer, inds; insert=neuroninsert)
 end
 
 function mutate(::FluxLayerNorm, m::MutableLayer, inds; insert=neuroninsert)
-    # LayerNorm is only a wrapped Diagonal. Just mutate the Diagonal and make a new LayerNorm of it
+    # LayerNorm is only a wrapped Scale. Just mutate the Scale and make a new LayerNorm of it
     proxy = MutableLayer(layer(m).diag)
     mutate(proxy; inputs=inds, outputs=inds, other=l->(), insert=insert)
 
@@ -197,7 +205,7 @@ newlayer(m::MutableLayer, w, b, other=nothing) = m.layer = newlayer(layertype(m)
 
 newlayer(::FluxDense, m::MutableLayer, w, b, other) = Dense(w, b, deepcopy(layer(m).σ))
 newlayer(::FluxConvolutional, m::MutableLayer, w, b, other) = setproperties(layer(m), (weight=w, bias=b, σ=deepcopy(layer(m).σ), other...))
-newlayer(::FluxDiagonal, m::MutableLayer, w, b, other) = Flux.Diagonal(w, b)
+newlayer(::FluxScale, m::MutableLayer, w, b, other) = Flux.Scale(w, b)
 
 
 """

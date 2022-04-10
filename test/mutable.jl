@@ -50,8 +50,8 @@
         end
 
         @testset "No bias" begin
-            m = MutableLayer(Dense(rand(3,2), Flux.Zeros()))
-            @test bias(layer(m)) == Flux.Zeros()
+            m = MutableLayer(Dense(rand(3,2), false))
+            @test bias(layer(m)) == false
 
             @test nin(m) == [2]
             @test nout(m) == 3
@@ -59,7 +59,7 @@
             inds = [2,3]
             Wexp = weights(layer(m))[inds, :]
             NaiveNASlib.Δsize!(m,_nins(m), inds)
-            assertlayer(layer(m), Wexp, Flux.Zeros())
+            assertlayer(layer(m), Wexp, false)
         end
     end
     @testset "Convolutional layers" begin
@@ -120,8 +120,8 @@
             end
 
             @testset "No bias" begin
-                m = MutableLayer(Conv(Flux.convfilter((2,3), 4=>5), Flux.Zeros()))
-                @test bias(layer(m)) == Flux.Zeros()
+                m = MutableLayer(Conv(Flux.convfilter((2,3), 4=>5), false))
+                @test bias(layer(m)) == false
 
                 @test nin(m) == [4]
                 @test nout(m) == 5
@@ -129,7 +129,7 @@
                 inds = [2,3]
                 Wexp = weights(layer(m))[:,:,:,inds]
                 NaiveNASlib.Δsize!(m, _nins(m), inds)
-                assertlayer(layer(m), Wexp, Flux.Zeros())
+                assertlayer(layer(m), Wexp, false)
             end
         end
 
@@ -162,7 +162,8 @@
                 wins = [1, 3]
                 wouts = [1, 2, 5, 6]
                 outputs = mapreduce(i -> wouts .+ (i-1) .* 6, vcat, wins)
-                Wexp, bexp = weights(m.layer)[:,:,wouts,wins], bias(m.layer)[outputs]
+                Wexp = reshape(reshape(weights(m.layer), 2, 2, 6, 3)[:,:,wouts,wins], 2, 2, 1, :)
+                bexp = bias(m.layer)[outputs]
                 NaiveNASlib.Δsize!(m, [wins], outputs)
                 assertlayer(m.layer, Wexp, bexp)
                 @test size(m(ones(Float32, 3,3,2,2)))[3:4] == (8, 2)
@@ -497,7 +498,8 @@
             wins = [1, 3]
             wouts = [1, 2, 5, 6]
             outs = mapreduce(i -> wouts .+ (i-1) .* 6, vcat, wins)
-            Wexp, bexp = weights(layer(m))[:,:,wouts,wins], bias(layer(m))[outs]
+            Wexp = reshape(reshape(weights(layer(m)), 2, 2, 6, 3)[:,:,wouts,wins], 2, 2, 1, :)
+            bexp = bias(layer(m))[outs]
 
             NaiveNASlib.Δsize!(m, [wins], outs)
             @test size(m(ones(Float32, 3,3,2,2)))[3:4] == (8, 2)

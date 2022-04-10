@@ -1,7 +1,7 @@
 
 select(pars::AbstractArray{T,N}, elements_per_dim...; newfun = randoutzeroin) where {T, N} = NaiveNASlib.parselect(pars, elements_per_dim...; newfun)
 select(::Missing, args...;kwargs...) = missing
-select(::Flux.Zeros, args...;kwargs...) = Flux.Zeros()
+select(s::Number, args...;kwargs...) = s
 
 struct WeightParam end
 struct BiasParam end
@@ -21,8 +21,8 @@ neuroninsert(lt::FluxParNorm, t::Val) = norminsert(lt, t)
 norminsert(::FluxParNorm, ::Union{Val{:β},Val{:μ}}) = (args...) -> 0
 norminsert(::FluxParNorm, ::Union{Val{:γ},Val{:σ²}}) = (args...) -> 1
 
-# Coupling between input and output weights make it difficult to do anything else?
-neuroninsert(::FluxDepthwiseConv, partype) = (args...) -> 0
+# Coupling between input and output weights when grouped make it difficult to do anything else?
+neuroninsert(lt::FluxConvolutional, partype) = ngroups(lt) == 1 ? randoutzeroin : (args...) -> 0
 
 randoutzeroin(T, d, s...) = _randoutzeroin(T,d,s)
 _randoutzeroin(T, d, s) = 0

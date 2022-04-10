@@ -50,7 +50,7 @@
     end
 
     @testset "Neuron utility Dense default no bias" begin
-        l = ml(Dense(ones(5, 3), Flux.Zeros()))
+        l = ml(Dense(ones(5, 3), false))
         @test size(neuronutility(l)) == (5,)
         @test neuronutility(l) ≈ neuronutility_safe(l)
     end

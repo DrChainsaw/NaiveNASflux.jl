@@ -2,16 +2,15 @@ NaiveNASlib.nin(t::FluxLayer, l) = throw(ArgumentError("Not implemented for $t")
 NaiveNASlib.nout(t::FluxLayer, l) = throw(ArgumentError("Not implemented for $t"))
 
 NaiveNASlib.nin(::FluxParLayer, l) = [size(weights(l), indim(l))]
-NaiveNASlib.nout(::FluxParLayer, l) = size(weights(l), outdim(l))
-NaiveNASlib.nout(::FluxDepthwiseConv, l) = size(weights(l), outdim(l)) * nin(l)[]
 
-
+NaiveNASlib.nin(::FluxConvolutional, l) = [size(weights(l), indim(l)) * ngroups(l)]
 NaiveNASlib.nin(::FluxParInvLayer, l) = [nout(l)]
 
-NaiveNASlib.nout(::FluxDiagonal, l) = length(weights(l))
+NaiveNASlib.nout(::FluxParLayer, l) = size(weights(l), outdim(l))
+
+NaiveNASlib.nout(::FluxScale, l) = length(weights(l))
 NaiveNASlib.nout(::FluxParInvLayer, l::LayerNorm) = nout(l.diag)
 NaiveNASlib.nout(::FluxParNorm, l) = l.chs
-
 NaiveNASlib.nout(::FluxRecurrent, l) = div(size(weights(l), outdim(l)), outscale(l))
 
 outscale(l) = outscale(layertype(l))
@@ -34,10 +33,10 @@ outdim(::Flux2D) = 1
 actdim(::Flux2D) = 1
 actrank(::Flux2D) = 1
 
-indim(::FluxDiagonal) = 1
-outdim(::FluxDiagonal) = 1
-actdim(::FluxDiagonal) = 1
-actrank(::FluxDiagonal) = 1
+indim(::FluxScale) = 1
+outdim(::FluxScale) = 1
+actdim(::FluxScale) = 1
+actrank(::FluxScale) = 1
 
 indim(::FluxRecurrent) = 2
 outdim(::FluxRecurrent) = 1
@@ -50,7 +49,7 @@ actdim(::FluxConvolutional{N}) where N = 1+N
 actrank(::FluxConvolutional{N}) where N = 1+N
 indim(::Union{FluxConv{N}, FluxCrossCor{N}}) where N = 1+N
 outdim(::Union{FluxConv{N}, FluxCrossCor{N}}) where N = 2+N
-# Note: Absence of bias mean that bias is of type Flux.Zeros which mostly behaves like a normal array, mostly...
+# Note: Absence of bias mean that bias is a Bool (false), so beware!
 weights(l) = weights(layertype(l), l)
 bias(l) = bias(layertype(l), l)
 
@@ -60,8 +59,8 @@ bias(::FluxDense, l) = l.bias
 weights(::FluxConvolutional, l) = l.weight
 bias(::FluxConvolutional, l) = l.bias
 
-weights(::FluxDiagonal, l) = l.α
-bias(::FluxDiagonal, l) = l.β
+weights(::FluxScale, l) = l.scale
+bias(::FluxScale, l) = l.bias
 
 weights(lt::FluxRecurrent, l::Flux.Recur) = weights(lt, l.cell)
 bias(lt::FluxRecurrent, l::Flux.Recur) = bias(lt, l.cell)
@@ -80,3 +79,10 @@ hiddenstate(::FluxLstm, cell::Flux.LSTMCell) = [h for h in cell.state0]
 state(l) = state(layertype(l), l)
 state(::FluxRecurrent, l) = l.state
 state(::FluxLstm, l) = [h for h in l.state]
+
+ngroups(l) = ngroups(layertype(l), l)
+ngroups(lt, l) = 1
+ngroups(lt::FluxConvolutional, l) = ngroups(lt)
+ngroups(::FluxConvolutional) = 1
+ngroups(lt::FluxConv) = lt.groups
+ngroups(lt::FluxConvTranspose) = lt.groups

@@ -86,10 +86,11 @@ function NaiveNASlib.compconstraint!(case, s::DecoratingJuMPΔSizeStrategy, lt::
    NaiveNASlib.compconstraint!(case, NaiveNASlib.base(s), lt, data)
 end
 # To avoid ambiguity
-function NaiveNASlib.compconstraint!(case::NaiveNASlib.ScalarSize, s::DecoratingJuMPΔSizeStrategy, lt::FluxDepthwiseConv, data)
+function NaiveNASlib.compconstraint!(case::NaiveNASlib.ScalarSize, s::DecoratingJuMPΔSizeStrategy, lt::FluxConvolutional, data)
   NaiveNASlib.compconstraint!(case, NaiveNASlib.base(s), lt, data)
 end
-function NaiveNASlib.compconstraint!(::NaiveNASlib.ScalarSize, s::AbstractJuMPΔSizeStrategy, ::FluxDepthwiseConv, data, ms=allowed_multipliers(s))
+function NaiveNASlib.compconstraint!(::NaiveNASlib.ScalarSize, s::AbstractJuMPΔSizeStrategy, ::FluxConvolutional, data, ms=allowed_multipliers(s))
+  ngroups(data.vertex) == 1 && return
 
   # Add constraint that nout(l) == n * nin(l) where n is integer
   ins = filter(vin -> vin in keys(data.noutdict), inputs(data.vertex))
@@ -119,14 +120,15 @@ allowed_multipliers(s::DepthwiseConvSimpleΔSizeStrategy) = s.allowed_multiplier
 allowed_multipliers(::AbstractJuMPΔSizeStrategy) = 1:10
 
 
-function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::DecoratingJuMPΔSizeStrategy, t::FluxDepthwiseConv, data) 
+function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::DecoratingJuMPΔSizeStrategy, t::FluxConvolutional, data) 
   NaiveNASlib.compconstraint!(case, base(s), t, data)
 end
-function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::AbstractJuMPΔSizeStrategy, t::FluxDepthwiseConv, data)
+function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::AbstractJuMPΔSizeStrategy, t::FluxConvolutional, data)
+  ngroups(data.vertex) == 1 && return
   # Fallbacks don't matter here since we won't call it from below here, just add default so we don't accidentally crash due to some
   # strategy which hasn't defined a fallback
   if 15 < sum(keys(data.outselectvars)) do v
-      layertype(v) isa FluxDepthwiseConv || return 0
+      ngroups(v) == 1 && return 0
       return log2(nout(v)) # Very roughly determined...
   end
     return NaiveNASlib.compconstraint!(case, DepthwiseConvSimpleΔSizeStrategy(10, s, NaiveNASlib.DefaultJuMPΔSizeStrategy()), t, data)
@@ -154,22 +156,29 @@ function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::Abstrac
   =#
 end
 
-function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthwiseConvSimpleΔSizeStrategy, t::FluxDepthwiseConv, data)
+function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthwiseConvSimpleΔSizeStrategy, t::FluxConvolutional, data)
   model = data.model
   v = data.vertex
   select = data.outselectvars[v]
   insert = data.outinsertvars[v]
 
+
+  ngroups(v) == 1 && return
   nin(v)[] == 1 && return # Special case, no restrictions as we only need to be an integer multple of 1
 
-  ngroups = div(nout(v), nin(v)[])
+  if size(weights(layer(v)), indim(v)) != 1
+    @warn "Handling of convolutional layers with groups != nin not implemented. Model might not be size aligned after mutation!"
+  end
+
   # Neurons mapped to the same weight are interleaved, i.e layer.weight[:,:,1,:] maps to y[1:ngroups:end] where y = layer(x)
-  for group in 1:ngroups
-    neurons_in_group = select[group : ngroups : end]
+  ngrps = div(nout(v), nin(v)[])
+
+  for group in 1:ngrps
+    neurons_in_group = select[group : ngrps : end]
     @constraint(model, neurons_in_group[1] == neurons_in_group[end])
     @constraint(model, [i=2:length(neurons_in_group)], neurons_in_group[i] == neurons_in_group[i-1])
 
-    insert_in_group = insert[group : ngroups : end]
+    insert_in_group = insert[group : ngrps : end]
     @constraint(model, insert_in_group[1] == insert_in_group[end])
     @constraint(model, [i=2:length(insert_in_group)], insert_in_group[i] == insert_in_group[i-1])
   end
@@ -177,14 +186,18 @@ function NaiveNASlib.compconstraint!(::NaiveNASlib.NeuronIndices, s::DepthwiseCo
   NaiveNASlib.compconstraint!(NaiveNASlib.ScalarSize(), s, t, data, allowed_multipliers(s))
 end
 
-function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::DepthwiseConvAllowNinChangeStrategy, t::FluxDepthwiseConv, data)
+function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::DepthwiseConvAllowNinChangeStrategy, t::FluxConvolutional, data)
   model = data.model
   v = data.vertex
   select = data.outselectvars[v]
   insert = data.outinsertvars[v]
 
+  ngroups(v) == 1 && return
   nin(v)[] == 1 && return # Special case, no restrictions as we only need to be an integer multple of 1?
 
+  # Step 0:
+  # Flux 0.13 changed the grouping of weigths so that size(layer.weight) = (..., nin / ngroups, nout)
+  # We can get back the shape expected here through weightgroups = reshape(layer.weight, ..., nout / groups, nin)
   # Step 1: 
   # Neurons mapped to the same weight are interleaved, i.e layer.weight[:,:,1,:] maps to y[1:ngroups:end] where y = layer(x)
   # where ngroups = nout / nin. For example, nout = 12 and nin = 4 mean size(layer.weight) == (..,3, 4)
@@ -199,6 +212,9 @@ function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::Depthwi
   ininsert = data.outinsertvars[ins[]]
 
   #ngroups = div(nout(v), nin(v)[])
+  if size(weights(layer(v)), indim(v)) != 1
+    @warn "Handling of convolutional layers with groups != nin not implemented. Model might not be size aligned after mutation!"
+  end
   ningroups = nin(v)[]
   add_depthwise_constraints(model, inselect, ininsert, select, insert, ningroups, s.allowed_new_outgroups, s.allowed_multipliers)
 end
@@ -212,6 +228,10 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   # When changing nin by Δ, we will get ningroups += Δ which just means that we insert/remove Δ input elements.
   # Inserting one new input element at position i will get us noutgroups new consecutive outputputs at position i
   # Thus nout change by Δ * noutgroups.
+
+  # Note: Flux 0.13 changed the grouping of weigths so that size(layer.weight) = (..., nin / ngroups, nout)
+  # We can get back the shape expected here through weightgroups = reshape(layer.weight, ..., nout / groups, nin)
+  # All examples below assume the pre-0.13 representation!
 
   # Example:
 
