@@ -241,7 +241,7 @@ julia> lazy(ones(Float32, 2, 5)) |> size
 (3, 5)
 
 julia> layer(lazy)
-Dense(2, 3, relu)   # 9 parameters
+Dense(2 => 3, relu)  # 9 parameters
 ```
 """
 mutable struct LazyMutable <: AbstractMutableComp
