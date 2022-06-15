@@ -13,13 +13,13 @@ Short summary is that the first order taylor approximation of the optimization p
 boils down to: "the ones which minimize `abs(gradient * activation)`" (assuming parameter independence).
 
 """
-mutable struct ActivationContribution{L,M} <: AbstractMutableComp
+struct ActivationContribution{L,M} <: AbstractMutableComp
     layer::L
-    contribution # Type of activation not known yet :( Also leave some room for experimenting with things like storing the metric on the GPU
+    contribution::Base.RefValue{Any} # Type of activation not known yet :( Also leave some room for experimenting with things like storing the metric on the GPU
     method::M
 end
-ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05f0)) = ActivationContribution(l, zeros(Float32, nout(l)), method)
-ActivationContribution(l, method = Ewma(0.05f0)) = ActivationContribution(l, missing, method)
+ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05f0)) = ActivationContribution(l, Ref{Any}(zeros(Float32, nout(l))), method)
+ActivationContribution(l, method = Ewma(0.05f0)) = ActivationContribution(l, Ref{Any}(missing), method)
 
 layer(m::ActivationContribution) = layer(m.layer)
 layertype(m::ActivationContribution) = layertype(m.layer)
@@ -27,14 +27,16 @@ wrapped(m::ActivationContribution) = m.layer
 
 Flux.trainable(m::ActivationContribution) = Flux.trainable(wrapped(m))
 
-@functor ActivationContribution
+function Functors.functor(::Type{<:ActivationContribution}, m)
+    return (layer=m.layer, contribution=m.contribution[], method=m.method), y -> ActivationContribution(y.layer, Ref{Any}(y.contribution), y.method)
+end
 
 function(m::ActivationContribution)(x...)
     act = wrapped(m)(x...)
 
     return Flux.Zygote.hook(act) do grad
         grad === nothing && return grad
-        m.contribution = m.method(m.contribution, act, grad)
+        m.contribution[] = m.method(m.contribution[], act, grad)
         return grad
     end
 end
@@ -42,13 +44,13 @@ end
 actdim(nd::Integer) = nd - 1
 
 function NaiveNASlib.Δsize!(m::ActivationContribution, inputs::AbstractVector, outputs::AbstractVector; kwargs...)
-    if m.contribution !== missing
+    if m.contribution[] !== missing
         # This tends to happen when we are measuring contribution for a concatenation and we have added an extra input edge
         # TODO: Try to find another fix, perhaps we need to ensure that nout(v) if v wraps an ActivationContribution always return
         # the length of m.contribution
-        outputs[outputs .> length(m.contribution)] .= -1 
+        outputs[outputs .> length(m.contribution[])] .= -1 
     end
-    m.contribution = select(m.contribution, 1 => outputs; newfun = (args...) -> 0)
+    m.contribution[] = select(m.contribution[], 1 => outputs; newfun = (args...) -> 0)
     NaiveNASlib.Δsize!(wrapped(m), inputs, outputs; kwargs...)
 end
 
@@ -84,7 +86,7 @@ function neuronutility(lm::LazyMutable)
    forcemutation(lm)
    neuronutility(wrapped(lm)) 
 end
-neuronutility(m::ActivationContribution) = m.contribution
+neuronutility(m::ActivationContribution) = m.contribution[]
 neuronutility(l) = neuronutility(layertype(l), l)
 
 # Default: mean of abs of weights + bias. Not a very good metric, but should be better than random

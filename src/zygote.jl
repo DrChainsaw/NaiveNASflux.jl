@@ -8,27 +8,26 @@ Flux.Zygote.@adjoint! function dispatch!(lm::LazyMutable, m::ResetLazyMutable, x
      dispatch!(lm, m, x...), Δ -> nothing
 end
 
-# Basically a workaround as the pullback for the recursive implementation in NaiveNASlib which
-#       1) uses get! which does not have a pullback function
-#        and
-#       2) was in some cases extremely slow or even stalled completely
-Flux.Zygote.@adjoint function output!(memo::AbstractDict, v::AbstractVertex)
-    return Flux.Zygote.pullback(__context__, output_loop!, memo, v)
+# Temp workaround for https://github.com/FluxML/Zygote.jl/issues/1111
+# Whole function can be deleted if/when issue is resolved
+function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, m::MutableLayer, args...)
+    res, back = rrule_via_ad(config, m.layer, args...)
+    function MutableLayer_back(Δ)
+        δlayer, δargs = back(Δ)
+        Tangent{MutableLayer}(layer=δlayer), δargs
+    end
+    return res, MutableLayer_back
 end
 
-
-function output_loop!(memo, v)
-    vs = nograd() do
-        # ancestors returns all input ancestors to v in topological order
-        # We also provide all vertices for which we have the output already in memo
-        # so we don't do unnecessary calculations.
-        ancestors(v, collect(AbstractVertex, keys(memo)))[length(memo)+1:end]
+# Temp workaround for https://github.com/FluxML/Zygote.jl/issues/1111
+# Whole function can be deleted if/when issue is resolved
+function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, m::LazyMutable, args...)
+    forcemutation(m)
+    res, back = rrule_via_ad(config, m.mutable, args...)
+    function LazyMutable_back(Δ)
+        δmutable, δargs = back(Δ)
+        Tangent{LazyMutable}(mutable=δmutable), δargs
     end
-
-    for vn in vs
-        vnins = inputs(vn) # Types don't seem to be inferred if put in map
-        inpt = map(iv -> memo[iv], vnins)
-        memo[vn] = vn(inpt...)
-    end
-    return memo[v]
+    return res, LazyMutable_back
 end
+
