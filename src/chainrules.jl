@@ -1,11 +1,13 @@
 # Stuff (mostly adjoints) to make things play nice with Zygote
 
 nograd(f) = f()
-Flux.Zygote.@nograd nograd
+ChainRulesCore.@non_differentiable nograd(f)
 
-Flux.Zygote.@nograd mutate
-Flux.Zygote.@adjoint! function dispatch!(lm::LazyMutable, m::ResetLazyMutable, x...)
-     dispatch!(lm, m, x...), Δ -> nothing
+ChainRulesCore.@non_differentiable mutate(args...)
+
+function ChainRulesCore.rrule(::typeof(dispatch!), lm::LazyMutable, m::ResetLazyMutable, x...)
+    dispatch!_back(Δ) = ntuple(_ -> NoTangent(), length(x) + 2)
+    dispatch!(lm, m, x...), dispatch!_back
 end
 
 # Temp workaround for https://github.com/FluxML/Zygote.jl/issues/1111
