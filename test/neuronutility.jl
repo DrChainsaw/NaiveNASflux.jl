@@ -1,6 +1,7 @@
 
 @testset "Neuron utility tests" begin
-    import NaiveNASflux: neuronutility_safe, neuronutility
+    import NaiveNASflux: neuronutility_safe, neuronutility, layertype
+    import Flux: params
 
     ml(l, lfun=LazyMutable; insize=nin(l)[]) = fluxvertex(l, inputvertex("in", insize, layertype(l)), layerfun = lfun)
 
@@ -74,8 +75,8 @@
     end
 
     @testset "ActivationContribution no grad" begin
-        f(x) = 2 .* x .^ 2
-        Flux.Zygote.@nograd f
+        import NaiveNASflux: nograd
+        f(x) = nograd(() -> 2 .* x .^ 2)
         l = ml(Dense(2,3), ActivationContribution)
         @test neuronutility(l) == zeros(3)
         tr(l, ones(Float32, 2, 1), loss = f ∘ Flux.mse)

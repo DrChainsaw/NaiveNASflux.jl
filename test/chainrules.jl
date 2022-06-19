@@ -1,7 +1,14 @@
 @testset "ChainRules" begin
     
-   chain = Chain(Dense(2,3), Dense(3, 4)) 
-   indata = reshape(collect(Float32, 1:6),2,3)
+    @testset "nograd" begin
+        import NaiveNASflux.nograd
+        @test Flux.gradient(+, 1,2) == (1,1)
+        @test Flux.gradient(1,2) do x,y
+            nograd() do
+                x+y
+            end
+        end == (nothing,nothing)
+    end
 
    @testset "Model gradient $(lfun == identity ? "" : " with layerfun=$lfun")" for lfun in (
     identity,
@@ -9,6 +16,9 @@
     ActivationContribution,
     LazyMutable ∘ ActivationContribution
    )
+        chain = Chain(Dense(2,3), Dense(3, 4)) 
+        indata = reshape(collect(Float32, 1:6),2,3)
+
         iv = denseinputvertex("in", 2)
         v1 = fluxvertex("v1", chain[1], iv; layerfun=lfun)
         v2 = fluxvertex("v2", chain[2], v1; layerfun=lfun)
