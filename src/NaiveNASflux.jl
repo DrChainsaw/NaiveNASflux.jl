@@ -12,6 +12,8 @@ using Statistics
 using Setfield: @set, setproperties
 using LinearAlgebra
 import JuMP: @variable, @constraint, @expression, SOS1
+import ChainRulesCore
+import ChainRulesCore: rrule_via_ad, RuleConfig, HasReverseMode, Tangent, NoTangent
 
 export denseinputvertex, rnninputvertex, fluxvertex, concat
 
@@ -34,6 +36,6 @@ include("vertex.jl")
 include("neuronutility.jl")
 
 # Stuff to integrate with Zygote
-include("zygote.jl")
+include("chainrules.jl")
 
 end # module

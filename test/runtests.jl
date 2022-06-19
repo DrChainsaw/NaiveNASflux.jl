@@ -23,6 +23,9 @@ end
     @info "Testing vertex"
     include("vertex.jl")
 
+    @info "Testing chainrules"
+    include("chainrules.jl")
+
     @info "Testing neuronutility"
     include("neuronutility.jl")
 
