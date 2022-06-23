@@ -9,7 +9,8 @@
             end
         end == (nothing,nothing)
     end
-
+    
+    import Optimisers
     function with_explicit_grads(f)
         try
             NaiveNASlib.enable_explicit_gradients[] = true
@@ -86,8 +87,6 @@
             _teststructs(getfield(nt1, p), getfield(nt2, p))
         end
     end
-
-    import Optimisers
 
     @testset "Model gradient $(lfun == identity ? "" : " with layerfun=$lfun")" for lfun in (
         identity,
