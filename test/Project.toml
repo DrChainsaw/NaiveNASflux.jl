@@ -5,5 +5,9 @@ Functors = "d9f16b24-f501-4c13-a1f2-28368ffc5196"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 NaiveNASflux = "85610aed-7d32-5e57-bb50-4c2e1c9e7997"
 NaiveNASlib = "bd45eb3e-47ce-54bd-9eaf-e86c5f900853"
+Optimisers = "3bd65402-5787-11e9-1adc-39752487f4e2"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+Optimisers = "0.2"

@@ -611,12 +611,12 @@ end
     g1 = CompGraph(inpt, v4)
 
     pars1 = params(g1).order
-    @test pars1[1] == weights(layer(v1))
-    @test pars1[2] == bias(layer(v1))
+    @test pars1[5] == weights(layer(v1))
+    @test pars1[6] == bias(layer(v1))
     @test pars1[3] == weights(layer(v2))
     @test pars1[4] == bias(layer(v2))
-    @test pars1[5] == weights(layer(v4))
-    @test pars1[6] == bias(layer(v4))
+    @test pars1[1] == weights(layer(v4))
+    @test pars1[2] == bias(layer(v4))
 
     # Basically what Flux.gpu does except function is CuArrays.cu(x) instead of 2 .* x
     testfun(x) = x

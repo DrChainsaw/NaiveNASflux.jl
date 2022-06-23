@@ -25,10 +25,20 @@ layer(m::ActivationContribution) = layer(m.layer)
 layertype(m::ActivationContribution) = layertype(m.layer)
 wrapped(m::ActivationContribution) = m.layer
 
-Flux.trainable(m::ActivationContribution) = Flux.trainable(wrapped(m))
+Flux.trainable(m::ActivationContribution) = (;layer = Flux.trainable(wrapped(m)))
 
-function Functors.functor(::Type{<:ActivationContribution}, m)
-    return (layer=m.layer, contribution=m.contribution[], method=m.method), y -> ActivationContribution(y.layer, Ref{Any}(y.contribution), y.method)
+function Functors.functor(t::Type{<:ActivationContribution}, m::ActivationContribution)
+    _functor(t, m.layer, m.contribution[], m.method)
+end
+
+function Functors.functor(t::Type{<:ActivationContribution}, m)
+    _functor(t, m.layer, m.contribution, m.method)
+end
+
+function _functor(::Type{<:ActivationContribution}, layer, contribution, method)
+    return (;layer, contribution, method), function(y) 
+        ActivationContribution(y.layer, Ref{Any}(y.contribution), y.method)
+    end
 end
 
 function(m::ActivationContribution)(x...)
