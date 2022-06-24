@@ -1,6 +1,6 @@
 name = "NaiveNASflux"
 uuid = "85610aed-7d32-5e57-bb50-4c2e1c9e7997"
-version = "2.0.5"
+version = "2.0.6"
 
 [deps]
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
