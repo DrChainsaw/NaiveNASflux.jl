@@ -116,9 +116,6 @@ NaiveNASlib.base(t::SizeNinNoutConnected) = t.base
 
 NaiveNASlib.all_in_Δsize_graph(mode, ::SizeNinNoutConnected, args...) = NaiveNASlib.all_in_Δsize_graph(mode, SizeInvariant(), args...)
 
-Flux.trainable(v::CompVertex) = Flux.trainable(v.computation)
-Flux.trainable(g::CompGraph) = Flux.trainable(vertices(g))
-
 const doc_layerfun_and_traitfun = """
 Keyword argument `layerfun` can be used to wrap the computation, e.g. in an [`ActivationContribution`](@ref). 
 
