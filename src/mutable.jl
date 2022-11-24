@@ -170,6 +170,10 @@ end
 
 function mutate(lt::FluxGroupNorm, m::MutableLayer, inds; insert=neuroninsert)
 
+    # TODO: This alg was from when Flux used a different way to represent the parameters of GroupNorm
+    # For some reason it still produces correct results in testcases, but it might very well do so for
+    # the wrong reasons...
+
     l = m.layer
     ngroups = l.G
     nchannels = length(inds)

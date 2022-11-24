@@ -255,10 +255,12 @@
         end
 
         function assertnorm(l, meanexp, varexp)
+            if l == BatchNorm
+                @test vec(l.μ) == meanexp
+                @test vec(l.σ²) == varexp
+            end
             @test l.β == meanexp
             @test l.γ == varexp
-            @test vec(l.μ) == meanexp
-            @test vec(l.σ²) == varexp
         end
 
         setpar(x) = x
@@ -269,7 +271,7 @@
                                 (InstanceNorm, InstanceNorm),
                                 ((n;kw...) -> GroupNorm(n,n; kw...), GroupNorm))
 
-            m = MutableLayer(l(5; affine=true, track_stats=true))
+            m = MutableLayer(l(5; affine=true, track_stats=l == BatchNorm))
             l_orig = layer(m)
 
             @test nin(m) == [nout(m)] == [5]
@@ -294,22 +296,22 @@
         @testset "GroupNorm MutableLayer with groups" begin
 
             @testset "Groups of 2" begin
-                m = MutableLayer(GroupNorm(6,3; affine=true, track_stats=true))
+                m = MutableLayer(GroupNorm(6,3; affine=true))
                 m.layer = Flux.fmap(setpar, layer(m))
                 inds = [1,2,5,6]
                 NaiveNASlib.Δsize!(m, [inds], inds)
-                @test layer(m).μ == [1, 3]
-                @test layer(m).σ² == [1, 3]
+                @test layer(m).β == inds
+                @test layer(m).γ == inds
             end
 
             @testset "Group size 8 to 9" begin
                 # Now when dimensions don't add up: size 8 becomes size 9
-                m = MutableLayer(GroupNorm(8,4; affine=true, track_stats=true))
+                m = MutableLayer(GroupNorm(8,4; affine=true))
                 inds = [1,3,-1,-1,4,-1,7,-1,8]
                 NaiveNASlib.Δsize!(m, [inds], inds)
                 # Current alg for selecting which group to pick in this case is poor, don't wanna test it :)
-                @test length(layer(m).μ) == 3
-                @test length(layer(m).σ²) == 3
+                @test length(layer(m).β) == 9
+                @test length(layer(m).γ) == 9
             end
         end
     end
