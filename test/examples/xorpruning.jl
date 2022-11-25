@@ -26,7 +26,7 @@ layer2 = densevertex(layer1, 1, sigmoid)
 original = CompGraph(invertex, layer2)
 
 ## Training params, nothing to see here
-opt = ADAM(0.1)
+opt = Adam(0.1)
 loss(g) = (x, y) -> mse(g(x), y)
 
 ## Training data: xor truth table: y = xor(x) just so we don't need to download a dataset.
