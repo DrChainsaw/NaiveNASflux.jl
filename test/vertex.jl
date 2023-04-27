@@ -48,7 +48,7 @@ end
     v = fluxvertex(l, conv2dinputvertex("in", 3))
 
     @test NaiveNASflux.layertype(v) isa NaiveNASflux.FluxPoolLayer
-    indata = randn(MersenneTwister(1), 6,6,3,2)
+    indata = randn(MersenneTwister(1), Float32, 6,6,3,2)
 
     @test l(indata) == v(indata)
 end
@@ -59,7 +59,7 @@ end
     v = fluxvertex(l, conv2dinputvertex("in", 3))
 
     @test NaiveNASflux.layertype(v) isa NaiveNASflux.FluxDropOut
-    indata = randn(MersenneTwister(1), 3,2)
+    indata = randn(MersenneTwister(1), Float32, 3,2)
 
     @test l(indata) == v(indata)
 end
@@ -402,7 +402,7 @@ end
         @testset "Concatenate Dense" begin
             nin1 = 2
             nin2 = 5
-            @test size(testgraph(Dense, nin1, nin2)(ones(nin1), ones(nin2))) == (9,)
+            @test size(testgraph(Dense, nin1, nin2)(ones(Float32, nin1), ones(Float32, nin2))) == (9,)
         end
 
         @testset "Concatenate $rnntype" for rnntype in (RNN, GRU, LSTM)
@@ -441,7 +441,7 @@ end
             nin2 = 4
             in1 = inputvertex("in1", nin1, FluxDense())
             in2 = inputvertex("in2", nin2, FluxDense())
-            @test size(testgraph_vfun((v,s) -> v, in1, in2)(ones(nin1), ones(nin2))) == (10,)
+            @test size(testgraph_vfun((v,s) -> v, in1, in2)(ones(Float32, nin1), ones(Float32, nin2))) == (10,)
         end
 
         @testset "Concatenate BatchNorm only" begin
@@ -629,7 +629,7 @@ end
     indata = randn(nout(inpt), 1)
 
     g3 = Flux.f64(g1)
-    @test g3(indata) ≈ g1(indata) rtol=1e-7
+    @test g3(indata) ≈ g1(Float32.(indata)) rtol=1e-6
 end
 
 @testset "Trainable insert values" begin
@@ -646,7 +646,7 @@ end
 
         g = CompGraph(iv, v3)
 
-        indata = randn(3,4)
+        indata = randn(Float32, 3,4)
         expectedout = g(indata)
 
         Δnout!(v -> 1, v1 => 2)
@@ -654,7 +654,7 @@ end
 
         @test g(indata) ≈ expectedout
 
-        train!((x,y) -> mse(g(x), y), params(g), [(randn(nin(v1)[],8), randn(nout(v3) ,8))], Descent(0.5))
+        train!((x,y) -> mse(g(x), y), params(g), [(randn(Float32, nin(v1)[],8), randn(Float32, nout(v3) ,8))], Descent(0.5))
 
         @test minimum(abs.(weights(layer(v1)))) > 0
         @test minimum(abs.(weights(layer(v2)))) > 0
