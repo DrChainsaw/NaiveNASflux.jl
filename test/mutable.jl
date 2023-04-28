@@ -12,13 +12,13 @@
 
         @test nin(m) == [2]
         @test nout(m) == nout(m.layer) == 3
-        @test m([1.0, 2.0]) == m.layer([1.0, 2.0])
+        @test m(Float32[1.0, 2.0]) == m.layer(Float32[1.0, 2.0])
 
         m.layer = Dense(3,4)
         bias(m.layer)[1:end] = 1:4
         @test nin(m) == [3]
         @test nout(m) == nout(m.layer) == 4
-        @test m([1.0, 2.0, 3.0]) == m.layer([1.0, 2.0, 3.0])
+        @test m(Float32[1.0, 2.0, 3.0]) == m.layer(Float32[1.0, 2.0, 3.0])
 
         @testset "Select inputs" begin
             inds = [1,3]

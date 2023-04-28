@@ -11,7 +11,8 @@ using Functors: @functor
 using Statistics
 using Setfield: @set, setproperties
 using LinearAlgebra
-import JuMP: @variable, @constraint, @expression, SOS1
+import JuMP
+import JuMP: @variable, @constraint, @expression, SOS1, MOI
 import ChainRulesCore
 import ChainRulesCore: rrule_via_ad, RuleConfig, HasReverseMode, Tangent, NoTangent
 

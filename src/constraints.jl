@@ -1,4 +1,8 @@
 
+usesos1(model::JuMP.Model) = usesos1(JuMP.backend(model))
+usesos1(m) = JuMP.MOI.supports_constraint(m, JuMP.MOI.VectorOfVariables, JuMP.MOI.SOS1)
+
+
 """
   
   GroupedConvAllowNinChangeStrategy(newoutputsmax::Integer, multipliersmax::Integer, base, [fallback])  
@@ -142,7 +146,7 @@ function NaiveNASlib.compconstraint!(case::NaiveNASlib.NeuronIndices, s::Abstrac
           iv = conv2dinputvertex("in", w)
           dv = reduce((v, i) -> fluxvertex("dv$i", DepthwiseConv((1,1), nout(v) => fld1(i, 3) * nout(v)), v), 1:d; init=iv)   
           metric = sum(ancestors(dv)) do v
-            layer(v) isa DepthwiseConv || return 0
+            layer(v) isa Conv || return 0
             return log2(nout(v))
           end
           res = @timed Δsize!(ΔNoutRelaxed(outputs(iv)[1] => w; fallback = ΔSizeFailNoOp()))
@@ -299,8 +303,10 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
 
   # inmultipliers[j] == 1 if nout(v) == allowed_multipliers[j] * nin(v)[]
   inmultipliers = @variable(model, [1:length(allowed_multipliers)], Bin)
-  #SOS1 == Only one can be non-zero. Not strictly needed, but it seems like it speeds up the solver
-  @constraint(model, inmultipliers in SOS1(1:length(inmultipliers)))
+  if usesos1(model)
+      #SOS1 == Only one can be non-zero. Not strictly needed, but it seems like it speeds up the solver
+    @constraint(model, inmultipliers in SOS1(1:length(inmultipliers)))
+  end
   @constraint(model, sum(inmultipliers) == 1)
 
   @constraint(model,[i=1:length(ininsert), j=1:length(inmultipliers)], allowed_multipliers[j] * ininsert[i] - insert_new_inoutgroups[1, i] + (1-inmultipliers[j]) * M >= 0)
@@ -329,8 +335,10 @@ function add_depthwise_constraints(model, inselect, ininsert, select, insert, ni
   # new_outgroup[g,j] == 1 if we are inserting allowed_new_outgroups[j] new output groups after output group g
   noutmults = 1:length(allowed_new_outgroups)
   new_outgroup = @variable(model, [1:noutgroups, noutmults], Bin)
-  #SOS1 == Only one can be non-zero. Not strictly needed, but it seems like it speeds up the solver
-  @constraint(model,[g=1:noutgroups], new_outgroup[g,:] in SOS1(1:length(allowed_new_outgroups)))
+  if usesos1(model)
+    #SOS1 == Only one can be non-zero. Not strictly needed, but it seems like it speeds up the solver
+    @constraint(model,[g=1:noutgroups], new_outgroup[g,:] in SOS1(1:length(allowed_new_outgroups)))
+  end
   @constraint(model,[g=1:noutgroups], sum(new_outgroup[g,:]) == 1)
 
   groupsum = @expression(model, [g=1:noutgroups], sum(insert_new_outgroups[g,:]) - sum(insert_new_inoutgroups_all_inds[g,:]))
