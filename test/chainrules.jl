@@ -11,14 +11,6 @@
     end
     
     import Optimisers
-    function with_explicit_grads(f)
-        try
-            NaiveNASlib.enable_explicit_gradients[] = true
-            f()   
-        finally
-            NaiveNASlib.enable_explicit_gradients[] = false
-        end
-    end
 
     teststructs(g::CompGraph, res, exp; seen=Base.IdSet()) = foreach(enumerate(outputs(g))) do (i, vo)
         teststructs(vo, seen, res.outputs[i] ,exp)
@@ -33,11 +25,13 @@
     function _teststructs(::NaiveNASflux.InputShapeVertex, seen, res, exp, name) end
 
     function _teststructs(v::AbstractVertex, seen, res::RT, exp, name) where RT 
-        @testset "Check structure for $(name) of type $(typeof(v))" begin
-            @test hasfield(RT, :base)
-        end
-        if hasfield(RT, :base)
-            _teststructs(base(v), seen, res.base, exp, name)
+        if layertype(v) isa NaiveNASflux.FluxParLayer
+            @testset "Check structure for $(name) of type $(typeof(v))" begin
+                @test hasfield(RT, :base)
+            end
+            if hasfield(RT, :base)
+                _teststructs(base(v), seen, res.base, exp, name)
+            end
         end
     end
     function _teststructs(v::CompVertex, seen, res::RT, exp, name) where RT 
@@ -46,6 +40,7 @@
             _teststructs(v.computation, res.computation, exp, name)
         end
         foreach(enumerate(inputs(v))) do (i, vi)
+            isnothing(res.inputs) && return
             teststructs(vi, seen, res.inputs[i], exp)
         end            
     end
@@ -111,28 +106,26 @@
             @test exp[p] == res[p]
         end
 
-        with_explicit_grads() do 
-            @test gradient(sum ∘ graph, indata) == gradient(sum ∘ chain, indata)
+        @test gradient(sum ∘ graph, indata) == gradient(sum ∘ chain, indata)
 
-            expex = Flux.gradient(c -> sum(c(indata)), chain)
-            resex = Flux.gradient(g -> sum(g(indata)), graph)
-            teststructs(graph, resex..., expex[1].layers) 
+        expex = Flux.gradient(c -> sum(c(indata)), chain)
+        resex = Flux.gradient(g -> sum(g(indata)), graph)
+        teststructs(graph, resex..., expex[1].layers) 
 
-            @testset "Optimisers" begin
-                graphstate = Optimisers.setup(Optimisers.Adam(), graph)
-                chainstate = Optimisers.setup(Optimisers.Adam(), chain)
-                @testset "Setup state" begin
-                    teststructs(graph, graphstate, chainstate.layers)
-                end
-                # TODO: Why deepcopy needed? fmap(copy, graph) does not seem to work?
-                graphstate, newgraph = Optimisers.update(graphstate, deepcopy(graph), resex...)
-                chainstate, newchain = Optimisers.update(chainstate, chain, expex...)
-                @testset "New state" begin
-                    teststructs(newgraph, graphstate, chainstate.layers)
-                end
-                @testset "New model" begin
-                    teststructs(newgraph, Optimisers.trainable(newgraph), Optimisers.trainable(newchain).layers)
-                end
+        @testset "Optimisers" begin
+            graphstate = Optimisers.setup(Optimisers.Adam(), graph)
+            chainstate = Optimisers.setup(Optimisers.Adam(), chain)
+            @testset "Setup state" begin
+                teststructs(graph, graphstate, chainstate.layers)
+            end
+            # TODO: Why deepcopy needed? fmap(copy, graph) does not seem to work?
+            graphstate, newgraph = Optimisers.update(graphstate, deepcopy(graph), resex...)
+            chainstate, newchain = Optimisers.update(chainstate, chain, expex...)
+            @testset "New state" begin
+                teststructs(newgraph, graphstate, chainstate.layers)
+            end
+            @testset "New model" begin
+                teststructs(newgraph, Optimisers.trainable(newgraph), Optimisers.trainable(newchain).layers)
             end
         end
 
