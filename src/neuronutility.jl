@@ -18,7 +18,11 @@ struct ActivationContribution{L,M} <: AbstractMutableComp
     contribution::Base.RefValue{Any} # Type of activation not known yet :( Also leave some room for experimenting with things like storing the metric on the GPU
     method::M
 end
-ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05f0)) = ActivationContribution(l, Ref{Any}(zeros(Float32, nout(l))), method)
+# We use eps(Float32) here because we don't want parameters from new layers to have:
+# 1) higher utility than parameters from existing layers
+# 2) zero utility since that will often make the optimizer remove them completely
+# eps(Float32) is typically smaller than the optimizer tolerance, but NaiveNASlib tries to rescale
+ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05f0)) = ActivationContribution(l, Ref{Any}(fill(eps(Float32), nout(l))), method)
 ActivationContribution(l, method = Ewma(0.05f0)) = ActivationContribution(l, Ref{Any}(missing), method)
 
 layer(m::ActivationContribution) = layer(m.layer)
@@ -60,7 +64,7 @@ function NaiveNASlib.Δsize!(m::ActivationContribution, inputs::AbstractVector, 
         # the length of m.contribution
         outputs[outputs .> length(m.contribution[])] .= -1 
     end
-    m.contribution[] = select(m.contribution[], 1 => outputs; newfun = (args...) -> 0)
+    m.contribution[] = select(m.contribution[], 1 => outputs; newfun = (args...) -> eps(eltype(m.contribution[])))
     NaiveNASlib.Δsize!(wrapped(m), inputs, outputs; kwargs...)
 end
 
