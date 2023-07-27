@@ -7,12 +7,12 @@
 
     function tr(l, data; loss=Flux.mse)
         example = [(data, 1)];
-        Flux.train!((x,y) -> loss(l(x), y), params(l), example, Descent(0.1))
+        Flux.train!((f,x,y) -> loss(l(x), y), l, example, Flux.setup(Descent(0.1), l))
     end
 
     function tr(l, output, inputs...)
         example = [(inputs, output)];
-        Flux.train!((x,y) -> Flux.mse(l(x...), y), params(l), example, Descent(0.1))
+        Flux.train!((f,x,y) -> Flux.mse(l(x...), y), l, example, Flux.setup(Descent(0.1), l))
     end
 
 

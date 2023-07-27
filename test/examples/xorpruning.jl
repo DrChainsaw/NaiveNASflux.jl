@@ -26,17 +26,18 @@ layer2 = densevertex(layer1, 1, sigmoid)
 original = CompGraph(invertex, layer2)
 
 ## Training params, nothing to see here
-opt = Adam(0.1)
-loss(g) = (x, y) -> mse(g(x), y)
+loss(f, x, y) = mse(f(x), y)
 
 ## Training data: xor truth table: y = xor(x) just so we don't need to download a dataset.
 x = Float32[0 0 1 1;
             0 1 0 1]
 y = Float32[0 1 1 0]
 
+trainiter = Iterators.repeated((x,y), niters)
+
 ## Train the model
-train!(loss(original), params(original), Iterators.repeated((x,y), niters), opt)
-@test loss(original)(x, y) < 0.001
+train!(loss, original, trainiter, Flux.setup(Adam(0.1), original))
+@test loss(original, x, y) < 0.001
 
 # With that out of the way, lets try three different ways to prune the hidden layer (vertex nr 2 in the graph). 
 # To make examples easier to compare, lets decide up front that we want to remove half of the hidden layer neurons 
@@ -61,13 +62,13 @@ pruned_random = deepcopy(original)
 Δnout!(v -> rand(nout(v)), pruned_random[2] => -nprune)
 
 # Free lunch anyone?
-@test   loss(pruned_most)(x, y)   > 
-        loss(pruned_random)(x, y) > 
-        loss(pruned_least)(x, y)  >= 
-        loss(original)(x, y)
+@test   loss(pruned_most, x, y)   > 
+        loss(pruned_random, x, y) > 
+        loss(pruned_least, x, y)  >= 
+        loss(original, x, y)
 
 # The metric calculated by [`ActivationContribution`](@ref) is actually quite good in this case.
-@test loss(pruned_least)(x, y) ≈ loss(original)(x, y) atol = 1e-5
+@test loss(pruned_least, x, y) ≈ loss(original, x, y) atol = 1e-5
 end #src
 
 
