@@ -271,7 +271,8 @@
                                 (InstanceNorm, InstanceNorm),
                                 ((n;kw...) -> GroupNorm(n,n; kw...), GroupNorm))
 
-            m = MutableLayer(l(5; affine=true, track_stats=l == BatchNorm))
+            track_stats = l == BatchNorm ? (;track_stats = true) : ()
+            m = MutableLayer(l(5; affine=true, track_stats...))
             l_orig = layer(m)
 
             @test nin(m) == [nout(m)] == [5]
