@@ -654,7 +654,7 @@ end
 
         @test g(indata) ≈ expectedout
 
-        train!((x,y) -> mse(g(x), y), params(g), [(randn(Float32, nin(v1)[],8), randn(Float32, nout(v3) ,8))], Descent(0.5))
+        train!((g,x,y) -> mse(g(x), y), g, [(randn(Float32, nin(v1)[],8), randn(Float32, nout(v3) ,8))], Descent(0.5))
 
         @test minimum(abs.(weights(layer(v1)))) > 0
         @test minimum(abs.(weights(layer(v2)))) > 0
@@ -679,7 +679,7 @@ end
 
         @test g(indata) == expectedout
 
-        train!((x,y) -> mse(g(x), y), params(g), [(randn(Float32,2,2,2,8), randn(Float32,2,2,2,8))], Descent(0.5))
+        train!((g,x,y) -> mse(g(x), y), g, [(randn(Float32,2,2,2,8), randn(Float32,2,2,2,8))], Descent(0.5))
 
         @test minimum(abs.(weights(layer(v1)))) > 0
         @test minimum(abs.(weights(layer(v3)))) > 0
@@ -703,7 +703,7 @@ end
 
         @test g(indata) == expectedout
 
-        train!((x,y) -> mse(g(x), y), params(g), [(randn(Float32,2,2,2,8), randn(Float32,2,2,2,8))], Descent(0.5))
+        train!((g,x,y) -> mse(g(x), y), g, [(randn(Float32,2,2,2,8), randn(Float32,2,2,2,8))], Descent(0.5))
 
         @test minimum(abs.(weights(layer(v1)))) > 0
         @test minimum(abs.(weights(layer(v2)))) > 0

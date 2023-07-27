@@ -15,7 +15,6 @@
         Flux.train!((f,x,y) -> Flux.mse(l(x...), y), l, example, Flux.setup(Descent(0.1), l))
     end
 
-
     @testset "Utils" begin
         actonly(curr, act, grad) = act
 
@@ -78,9 +77,9 @@
         import NaiveNASflux: nograd
         f(x) = nograd(() -> 2 .* x .^ 2)
         l = ml(Dense(2,3), ActivationContribution)
-        @test neuronutility(l) == zeros(3)
+        @test neuronutility(l) == fill(eps(Float32), 3)
         tr(l, ones(Float32, 2, 1), loss = f ∘ Flux.mse)
-        @test neuronutility(l) == zeros(3)
+        @test neuronutility(l) == fill(eps(Float32), 3)
         @test length(params(l)) == length(params(layer(l)))
     end
 
@@ -93,12 +92,12 @@
         @test params(l) == params(layer(l))
         l2 = fmap(x -> x isa AbstractArray ? fill(17, size(x)) : x, l)
         @test unique(neuronutility(l2)) == unique(bias(layer(l2))) == unique(weights(layer(l2))) == [17]
-        @test neuronutility_org === neuronutility(l) == zeros(nout(l))
+        @test neuronutility_org === neuronutility(l) == fill(eps(Float32), nout(l))
     end
 
     @testset "Neuron utility Dense act contrib" begin
         l = ml(Dense(3,5), ActivationContribution)
-        @test neuronutility(l) == zeros(5)
+        @test neuronutility(l) == fill(eps(Float32), 5)
         tr(l, ones(Float32, 3, 4))
         @test size(neuronutility(l)) == (5,)
         @test length(params(l)) == length(params(layer(l)))
@@ -106,7 +105,7 @@
 
     @testset "Neuron utility Dense act contrib every 4" begin
         l = ml(Dense(3,5), l -> ActivationContribution(l, NeuronUtilityEvery(4)))
-        @test neuronutility(l) == zeros(5)
+        @test neuronutility(l) == fill(eps(Float32), 5)
         nvprev = copy(neuronutility(l))
         tr(l, ones(Float32, 3, 4))
         @test neuronutility(l) != nvprev
@@ -123,7 +122,7 @@
 
     @testset "Neuron utility RNN act contrib" begin
         l = ml(RNN(3,5), ActivationContribution)
-        @test neuronutility(l) == zeros(5)
+        @test neuronutility(l) == fill(eps(Float32), 5)
         tr(l, ones(Float32, 3, 8))
         @test size(neuronutility(l)) == (5,)
         @test length(params(l)) == length(params(layer(l)))
@@ -131,7 +130,7 @@
 
     @testset "Neuron utility Conv act contrib" begin
         l = ml(Conv((3,3), 2=>5, pad=(1,1)), ActivationContribution)
-        @test neuronutility(l) == zeros(5)
+        @test neuronutility(l) == fill(eps(Float32), 5)
         tr(l, ones(Float32, 4,4,2,5))
         @test size(neuronutility(l)) == (5,)
         @test length(params(l)) == length(params(layer(l)))
@@ -141,7 +140,6 @@
         l = ml(MaxPool((3,3)), ActivationContribution, insize=2)
         @test ismissing(neuronutility(l))
         tr(l, ones(Float32, 4,4,2,5))
-
         @test size(neuronutility(l)) == (2,)
     end
 
@@ -149,7 +147,6 @@
         l = ml(GlobalMeanPool(), ActivationContribution, insize=2)
         @test ismissing(neuronutility(l))
         tr(l, ones(Float32, 4,4,2,5))
-
         @test size(neuronutility(l)) == (2,)
     end
 

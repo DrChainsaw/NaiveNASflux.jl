@@ -18,8 +18,13 @@ struct ActivationContribution{L,C,M} <: AbstractMutableComp
     contribution::C
     method::M
 end
-ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05f0)) = ActivationContribution(l, zeros(Float32, nout(l)), method)
+# We use eps(Float32) here because we don't want parameters from new layers to have:
+# 1) higher utility than parameters from existing layers
+# 2) zero utility since that will often make the optimizer remove them completely
+# eps(Float32) is typically smaller than the optimizer tolerance, but NaiveNASlib tries to rescale
+ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05f0)) = ActivationContribution(l, fill(eps(Float32), nout(l)), method)
 ActivationContribution(l, method = Ewma(0.05f0)) = ActivationContribution(l, Float32[], method)
+
 
 layer(m::ActivationContribution) = layer(m.layer)
 layertype(m::ActivationContribution) = layertype(m.layer)
@@ -29,22 +34,29 @@ Flux.trainable(m::ActivationContribution) = (;layer = Flux.trainable(wrapped(m))
 
 @functor ActivationContribution
 
+# We do train contribution in some sense, but we don't want Flux to do it
+# We could create a "fake" gradient in the rrule and let the optimizer rule update it for us 
+# (rather than using our own Ewma), but it is probably not desirable to mix the model parameter update
+# strategy with the activation contribution strategy.
+Flux.trainable(m::ActivationContribution) = (;layer=Flux.trainable(m.layer))
+
 # Just passthrough when not taking gradients. 
 (m::ActivationContribution)(x...) = wrapped(m)(x...)
 
 function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, m::T, args...) where T <:ActivationContribution
     act, back = rrule_via_ad(config, wrapped(m), args...)
-    #m.contribution .= 10 .+ m.contribution 
-    #@info "On forward: $(m.contribution[1])"
+
     function ActivationContribution_back(Δ)
         if length(m.contribution) === 0
-            resize!(m.contribution, length(Δ))
+            newcontribution = m.method(missing, act, Δ)
+            resize!(m.contribution, length(newcontribution))
+            copyto!(m.contribution, newcontribution)
+        else
+            copyto!(m.contribution, m.method(m.contribution, act, Δ))
         end
 
-        m.contribution .= m.method(m.contribution, act, Δ)
-
-        δlayer, δargs = back(Δ)
-        Tangent{T}(layer=δlayer), δargs
+        δs = back(Δ)
+        Tangent{T}(layer=δs[1]), δs[2:end]...
     end
     return act, ActivationContribution_back
 end
@@ -57,11 +69,12 @@ function NaiveNASlib.Δsize!(m::ActivationContribution, inputs::AbstractVector, 
         # TODO: Try to find another fix, perhaps we need to ensure that nout(v) if v wraps an ActivationContribution always return
         # the length of m.contribution
         outputs[outputs .> length(m.contribution)] .= -1 
+        newcontribution = select(m.contribution, 1 => outputs; newfun = (args...) -> eps(eltype(m.contribution)))
+        resize!(m.contribution, length(newcontribution))
+        copyto!(m.contribution, newcontribution)
+    #else 
+    #   no need to select anything
     end
-    mincontrib = minimum(m.contribution)
-    newcontribution = select(m.contribution, 1 => outputs; newfun = (args...) -> mincontrib)
-    resize!(m.contribution, length(newcontribution))
-    m.contribution .= newcontribution 
     NaiveNASlib.Δsize!(wrapped(m), inputs, outputs; kwargs...)
 end
 
@@ -97,7 +110,8 @@ function neuronutility(lm::LazyMutable)
    forcemutation(lm)
    neuronutility(wrapped(lm)) 
 end
-neuronutility(m::ActivationContribution) = m.contribution
+# Return missing to maintain API since previous versions used missing as sentinel value instead of empty vector
+neuronutility(m::ActivationContribution) = isempty(m.contribution) ? missing : m.contribution
 neuronutility(l) = neuronutility(layertype(l), l)
 
 # Default: mean of abs of weights + bias. Not a very good metric, but should be better than random
@@ -130,6 +144,7 @@ neuronutility_safe(::Immutable, v) = 1
 neuronutility_safe(::MutationSizeTrait, v) = clean_values(cpu(neuronutility(v)))
 neuronutility_safe(m::AbstractMutableComp) = clean_values(cpu(neuronutility(m)))
 
+clean_values(::Missing) = 1
 clean_values(a::AbstractArray) = length(a) === 0 ? 1 : replace(a, NaN => -100, Inf => -100, -Inf => -100)
 
 """
