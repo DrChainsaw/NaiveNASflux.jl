@@ -25,26 +25,23 @@ end
 ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05f0)) = ActivationContribution(l, fill(eps(Float32), nout(l)), method)
 ActivationContribution(l, method = Ewma(0.05f0)) = ActivationContribution(l, Float32[], method)
 
+@functor ActivationContribution
 
 layer(m::ActivationContribution) = layer(m.layer)
 layertype(m::ActivationContribution) = layertype(m.layer)
 wrapped(m::ActivationContribution) = m.layer
 
-Flux.trainable(m::ActivationContribution) = (;layer = Flux.trainable(wrapped(m)))
-
-@functor ActivationContribution
-
 # We do train contribution in some sense, but we don't want Flux to do it
 # We could create a "fake" gradient in the rrule and let the optimizer rule update it for us 
 # (rather than using our own Ewma), but it is probably not desirable to mix the model parameter update
 # strategy with the activation contribution strategy.
-Flux.trainable(m::ActivationContribution) = (;layer=Flux.trainable(m.layer))
+Flux.trainable(m::ActivationContribution) = (;layer = Flux.trainable(m.layer))
 
 # Just passthrough when not taking gradients. 
 (m::ActivationContribution)(x...) = wrapped(m)(x...)
 
-function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, m::T, args...) where T <:ActivationContribution
-    act, back = rrule_via_ad(config, wrapped(m), args...)
+function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, m::T, x...) where T <:ActivationContribution
+    act, back = rrule_via_ad(config, wrapped(m), x...)
 
     function ActivationContribution_back(Δ)
         if length(m.contribution) === 0
