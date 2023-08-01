@@ -103,7 +103,7 @@ end
         W2exp, b2exp = weights(dl2)[:, inds], bias(dl2)
         W1exp, b1exp = weights(dl1)[inds, :], bias(dl1)[inds]
 
-        @test size(CompGraph([inpt], [dense2])(collect(Float32, 1:nout(inpt)))) == (3,)
+        @test size(CompGraph(inpt, dense2)(collect(Float32, 1:nout(inpt)))) == (3,)
 
         assertlayer(layer(dense2), W2exp, b2exp)
         assertlayer(layer(dense1), W1exp, b1exp)

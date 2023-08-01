@@ -12,9 +12,11 @@
     
     import Optimisers
 
-    teststructs(g::CompGraph, res, exp; seen=Base.IdSet()) = foreach(enumerate(outputs(g))) do (i, vo)
+    teststructs(g::CompGraph{<:Any, <:Tuple}, res, exp; seen=Base.IdSet()) = foreach(enumerate(outputs(g))) do (i, vo)
         teststructs(vo, seen, res.outputs[i] ,exp)
     end
+
+    teststructs(g::CompGraph{<:Any, <:AbstractVertex}, res, exp; seen=Base.IdSet()) = teststructs(g.outputs, seen, res.outputs ,exp) 
 
     function teststructs(v::AbstractVertex, seen, res, exp) 
         v in seen && return
