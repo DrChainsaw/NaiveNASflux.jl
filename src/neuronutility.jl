@@ -27,8 +27,6 @@ ActivationContribution(l, method = Ewma(0.05f0)) = ActivationContribution(l, Flo
 
 @functor ActivationContribution
 
-layer(m::ActivationContribution) = layer(m.layer)
-layertype(m::ActivationContribution) = layertype(m.layer)
 wrapped(m::ActivationContribution) = m.layer
 
 # We do train contribution in some sense, but we don't want Flux to do it
