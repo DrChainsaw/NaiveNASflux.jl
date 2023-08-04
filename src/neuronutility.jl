@@ -3,7 +3,9 @@
     ActivationContribution(l)
     ActivationContribution(l, method)
 
-Calculate neuron utility based on activations and gradients using `method`.
+Calculate neuron utility based on activations and gradients using `method`. 
+
+Designed to be used as `layerfun` argument to [`fluxvertex`](@ref).
 
 Can be a performance bottleneck in cases with large activations. Use [`NeuronUtilityEvery`](@ref) to mitigate.
 

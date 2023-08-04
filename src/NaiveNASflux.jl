@@ -21,7 +21,9 @@ export denseinputvertex, rnninputvertex, fluxvertex, concat
 
 export convinputvertex, conv1dinputvertex, conv2dinputvertex, conv3dinputvertex
 
-export ActivationContribution, LazyMutable, AutoOptimiser
+export ActivationContribution, LazyMutable
+
+export AutoOptimiser, optimisersetup!
 
 export layer
 
