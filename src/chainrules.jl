@@ -11,8 +11,8 @@ ChainRulesCore.@non_differentiable mutate(args...)
 function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, m::MutableLayer, args...)
     res, back = rrule_via_ad(config, m.layer, args...)
     function MutableLayer_back(Δ)
-        δlayer, δargs = back(Δ)
-        Tangent{MutableLayer}(layer=δlayer), δargs
+        δs = back(Δ)
+        Tangent{MutableLayer}(layer=δs[1]), δs[2:end]...
     end
     return res, MutableLayer_back
 end
@@ -23,8 +23,8 @@ function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, m::LazyMutab
     forcemutation(m)
     res, back = rrule_via_ad(config, m.mutable, args...)
     function LazyMutable_back(Δ)
-        δmutable, δargs = back(Δ)
-        Tangent{LazyMutable}(mutable=δmutable), δargs
+        δs = back(Δ)
+        Tangent{LazyMutable}(mutable=δs[1]), δs[2:end]...
     end
     return res, LazyMutable_back
 end

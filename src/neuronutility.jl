@@ -1,9 +1,11 @@
 """
-    ActivationContribution{L,M} <: AbstractMutableComp
+    ActivationContribution{L,C,M} <: AbstractMutableComp
     ActivationContribution(l)
     ActivationContribution(l, method)
 
-Calculate neuron utility based on activations and gradients using `method`.
+Calculate neuron utility based on activations and gradients using `method`. 
+
+Designed to be used as `layerfun` argument to [`fluxvertex`](@ref).
 
 Can be a performance bottleneck in cases with large activations. Use [`NeuronUtilityEvery`](@ref) to mitigate.
 
@@ -13,58 +15,63 @@ Short summary is that the first order taylor approximation of the optimization p
 boils down to: "the ones which minimize `abs(gradient * activation)`" (assuming parameter independence).
 
 """
-struct ActivationContribution{L,M} <: AbstractMutableComp
+struct ActivationContribution{L,C,M} <: AbstractMutableComp
     layer::L
-    contribution::Base.RefValue{Any} # Type of activation not known yet :( Also leave some room for experimenting with things like storing the metric on the GPU
+    contribution::C
     method::M
 end
 # We use eps(Float32) here because we don't want parameters from new layers to have:
 # 1) higher utility than parameters from existing layers
 # 2) zero utility since that will often make the optimizer remove them completely
 # eps(Float32) is typically smaller than the optimizer tolerance, but NaiveNASlib tries to rescale
-ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05f0)) = ActivationContribution(l, Ref{Any}(fill(eps(Float32), nout(l))), method)
-ActivationContribution(l, method = Ewma(0.05f0)) = ActivationContribution(l, Ref{Any}(missing), method)
+ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05f0)) = ActivationContribution(l, fill(eps(Float32), nout(l)), method)
+ActivationContribution(l, method = Ewma(0.05f0)) = ActivationContribution(l, Float32[], method)
 
-layer(m::ActivationContribution) = layer(m.layer)
-layertype(m::ActivationContribution) = layertype(m.layer)
+@functor ActivationContribution
+
 wrapped(m::ActivationContribution) = m.layer
 
-Flux.trainable(m::ActivationContribution) = (;layer = Flux.trainable(wrapped(m)))
+# We do train contribution in some sense, but we don't want Flux to do it
+# We could create a "fake" gradient in the rrule and let the optimizer rule update it for us 
+# (rather than using our own Ewma), but it is probably not desirable to mix the model parameter update
+# strategy with the activation contribution strategy.
+Flux.trainable(m::ActivationContribution) = (;layer = Flux.trainable(m.layer))
 
-function Functors.functor(t::Type{<:ActivationContribution}, m::ActivationContribution)
-    _functor(t, m.layer, m.contribution[], m.method)
-end
+# Just passthrough when not taking gradients. 
+(m::ActivationContribution)(x...) = wrapped(m)(x...)
 
-function Functors.functor(t::Type{<:ActivationContribution}, m)
-    _functor(t, m.layer, m.contribution, m.method)
-end
+function ChainRulesCore.rrule(config::RuleConfig{>:HasReverseMode}, m::T, x...) where T <:ActivationContribution
+    act, back = rrule_via_ad(config, wrapped(m), x...)
 
-function _functor(::Type{<:ActivationContribution}, layer, contribution, method)
-    return (;layer, contribution, method), function(y) 
-        ActivationContribution(y.layer, Ref{Any}(y.contribution), y.method)
+    function ActivationContribution_back(Δ)
+        if length(m.contribution) === 0
+            newcontribution = m.method(missing, act, Δ)
+            resize!(m.contribution, length(newcontribution))
+            copyto!(m.contribution, newcontribution)
+        else
+            copyto!(m.contribution, m.method(m.contribution, act, Δ))
+        end
+
+        δs = back(Δ)
+        Tangent{T}(layer=δs[1]), δs[2:end]...
     end
-end
-
-function(m::ActivationContribution)(x...)
-    act = wrapped(m)(x...)
-
-    return Flux.Zygote.hook(act) do grad
-        grad === nothing && return grad
-        m.contribution[] = m.method(m.contribution[], act, grad)
-        return grad
-    end
+    return act, ActivationContribution_back
 end
 
 actdim(nd::Integer) = nd - 1
 
 function NaiveNASlib.Δsize!(m::ActivationContribution, inputs::AbstractVector, outputs::AbstractVector; kwargs...)
-    if m.contribution[] !== missing
+    if length(m.contribution) !== 0
         # This tends to happen when we are measuring contribution for a concatenation and we have added an extra input edge
         # TODO: Try to find another fix, perhaps we need to ensure that nout(v) if v wraps an ActivationContribution always return
         # the length of m.contribution
-        outputs[outputs .> length(m.contribution[])] .= -1 
+        outputs[outputs .> length(m.contribution)] .= -1 
+        newcontribution = select(m.contribution, 1 => outputs; newfun = (args...) -> eps(eltype(m.contribution)))
+        resize!(m.contribution, length(newcontribution))
+        copyto!(m.contribution, newcontribution)
+    #else 
+    #   no need to select anything
     end
-    m.contribution[] = select(m.contribution[], 1 => outputs; newfun = (args...) -> eps(eltype(m.contribution[])))
     NaiveNASlib.Δsize!(wrapped(m), inputs, outputs; kwargs...)
 end
 
@@ -100,7 +107,8 @@ function neuronutility(lm::LazyMutable)
    forcemutation(lm)
    neuronutility(wrapped(lm)) 
 end
-neuronutility(m::ActivationContribution) = m.contribution[]
+# Return missing to maintain API since previous versions used missing as sentinel value instead of empty vector
+neuronutility(m::ActivationContribution) = isempty(m.contribution) ? missing : m.contribution
 neuronutility(l) = neuronutility(layertype(l), l)
 
 # Default: mean of abs of weights + bias. Not a very good metric, but should be better than random
@@ -134,7 +142,7 @@ neuronutility_safe(::MutationSizeTrait, v) = clean_values(cpu(neuronutility(v)))
 neuronutility_safe(m::AbstractMutableComp) = clean_values(cpu(neuronutility(m)))
 
 clean_values(::Missing) = 1
-clean_values(a::AbstractArray) = replace(a, NaN => -100, Inf => -100, -Inf => -100)
+clean_values(a::AbstractArray) = length(a) === 0 ? 1 : replace(a, NaN => -100, Inf => -100, -Inf => -100)
 
 """
     neuronutilitytaylor(currval, act, grad)

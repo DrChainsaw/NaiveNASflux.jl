@@ -7,14 +7,13 @@
 
     function tr(l, data; loss=Flux.mse)
         example = [(data, 1)];
-        Flux.train!((x,y) -> loss(l(x), y), params(l), example, Descent(0.1))
+        Flux.train!((f,x,y) -> loss(l(x), y), l, example, Flux.setup(Descent(0.1), l))
     end
 
     function tr(l, output, inputs...)
         example = [(inputs, output)];
-        Flux.train!((x,y) -> Flux.mse(l(x...), y), params(l), example, Descent(0.1))
+        Flux.train!((f,x,y) -> Flux.mse(l(x...), y), l, example, Flux.setup(Descent(0.1), l))
     end
-
 
     @testset "Utils" begin
         actonly(curr, act, grad) = act
@@ -141,7 +140,6 @@
         l = ml(MaxPool((3,3)), ActivationContribution, insize=2)
         @test ismissing(neuronutility(l))
         tr(l, ones(Float32, 4,4,2,5))
-
         @test size(neuronutility(l)) == (2,)
     end
 
@@ -149,7 +147,6 @@
         l = ml(GlobalMeanPool(), ActivationContribution, insize=2)
         @test ismissing(neuronutility(l))
         tr(l, ones(Float32, 4,4,2,5))
-
         @test size(neuronutility(l)) == (2,)
     end
 

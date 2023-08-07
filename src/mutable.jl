@@ -11,6 +11,7 @@ Base.Broadcast.broadcastable(m::AbstractMutableComp) = Ref(m)
 
 # Not possible in julia <= 1.1. See #14919
 # (m::AbstractMutableComp)(x...) = layer(m)(x...)
+layer(m::AbstractMutableComp) = layer(wrapped(m))
 layertype(m::AbstractMutableComp) = layertype(layer(m))
 
 NaiveNASlib.nin(m::AbstractMutableComp) = nin(wrapped(m))
