@@ -1,6 +1,6 @@
 name = "NaiveNASflux"
 uuid = "85610aed-7d32-5e57-bb50-4c2e1c9e7997"
-version = "2.0.9"
+version = "2.0.10"
 
 [deps]
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
@@ -23,6 +23,7 @@ Functors = "0.2, 0.3, 0.4"
 JuMP = "0.19, 0.20, 0.21, 0.22, 0.23, 1"
 NaiveNASlib = "2.0.6"
 Optimisers = "0.2"
+PrecompileTools = "1"
 Reexport = "0.2.0, 1.0"
 Setfield = "0.3.4, 0.5, 0.6, 0.7, 0.8, 1.0"
 julia = "1"
