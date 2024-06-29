@@ -10,7 +10,7 @@ struct InputShapeVertex{V<:AbstractVertex, L<:FluxLayer} <: AbstractVertex
     t::L
 end
 
-@functor InputShapeVertex
+@layer :expand InputShapeVertex
 
 const inputshapemotivation = """
 Providing the input type is not strictly necessary for the package to work and in many cases a normal `inputvertex` 

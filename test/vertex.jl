@@ -330,7 +330,8 @@ end
             @test [nout(v2)] == nin(v3) == [8]
             @test lazyouts(v2) == [1, 2, 3, 4, 5, 6, -1, -1] 
 
-            @test graph(indata) == expout
+            # Approx here due to MAC OS CI getting differences in last decimals
+            @test graph(indata) ≈ expout
 
             @test Δnout!(v2 => -2) do v
                 v == v2 || return 1
@@ -340,7 +341,8 @@ end
             @test [nout(v2)] == nin(v3) == [6]
             @test lazyouts(v2) == 1:6
 
-            @test graph(indata) == expout
+            # Approx here due to MAC OS CI getting differences in last decimals
+            @test graph(indata) ≈ expout
 
             @test size(v2(ones(Float32, 1,1,nout(v1),1))) == (1,1,nin(v3)[],1)
         end
@@ -361,7 +363,8 @@ end
             @test [nout(v2)] == nin(v3) == [18]
             @test lazyouts(v2) == [1, 2, -1, -1, -1, -1, 3, 4, -1, -1, -1, -1, 5, 6, -1, -1, -1, -1] 
 
-            @test graph(indata) == expout
+            # Approx here due to MAC OS CI getting differences in last decimals
+            @test graph(indata) ≈ expout
 
             @test Δnout!(v2 => -6) do v
                 v == v2 || return 1
@@ -371,7 +374,8 @@ end
             @test [nout(v2)] == nin(v3) == [12]
             @test lazyouts(v2) ==  [1, 2, 3, 4, 7, 8, 9, 10, 13, 14, 15, 16]
 
-            @test graph(indata) == expout
+            # Approx here due to MAC OS CI getting differences in last decimals
+            @test graph(indata) ≈ expout
         end
     end
 
@@ -420,7 +424,7 @@ end
             indata1 = reshape(collect(Float32, 1:nin1*4*4), 4, 4, nin1, 1)
             indata2 = reshape(collect(Float32, 1:nin2*4*4), 4, 4, nin2, 1)
 
-            convfun = (nin,nout) -> convtype((3,3), nin=>nout, pad = (1,1))
+            convfun = (nin,nout) -> convtype((3,3), nin=>nout, pad = 1)
             @test size(testgraph(convfun, nin1, nin2)(indata1, indata2)) == (4,4,9,1)
         end
 

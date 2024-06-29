@@ -45,7 +45,7 @@ wrapped(m::MutableLayer) = m.layer
 layer(m::MutableLayer) = wrapped(m)
 layertype(m::MutableLayer) = layertype(layer(m))
 
-@functor MutableLayer
+@layer :expand MutableLayer
 
 
 function NaiveNASlib.Δsize!(m::MutableLayer, inputs::AbstractVector, outputs::AbstractVector; insert=neuroninsert, kwargs...) 
@@ -341,7 +341,7 @@ end
 layer(m::MutationTriggered) = layer(m.wrapped)
 layertype(m::MutationTriggered) = layertype(layer(m))
 
-@functor MutationTriggered
+@layer :expand MutationTriggered
 
 """
     ResetLazyMutable
@@ -366,7 +366,7 @@ end
 layer(m::ResetLazyMutable) = layer(m.wrapped)
 layertype(m::ResetLazyMutable) = layertype(layer(m))
 
-@functor ResetLazyMutable
+@layer :expand ResetLazyMutable
 
 """
     NoParams

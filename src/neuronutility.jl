@@ -27,7 +27,7 @@ end
 ActivationContribution(l::AbstractMutableComp, method = Ewma(0.05f0)) = ActivationContribution(l, fill(eps(Float32), nout(l)), method)
 ActivationContribution(l, method = Ewma(0.05f0)) = ActivationContribution(l, Float32[], method)
 
-@functor ActivationContribution
+@layer :expand ActivationContribution
 
 wrapped(m::ActivationContribution) = m.layer
 
