@@ -5,10 +5,9 @@ using Reexport
 using NaiveNASlib.Extend, NaiveNASlib.Advanced
 import Flux
 using Flux: Dense, Conv, ConvTranspose, CrossCor, LayerNorm, BatchNorm, InstanceNorm, GroupNorm, 
-            MaxPool, MeanPool, Dropout, AlphaDropout, GlobalMaxPool, GlobalMeanPool, cpu
+            MaxPool, MeanPool, Dropout, AlphaDropout, GlobalMaxPool, GlobalMeanPool, cpu, @layer
 import Optimisers
 import Functors
-using Functors: @functor
 using Statistics
 using Setfield: @set, setproperties
 using LinearAlgebra
