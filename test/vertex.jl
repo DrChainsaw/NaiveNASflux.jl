@@ -420,7 +420,7 @@ end
             indata1 = reshape(collect(Float32, 1:nin1*4*4), 4, 4, nin1, 1)
             indata2 = reshape(collect(Float32, 1:nin2*4*4), 4, 4, nin2, 1)
 
-            convfun = (nin,nout) -> convtype((3,3), nin=>nout, pad = (1,1))
+            convfun = (nin,nout) -> convtype((3,3), nin=>nout, pad = 1)
             @test size(testgraph(convfun, nin1, nin2)(indata1, indata2)) == (4,4,9,1)
         end
 
