@@ -13,6 +13,7 @@ Base.Broadcast.broadcastable(m::AbstractMutableComp) = Ref(m)
 # (m::AbstractMutableComp)(x...) = layer(m)(x...)
 layer(m::AbstractMutableComp) = layer(wrapped(m))
 layertype(m::AbstractMutableComp) = layertype(layer(m))
+NaiveNASlib.op(m::AbstractMutableComp) = layer(m)
 
 NaiveNASlib.nin(m::AbstractMutableComp) = nin(wrapped(m))
 NaiveNASlib.nout(m::AbstractMutableComp) = nout(wrapped(m))
@@ -382,6 +383,7 @@ end
 (i::NoParams)(x...) = layer(i)(x...)
 layer(i::NoParams) = i.layer
 layertype(i::NoParams) = layertype(layer(i))
+NaiveNASlib.op(i::NoParams) = layer(i)
 
 LazyMutable(m::NoParams) = m
 
