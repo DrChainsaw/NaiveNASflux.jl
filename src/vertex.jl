@@ -95,6 +95,7 @@ struct LayerTypeWrapper{L}
     t::L
 end
 layertype(l::LayerTypeWrapper) = l.t
+Base.show(io::IO, l::LayerTypeWrapper) = show(io, l.t)
 
 """
     SizeNinNoutConnected <: NaiveNASlib.DecoratingTrait
