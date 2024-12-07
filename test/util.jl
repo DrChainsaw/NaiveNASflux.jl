@@ -42,12 +42,12 @@
         @test nin(InstanceNorm(3)) == [nout(InstanceNorm(3))] == [3]
         @test nin(GroupNorm(3,1)) == [nout(GroupNorm(3,1))] == [3]
 
-        @test nin(RNN(3,4)) == [3]
-        @test nout(RNN(3,4)) == 4
-        @test nin(LSTM(3,4)) == [3]
-        @test nout(LSTM(3,4)) == 4
-        @test nin(GRU(3,4)) == [3]
-        @test nout(GRU(3,4)) == 4
+        @test nin(RNN(3 => 4)) == [3]
+        @test nout(RNN(3 => 4)) == 4
+        @test nin(LSTM(3 => 4)) == [3]
+        @test nout(LSTM(3 => 4)) == 4
+        @test nin(GRU(3 => 4)) == [3]
+        @test nout(GRU(3 => 4)) == 4
     end
 
     @testset "Dims" begin
@@ -64,9 +64,9 @@
         @test actdim(Flux.Scale(1)) == indim(Flux.Scale(2)) == outdim(Flux.Scale(3)) == 1
 
         @test actdim(GenericFluxRecurrent()) == 1
-        @test actdim(RNN(3,4)) ==  1
-        @test actdim(LSTM(3,4)) == 1
-        @test actdim(GRU(3,4)) == 1
+        @test actdim(RNN(3 => 4)) ==  1
+        @test actdim(LSTM(3 => 4)) == 1
+        @test actdim(GRU(3 => 4)) == 1
 
         @test_throws ArgumentError actdim(BogusLayer())
         @test_throws ArgumentError indim(BogusLayer())

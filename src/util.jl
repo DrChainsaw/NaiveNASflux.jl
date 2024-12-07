@@ -62,23 +62,15 @@ bias(::FluxConvolutional, l) = l.bias
 weights(::FluxScale, l) = l.scale
 bias(::FluxScale, l) = l.bias
 
-weights(lt::FluxRecurrent, l::Flux.Recur) = weights(lt, l.cell)
-bias(lt::FluxRecurrent, l::Flux.Recur) = bias(lt, l.cell)
+weights(lt::FluxRecurrent, l::FluxRecurrentContainer) = weights(lt, l.cell)
+bias(lt::FluxRecurrent, l::FluxRecurrentContainer) = bias(lt, l.cell)
 weights(::FluxRecurrent, cell) = cell.Wi
-bias(::FluxRecurrent, cell) = cell.b
+bias(::FluxRecurrent, cell) = cell.bias
+bias(::FluxRecurrent, cell::Flux.GRUCell) = cell.b
 
 hiddenweights(l) = hiddenweights(layertype(l), l)
-hiddenweights(lt::FluxRecurrent, l::Flux.Recur) = hiddenweights(lt, l.cell)
+hiddenweights(lt::FluxRecurrent, l::FluxRecurrentContainer) = hiddenweights(lt, l.cell)
 hiddenweights(::FluxRecurrent, cell) = cell.Wh
-
-hiddenstate(l) = hiddenstate(layertype(l), l)
-hiddenstate(lt::FluxRecurrent, l::Flux.Recur) = hiddenstate(lt, l.cell)
-hiddenstate(::FluxRecurrent, cell) = cell.state0
-hiddenstate(::FluxLstm, cell::Flux.LSTMCell) = [h for h in cell.state0]
-
-state(l) = state(layertype(l), l)
-state(::FluxRecurrent, l) = l.state
-state(::FluxLstm, l) = [h for h in l.state]
 
 ngroups(l) = ngroups(layertype(l), l)
 ngroups(lt, l) = 1

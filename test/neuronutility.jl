@@ -1,7 +1,6 @@
 
 @testset "Neuron utility tests" begin
     import NaiveNASflux: neuronutility_safe, neuronutility, layertype
-    import Flux: params
 
     ml(l, lfun=LazyMutable; insize=nin(l)[]) = fluxvertex(l, inputvertex("in", insize, layertype(l)), layerfun = lfun)
 
@@ -56,7 +55,7 @@
     end
 
     @testset "Neuron utility RNN default" begin
-        l = ml(RNN(3,5))
+        l = ml(RNN(3 => 5))
         @test size(neuronutility(l)) == (5,)
         @test neuronutility(l) ≈ neuronutility_safe(l)
     end
@@ -80,19 +79,22 @@
         @test neuronutility(l) == fill(eps(Float32), 3)
         tr(l, ones(Float32, 2, 1), loss = f ∘ Flux.mse)
         @test neuronutility(l) == fill(eps(Float32), 3)
-        @test length(params(l)) == length(params(layer(l)))
     end
 
-    @testset "Functor and trainable" begin
+    @testset "Functor" begin
         import NaiveNASflux: weights, bias
         l = ml(Dense(2,3), ActivationContribution)
 
         neuronutility_org = neuronutility(l)
 
-        @test params(l) == params(layer(l))
         l2 = fmap(x -> x isa AbstractArray ? fill(17, size(x)) : x, l)
         @test unique(neuronutility(l2)) == unique(bias(layer(l2))) == unique(weights(layer(l2))) == [17]
         @test neuronutility_org === neuronutility(l) == fill(eps(Float32), nout(l))
+    end
+
+    @testset "Flux trainable" begin
+        l = Dense(2 => 3)
+        @test Flux.trainable(ActivationContribution(l)) == (;layer = l)
     end
 
     @testset "Neuron utility Dense act contrib" begin
@@ -100,7 +102,6 @@
         @test neuronutility(l) == fill(eps(Float32), 5)
         tr(l, ones(Float32, 3, 4))
         @test size(neuronutility(l)) == (5,)
-        @test length(params(l)) == length(params(layer(l)))
     end
 
     @testset "Neuron utility Dense act contrib every 4" begin
@@ -121,11 +122,10 @@
     end
 
     @testset "Neuron utility RNN act contrib" begin
-        l = ml(RNN(3,5), ActivationContribution)
+        l = ml(RNN(3 => 5), ActivationContribution)
         @test neuronutility(l) == fill(eps(Float32), 5)
         tr(l, ones(Float32, 3, 8))
         @test size(neuronutility(l)) == (5,)
-        @test length(params(l)) == length(params(layer(l)))
     end
 
     @testset "Neuron utility Conv act contrib" begin
@@ -133,7 +133,6 @@
         @test neuronutility(l) == fill(eps(Float32), 5)
         tr(l, ones(Float32, 4,4,2,5))
         @test size(neuronutility(l)) == (5,)
-        @test length(params(l)) == length(params(layer(l)))
     end
 
     @testset "Neuron utility MaxPool act contrib" begin
@@ -217,7 +216,8 @@
         v5 = concat("v5", v4, v3, v3; layerfun=ActivationContribution)
 
         g = CompGraph(v0, v5)
-        Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
+        # ActivationContribution stored implicitly when computing gradient
+        Flux.gradient(g -> sum(g(ones(Float32, nout(v0), 1))), g)
 
         # make sure values have materialized so we don't accidentally have a scalar utility
         @test length(NaiveNASlib.defaultutility(v3)) == nout(v3) == nout(v1)
@@ -241,7 +241,8 @@
         v5 = concat("v5", v4, v3, v3; layerfun=ActivationContribution)
 
         g = CompGraph(v0, v5)
-        Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
+        # ActivationContribution stored implicitly when computing gradient
+        Flux.gradient(g -> sum(g(ones(Float32, nout(v0), 1))), g)
 
         # make sure values have materialized so we don't accidentally have a scalar utility
         @test length(NaiveNASlib.defaultutility(v3)) == nout(v3) == nout(v1)
@@ -271,7 +272,8 @@
         v6 = concat("v6", v3,v4,v5; layerfun=ActivationContribution)
 
         g = CompGraph(v0, v6)
-        Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
+        # ActivationContribution stored implicitly when computing gradient
+        Flux.gradient(g -> sum(g(ones(Float32, nout(v0), 1))), g)
 
         # make sure values have materialized so we don't accidentally have a scalar utility
         @test length(NaiveNASlib.defaultutility(v3)) == nout(v3) == nout(v1)
@@ -295,7 +297,8 @@
         v5 = concat("v5", v4, v3, v3; layerfun=ActivationContribution)
 
         g = CompGraph(v0, v5)
-        Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
+        # ActivationContribution stored implicitly when computing gradient
+        Flux.gradient(g -> sum(g(ones(Float32, nout(v0), 1))), g)
 
         # make sure values have materialized so we don't accidentally have a scalar utility
         @test length(NaiveNASlib.defaultutility(v3)) == nout(v3) == nout(v1) + nout(v2)
@@ -321,7 +324,8 @@
         v5 = concat("v5", v4, v3, v3; layerfun=ActivationContribution)
 
         g = CompGraph(v0, v5)
-        Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
+        # ActivationContribution stored implicitly when computing gradient
+        Flux.gradient(g -> sum(g(ones(Float32, nout(v0), 1))), g)
 
         # make sure values have materialized so we don't accidentally have a scalar utility
         @test length(NaiveNASlib.defaultutility(v3)) == nout(v3) == nout(v1) + nout(v2)
@@ -351,7 +355,8 @@
         v6 = concat("v6", v3,v4,v5; layerfun=ActivationContribution)
 
         g = CompGraph(v0, v6)
-        Flux.gradient(() -> sum(g(ones(Float32, nout(v0), 1))))
+        # ActivationContribution stored implicitly when computing gradient
+        Flux.gradient(g -> sum(g(ones(Float32, nout(v0), 1))), g)
 
         # make sure values have materialized so we don't accidentally have a scalar utility
         @test length(NaiveNASlib.defaultutility(v3)) == nout(v3) == nout(v1) + nout(v2)

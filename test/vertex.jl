@@ -382,7 +382,12 @@ end
     @testset "Concatenate activations" begin
 
         function testgraph(layerfun, nin1, nin2)
-            vfun = (v, s) -> fluxvertex(layerfun(nout(v), s), v)
+            vfun = (v, s) -> fluxvertex(layerfun(nout(v) => s), v)
+            return testgraph_vfun(vfun, nin1, nin2)
+        end
+
+        function testgraph(layerfun::Type{LSTM}, nin1, nin2)
+            vfun = (v, s) -> invariantvertex(first, fluxvertex(layerfun(nout(v) => s), v))
             return testgraph_vfun(vfun, nin1, nin2)
         end
 
@@ -412,10 +417,9 @@ end
         @testset "Concatenate $rnntype" for rnntype in (RNN, GRU, LSTM)
             nin1 = 2
             nin2 = 5
-            indata1 = reshape(collect(Float32, 1:nin1*4), nin1, 4)
-            indata2 = reshape(collect(Float32, 1:nin2*4), nin2, 4)
-
-            @test size(testgraph(rnntype, nin1, nin2)(indata1, indata2)) == (9,4)
+            indata1 = reshape(collect(Float32, 1:nin1*4), nin1, 4, 1)
+            indata2 = reshape(collect(Float32, 1:nin2*4), nin2, 4, 1)
+            @test size(testgraph(rnntype, nin1, nin2)(indata1, indata2)) == (9,4,1)
         end
 
         @testset "Concatenate $convtype" for convtype in (Conv, ConvTranspose, CrossCor)
@@ -424,7 +428,7 @@ end
             indata1 = reshape(collect(Float32, 1:nin1*4*4), 4, 4, nin1, 1)
             indata2 = reshape(collect(Float32, 1:nin2*4*4), 4, 4, nin2, 1)
 
-            convfun = (nin,nout) -> convtype((3,3), nin=>nout, pad = 1)
+            convfun = (nin_nout) -> convtype((3,3), nin_nout, pad = 1)
             @test size(testgraph(convfun, nin1, nin2)(indata1, indata2)) == (4,4,9,1)
         end
 
@@ -479,7 +483,7 @@ end
         @testset "Concatentate dimension mismatch fail" begin
             d1 = fluxvertex(Dense(2,3), inputvertex("in1", 2))
             c1 = fluxvertex(Conv((3,3), 4=>5), inputvertex("in2", 4))
-            r1 = fluxvertex(RNN(6,7), inputvertex("in3", 6))
+            r1 = fluxvertex(RNN(6 => 7), inputvertex("in3", 6))
             @test_throws DimensionMismatch concat(d1, c1)
             @test_throws DimensionMismatch concat(r1, c1)
             @test_throws DimensionMismatch concat(d1, r1)
@@ -575,7 +579,7 @@ end
             @test size(p1b.activation) == (4, 4, 2, 1)
         end
 
-        rnnvertex(inpt, outsize) = fluxvertex("rnn", RNN(nout(inpt), outsize), inpt)
+        rnnvertex(inpt, outsize) = fluxvertex("rnn", RNN(nout(inpt) => outsize), inpt)
         densevertex(inpt, outsize) = fluxvertex("dense", Dense(nout(inpt), outsize), inpt)
 
         @testset "RNN to Dense" begin
@@ -586,49 +590,44 @@ end
 
             graph = CompGraph([inpt], [dnn])
 
-            indata = [collect(Float32, 1:nin(rnn)[]) for i =1:10]
-            @test size(hcat(graph.(indata)...)) == (3,10)
-            @test size(p.activation) == (5,)
+            indata = [reshape(collect(Float32, 1:nin(rnn)[]), :, 1, 1) for i =1:10]
+            @test size(hcat(graph.(indata)...)) == (3,10, 1)
+            @test size(p.activation) == (5,1,1)
 
             Δnin!(v -> 1:nout(v), dnn, 1)
 
-            @test size(hcat(graph.(indata)...)) == (3,10)
-            @test size(p.activation) == (6,)
+            @test size(hcat(graph.(indata)...)) == (3,10,1)
+            @test size(p.activation) == (6,1,1)
 
             Δnout!(v -> 1:nout(v), rnn, -2)
 
-            @test size(hcat(graph.(indata)...)) == (3,10)
-            @test size(p.activation) == (4,)
+            @test size(hcat(graph.(indata)...)) == (3,10,1)
+            @test size(p.activation) == (4,1,1)
         end
     end
 end
 
 @testset "functor" begin
     import Functors: functor, fmap
-    import Flux: params
-    import NaiveNASflux: weights, bias, FluxDense
+    import Flux: trainable
+    import NaiveNASflux: weights, bias, FluxDense, FluxParLayer
     inpt = inputvertex("in", 2, FluxDense())
-    v1 = fluxvertex(Dense(2, 3), inpt)
-    v2 = fluxvertex(Dense(3, 4), v1)
-    v3 = concat(v2, v1)
-    v4 = fluxvertex(Dense(nout(v3), 2), v3)
+    v1 = fluxvertex("v1", Dense(2, 3), inpt)
+    v2 = fluxvertex("v2", Dense(3, 4), v1)
+    v3 = concat("v3", v2, v1)
+    v4 = fluxvertex("v4", Dense(nout(v3), 2), v3)
     g1 = CompGraph(inpt, v4)
-
-    pars1 = params(g1).order
-    @test pars1[5] == weights(layer(v1))
-    @test pars1[6] == bias(layer(v1))
-    @test pars1[3] == weights(layer(v2))
-    @test pars1[4] == bias(layer(v2))
-    @test pars1[1] == weights(layer(v4))
-    @test pars1[2] == bias(layer(v4))
 
     # Basically what Flux.gpu does except function is CuArrays.cu(x) instead of 2 .* x
     testfun(x) = x
     testfun(x::AbstractArray) = 2 .* x
     g2 = fmap(testfun, g1)
 
-    pars2 = params(g2).order.data
-    @test pars2 == 2 .* pars1
+    @testset "Scale by 2 $(name(v1)) vs $(name(v2))" for (v1, v2) in 
+            zip(vertices(g1)[[2,3,5]], vertices(g2)[[2,3,5]])
+        @test 2 * weights(layer(v1)) == weights(layer(v2))
+        @test 2 * bias(layer(v1)) == bias(layer(v2))      
+    end
 
     indata = randn(nout(inpt), 1)
 

@@ -21,7 +21,9 @@ struct FluxRnn <: FluxRecurrent end
 struct FluxLstm <: FluxRecurrent end
 struct FluxGru <: FluxRecurrent end
 
-NaiveNASlib.shapetrait(l::Flux.Recur) = NaiveNASlib.shapetrait(l.cell)
+const FluxRecurrentContainer = Union{Flux.RNN, Flux.LSTM, Flux.GRU}
+
+NaiveNASlib.shapetrait(l::FluxRecurrentContainer) = NaiveNASlib.shapetrait(l.cell)
 NaiveNASlib.shapetrait(::Flux.RNNCell) = FluxRnn()
 NaiveNASlib.shapetrait(::Flux.LSTMCell) = FluxLstm()
 NaiveNASlib.shapetrait(::Flux.GRUCell) = FluxGru()

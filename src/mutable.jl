@@ -107,32 +107,13 @@ function mutate(lt::FluxRecurrent, m::MutableLayer; inputs=1:nin(m)[], outputs=1
     wi = select(weights(l), indim(l) => inputs, outdim(l) => outputs_scaled, newfun=insert(lt, WeightParam()))
     wh = select(hiddenweights(l), 2 => outputs, 1 => outputs_scaled, newfun=insert(lt, RecurrentWeightParam()))
     b = select(bias(l), 1 => outputs_scaled, newfun=insert(lt, BiasParam()))
-    mutate_recurrent_state(lt, m, outputs, wi, wh, b, insert)
-end
-
-function mutate_recurrent_state(lt::FluxRecurrent, m::MutableLayer, outputs, wi, wh, b, insert)
-    l = layer(m)
-    state0 = select(hiddenstate(l), 1 => outputs, newfun=insert(lt, RecurrentState()))
-    s = select(state(l), 1 => outputs; newfun=insert(lt, RecurrentState()))
-
-    cellnew = setproperties(layer(m).cell, (Wi=wi, Wh=wh, b = b, state0 = state0))
-    lnew = setproperties(layer(m), (cell=cellnew, state = s))
+    cellnew = setproperties(layer(m).cell, paramtuple(lt, wi, wh, b))
+    lnew = setproperties(layer(m), (;cell=cellnew))
     m.layer = lnew
 end
 
-function mutate_recurrent_state(lt::FluxLstm, m::MutableLayer, outputs, wi, wh, b, insert)
-    l = layer(m)
-    s0curr, scurr = hiddenstate(l), state(l)
-    s0 = select.(s0curr, repeat([1 => outputs], length(s0curr)); newfun=insert(lt, RecurrentState()))
-    s = select.(scurr, repeat([1 => outputs], length(scurr)); newfun=insert(lt, RecurrentState()))
-
-
-    cellnew = setproperties(layer(m).cell, (Wi=wi, Wh=wh, b = b, state0 = Tuple(s0)))
-    lnew = setproperties(layer(m), (cell=cellnew, state = Tuple(s)))
-    m.layer = lnew
-
-    return (;state0 = Tuple(s0)), Tuple(s)
-end
+paramtuple(::FluxRecurrent, wi, wh, bias) = (Wi=wi, Wh=wh, bias=bias)
+paramtuple(::FluxGru, wi, wh, b) = (Wi=wi, Wh=wh, b=b)
 
 
 function mutate(t::FluxParInvLayer, m::MutableLayer; inputs=missing, outputs=missing, other=missing, insert=neuroninsert)
@@ -164,7 +145,7 @@ function mutate(lt::FluxParNorm, m::MutableLayer, inds; insert=neuroninsert)
     parselect(pname, x::AbstractArray) = select(x, 1 => inds; newfun = neuroninsert(lt, pname))
     parselect(pname, x) = x
 
-    fs, re = Flux.functor(m.layer)
+    fs, re = Functors.functor(m.layer)
     newlayer = re(map(parselect, pairs(fs) |> collect))
     newlayer = @set newlayer.chs = length(inds)
     m.layer = newlayer
@@ -198,7 +179,7 @@ function mutate(lt::FluxGroupNorm, m::MutableLayer, inds; insert=neuroninsert)
     parselect(pname, x::AbstractArray) = select(x, 1 => sizetoinds[length(x)]; newfun = insert(lt, pname))
     parselect(pname, x) = x
 
-    fs, re = Flux.functor(m.layer)
+    fs, re = Functors.functor(m.layer)
     newlayer = re(map(parselect, pairs(fs) |> collect))
     newlayer.G = ngroups
     newlayer = @set newlayer.chs = length(inds)
