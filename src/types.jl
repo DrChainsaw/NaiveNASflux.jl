@@ -21,12 +21,20 @@ struct FluxRnn <: FluxRecurrent end
 struct FluxLstm <: FluxRecurrent end
 struct FluxGru <: FluxRecurrent end
 
-const FluxRecurrentContainer = Union{Flux.RNN, Flux.LSTM, Flux.GRU}
+NaiveNASlib.shapetrait(::Flux.RNN) = FluxRnn()
+NaiveNASlib.shapetrait(::Flux.LSTM) = FluxLstm()
+NaiveNASlib.shapetrait(::Flux.GRU) = FluxGru()
 
-NaiveNASlib.shapetrait(l::FluxRecurrentContainer) = NaiveNASlib.shapetrait(l.cell)
-NaiveNASlib.shapetrait(::Flux.RNNCell) = FluxRnn()
-NaiveNASlib.shapetrait(::Flux.LSTMCell) = FluxLstm()
-NaiveNASlib.shapetrait(::Flux.GRUCell) = FluxGru()
+# Not sure if this distinction is needed, but they are quite separate things
+# Maybe turns out to be useful for custom layers which use the cells directly
+abstract type FluxRecurrentCell <: FluxParLayer end
+struct FluxRnnCell <: FluxRecurrentCell end
+struct FluxLstmCell <: FluxRecurrentCell end
+struct FluxGruCell <: FluxRecurrentCell end
+
+NaiveNASlib.shapetrait(::Flux.RNNCell) = FluxRnnCell()
+NaiveNASlib.shapetrait(::Flux.LSTMCell) = FluxLstmCell()
+NaiveNASlib.shapetrait(::Flux.GRUCell) = FluxGruCell()
 
 abstract type FluxConvolutional{N} <: FluxParLayer end
 struct GenericFluxConvolutional{N} <: FluxConvolutional{N} end
@@ -68,12 +76,12 @@ abstract type FluxNoParLayer <: FluxTransparentLayer end
 struct FluxPoolLayer <: FluxNoParLayer end
 struct FluxDropOut <: FluxNoParLayer end
 
-layertype(l::MaxPool) = FluxPoolLayer()
-layertype(l::MeanPool) = FluxPoolLayer()
-layertype(l::Dropout) = FluxDropOut()
-layertype(l::AlphaDropout) = FluxDropOut()
-layertype(l::GlobalMaxPool) = FluxPoolLayer()
-layertype(l::GlobalMeanPool) = FluxPoolLayer()
+layertype(::MaxPool) = FluxPoolLayer()
+layertype(::MeanPool) = FluxPoolLayer()
+layertype(::Dropout) = FluxDropOut()
+layertype(::AlphaDropout) = FluxDropOut()
+layertype(::GlobalMaxPool) = FluxPoolLayer()
+layertype(::GlobalMeanPool) = FluxPoolLayer()
 
 # Compositions? Might not have any common methods...
 # MaxOut, Chain?

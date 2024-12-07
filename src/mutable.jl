@@ -97,8 +97,14 @@ function mutate(lt::FluxConvolutional{N}, m::MutableLayer; inputs=1:nin(m)[], ou
     newlayer(m, w, b, (;groups= length(inputs) ÷ newingroups, otherpars(other, l)...))
 end
 
-function mutate(lt::FluxRecurrent, m::MutableLayer; inputs=1:nin(m)[], outputs=1:nout(m), other=missing, insert=neuroninsert)
+function mutate(::FluxRecurrent, m::MutableLayer; kwargs...)
     l = layer(m)
+    cellnew = mutate_cell(layertype(l.cell), l.cell; kwargs...)
+    lnew = setproperties(l, (;cell=cellnew))
+    m.layer = lnew
+end
+
+function mutate_cell(lt::FluxRecurrentCell, l; inputs=1:nin(l), outputs=1:nout(l), other=missing, insert=neuroninsert)
     outputs_scaled = mapfoldl(vcat, 1:outscale(l)) do i
         offs = (i-1) * nout(l)
         return map(x -> x > 0 ? x + offs : x, outputs)
@@ -107,13 +113,11 @@ function mutate(lt::FluxRecurrent, m::MutableLayer; inputs=1:nin(m)[], outputs=1
     wi = select(weights(l), indim(l) => inputs, outdim(l) => outputs_scaled, newfun=insert(lt, WeightParam()))
     wh = select(hiddenweights(l), 2 => outputs, 1 => outputs_scaled, newfun=insert(lt, RecurrentWeightParam()))
     b = select(bias(l), 1 => outputs_scaled, newfun=insert(lt, BiasParam()))
-    cellnew = setproperties(layer(m).cell, paramtuple(lt, wi, wh, b))
-    lnew = setproperties(layer(m), (;cell=cellnew))
-    m.layer = lnew
+    setproperties(l, paramtuple(lt, wi, wh, b))
 end
 
-paramtuple(::FluxRecurrent, wi, wh, bias) = (Wi=wi, Wh=wh, bias=bias)
-paramtuple(::FluxGru, wi, wh, b) = (Wi=wi, Wh=wh, b=b)
+paramtuple(::FluxRecurrentCell, wi, wh, bias) = (Wi=wi, Wh=wh, bias=bias)
+paramtuple(::FluxGruCell, wi, wh, b) = (Wi=wi, Wh=wh, b=b)
 
 
 function mutate(t::FluxParInvLayer, m::MutableLayer; inputs=missing, outputs=missing, other=missing, insert=neuroninsert)
