@@ -11,12 +11,17 @@ NaiveNASlib.nout(::FluxParLayer, l) = size(weights(l), outdim(l))
 NaiveNASlib.nout(::FluxScale, l) = length(weights(l))
 NaiveNASlib.nout(::FluxParInvLayer, l::LayerNorm) = nout(l.diag)
 NaiveNASlib.nout(::FluxParNorm, l) = l.chs
-NaiveNASlib.nout(::FluxRecurrent, l) = div(size(weights(l), outdim(l)), outscale(l))
+NaiveNASlib.nout(::FluxRecurrent, l) = nout(l.cell)
+NaiveNASlib.nout(::FluxRecurrentCell, l) = div(size(weights(l), outdim(l)), outscale(l))
 
 outscale(l) = outscale(layertype(l))
 outscale(::FluxRnn) = 1
 outscale(::FluxLstm) = 4
 outscale(::FluxGru) = 3
+
+outscale(::FluxRnnCell) = 1
+outscale(::FluxLstmCell) = 4
+outscale(::FluxGruCell) = 3
 
 indim(l) = indim(layertype(l))
 outdim(l) = outdim(layertype(l))
@@ -43,6 +48,11 @@ outdim(::FluxRecurrent) = 1
 actdim(::FluxRecurrent) = 1
 actrank(::FluxRecurrent) = 2
 
+indim(::FluxRecurrentCell) = 2
+outdim(::FluxRecurrentCell) = 1
+actdim(::FluxRecurrentCell) = 1
+actrank(::FluxRecurrentCell) = 2
+
 indim(::FluxConvolutional{N}) where N = 2+N
 outdim(::FluxConvolutional{N}) where N = 1+N
 actdim(::FluxConvolutional{N}) where N = 1+N
@@ -62,23 +72,15 @@ bias(::FluxConvolutional, l) = l.bias
 weights(::FluxScale, l) = l.scale
 bias(::FluxScale, l) = l.bias
 
-weights(lt::FluxRecurrent, l::Flux.Recur) = weights(lt, l.cell)
-bias(lt::FluxRecurrent, l::Flux.Recur) = bias(lt, l.cell)
-weights(::FluxRecurrent, cell) = cell.Wi
-bias(::FluxRecurrent, cell) = cell.b
+weights(::FluxRecurrent, l) = weights(l.cell)
+bias(::FluxRecurrent, l) = bias(l.cell)
+weights(::FluxRecurrentCell, cell) = cell.Wi
+bias(::FluxRecurrentCell, cell) = cell.bias
+bias(::FluxGruCell, cell::Flux.GRUCell) = cell.b
 
 hiddenweights(l) = hiddenweights(layertype(l), l)
-hiddenweights(lt::FluxRecurrent, l::Flux.Recur) = hiddenweights(lt, l.cell)
-hiddenweights(::FluxRecurrent, cell) = cell.Wh
-
-hiddenstate(l) = hiddenstate(layertype(l), l)
-hiddenstate(lt::FluxRecurrent, l::Flux.Recur) = hiddenstate(lt, l.cell)
-hiddenstate(::FluxRecurrent, cell) = cell.state0
-hiddenstate(::FluxLstm, cell::Flux.LSTMCell) = [h for h in cell.state0]
-
-state(l) = state(layertype(l), l)
-state(::FluxRecurrent, l) = l.state
-state(::FluxLstm, l) = [h for h in l.state]
+hiddenweights(::FluxRecurrent, l) = hiddenweights(l.cell)
+hiddenweights(::FluxRecurrentCell, cell) = cell.Wh
 
 ngroups(l) = ngroups(layertype(l), l)
 ngroups(lt, l) = 1

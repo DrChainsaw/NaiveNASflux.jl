@@ -35,7 +35,7 @@ wrapped(m::ActivationContribution) = m.layer
 # We could create a "fake" gradient in the rrule and let the optimizer rule update it for us 
 # (rather than using our own Ewma), but it is probably not desirable to mix the model parameter update
 # strategy with the activation contribution strategy.
-Flux.trainable(m::ActivationContribution) = (;layer = Flux.trainable(m.layer))
+Flux.trainable(m::ActivationContribution) = (;layer = m.layer)
 
 # Just passthrough when not taking gradients. 
 (m::ActivationContribution)(x...) = wrapped(m)(x...)

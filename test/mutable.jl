@@ -1,6 +1,6 @@
 @testset "Mutable computation" begin
 
-    using NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, mutate, hiddenweights, hiddenstate, state, outscale
+    using NaiveNASflux: AbstractMutableComp, MutableLayer, LazyMutable, weights, bias, select, mutate, hiddenweights, outscale
     using Functors: fmap
 
     inszero = pairs((insert = (lt, pn) -> (args...) -> 0,))
@@ -319,27 +319,17 @@
 
     @testset "Recurrent layers" begin
 
-        function assertrecurrent(l, Wiexp, Whexp, bexp, hexp, sexp)
+        function assertrecurrent(l, Wiexp, Whexp, bexp)
             assertlayer(l, Wiexp, bexp)
             @test hiddenweights(l) == Whexp
-            @test hiddenstate(l) == hexp
-            @test state(l) == sexp
         end
 
         function setparsrnn(l)
             bias(l)[1:end] = collect(Float32, 1:nout(l)*outscale(l))
-            hiddenstate(l)[1:end] = collect(Float32, 1:nout(l))
-            state(l)[1:end] = collect(Float32, 1:nout(l))
-        end
-
-        function setparslstm(l)
-            bias(l)[1:end] = collect(Float32, 1:nout(l)*outscale(l))
-            foreach(h -> h[1:end] = collect(Float32, 1:nout(l)), hiddenstate(l))
-            foreach(h -> h[1:end] = collect(Float32, 1:nout(l)), state(l))
         end
 
         @testset "RNN MutableLayer" begin
-            m = MutableLayer(RNN(3, 4))
+            m = MutableLayer(RNN(3 => 4))
             setparsrnn(layer(m))
 
             @test nin(m) == [3]
@@ -350,11 +340,9 @@
                 Wiexp = weights(layer(m))[:, inds]
                 Whexp = copy(hiddenweights(layer(m)))
                 bexp = copy(bias(layer(m)))
-                hexp = copy(hiddenstate(layer(m)))
-                sexp = copy(state(layer(m)))
                 
                 NaiveNASlib.Δsize!(m, [inds], 1:nout(m))
-                assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
+                assertrecurrent(layer(m), Wiexp, Whexp, bexp)
             end
 
             @testset "Insert outputs" begin
@@ -363,10 +351,8 @@
                 wh = hiddenweights(layer(m))
                 Whexp = [wh[1, 1] 0 wh[1, 2]; zeros(Float32, 1, 3); wh[2, 1] 0 wh[2, 2]]
                 bexp = Float32[bias(layer(m))[1], 0, bias(layer(m))[2]]
-                hexp = Float32[hiddenstate(layer(m))[1], 0, hiddenstate(layer(m))[2]] |> hcat
-                sexp = Float32[state(layer(m))[1], 0, state(layer(m))[2]] |> hcat
                 NaiveNASlib.Δsize!(m, _nins(m), inds; inszero...)
-                assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
+                assertrecurrent(layer(m), Wiexp, Whexp, bexp)
             end
 
             #Sanity check that the layer still seems to work after mutation
@@ -376,45 +362,7 @@
         end
 
         @testset "LSTM MutableLayer" begin
-            m = MutableLayer(LSTM(3, 4))
-            setparslstm(layer(m))
-
-            @test nin(m) == [3]
-            @test nout(m) == nout(m.layer) == 4
-
-            @testset "Select inputs" begin
-                inds = [1, 3]
-                Wiexp = weights(layer(m))[:, inds]
-                Whexp = copy(hiddenweights(layer(m)))
-                bexp = copy(bias(layer(m)))
-                hexp = copy(hiddenstate(layer(m)))
-                sexp = copy(state(layer(m)))
-                NaiveNASlib.Δsize!(m, [inds], 1:nout(m))
-                assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
-            end
-
-            @testset "Insert outputs" begin
-                inds = [1,-1, 2]
-                wi = weights(layer(m))
-                scalerange = (0:outscale(layer(m))-1) .* nout(layer(m))
-                Wiexp = permutedims(mapfoldl(offs -> hcat(wi[1+offs, :], zeros(Float32, 2), wi[2+offs, :]), hcat, scalerange))
-                wh = hiddenweights(layer(m))
-                Whexp = mapfoldl(offs -> [wh[1+offs, 1] 0 wh[1+offs, 2]; zeros(Float32, 1, 3); wh[2+offs, 1] 0 wh[2+offs, 2]], vcat, scalerange)
-                bexp = mapfoldl(offs -> Float32[bias(layer(m))[1+offs], 0, bias(layer(m))[2+offs]], vcat, scalerange)
-                hexp = map(hs -> Float32[hs[1], 0, hs[2]] |> hcat, hiddenstate(layer(m)))
-                sexp = map(hs -> Float32[hs[1], 0, hs[2]] |> hcat, state(layer(m)))
-                NaiveNASlib.Δsize!(m, _nins(m), inds; inszero...)
-                assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
-            end
-
-            #Sanity check that the layer still seems to work after mutation
-            output = m(reshape(collect(Float32, 1:2*10), 2,10))
-            @test size(output) == (3, 10)
-            @test isnan.(output) == falses(size(output))
-        end
-
-        @testset "GRU MutableLayer" begin
-            m = MutableLayer(GRU(3, 4))
+            m = MutableLayer(LSTM(3 => 4))
             setparsrnn(layer(m))
 
             @test nin(m) == [3]
@@ -425,10 +373,8 @@
                 Wiexp = weights(layer(m))[:, inds]
                 Whexp = copy(hiddenweights(layer(m)))
                 bexp = copy(bias(layer(m)))
-                hexp = copy(hiddenstate(layer(m)))
-                sexp = copy(state(layer(m)))
                 NaiveNASlib.Δsize!(m, [inds], 1:nout(m))
-                assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
+                assertrecurrent(layer(m), Wiexp, Whexp, bexp)
             end
 
             @testset "Insert outputs" begin
@@ -439,10 +385,42 @@
                 wh = hiddenweights(layer(m))
                 Whexp = mapfoldl(offs -> [wh[1+offs, 1] 0 wh[1+offs, 2]; zeros(Float32, 1, 3); wh[2+offs, 1] 0 wh[2+offs, 2]], vcat, scalerange)
                 bexp = mapfoldl(offs -> Float32[bias(layer(m))[1+offs], 0, bias(layer(m))[2+offs]], vcat, scalerange)
-                hexp = Float32[hiddenstate(layer(m))[1], 0, hiddenstate(layer(m))[2]] |> hcat
-                sexp = Float32[state(layer(m))[1], 0, state(layer(m))[2]] |> hcat
                 NaiveNASlib.Δsize!(m, _nins(m), inds; inszero...)
-                assertrecurrent(layer(m), Wiexp, Whexp, bexp, hexp, sexp)
+                assertrecurrent(layer(m), Wiexp, Whexp, bexp)
+            end
+
+            #Sanity check that the layer still seems to work after mutation
+            output = m(reshape(collect(Float32, 1:2*10), 2,10))
+            @test size.(output) == ((3, 10), (3, 10))
+            @test map(o -> isnan.(o) ,output) == map(o -> falses(size(o)), output)
+        end
+
+        @testset "GRU MutableLayer" begin
+            m = MutableLayer(GRU(3 => 4))
+            setparsrnn(layer(m))
+
+            @test nin(m) == [3]
+            @test nout(m) == nout(m.layer) == 4
+
+            @testset "Select inputs" begin
+                inds = [1, 3]
+                Wiexp = weights(layer(m))[:, inds]
+                Whexp = copy(hiddenweights(layer(m)))
+                bexp = copy(bias(layer(m)))
+                NaiveNASlib.Δsize!(m, [inds], 1:nout(m))
+                assertrecurrent(layer(m), Wiexp, Whexp, bexp)
+            end
+
+            @testset "Insert outputs" begin
+                inds = [1,-1, 2]
+                wi = weights(layer(m))
+                scalerange = (0:outscale(layer(m))-1) .* nout(layer(m))
+                Wiexp = permutedims(mapfoldl(offs -> hcat(wi[1+offs, :], zeros(Float32, 2), wi[2+offs, :]), hcat, scalerange))
+                wh = hiddenweights(layer(m))
+                Whexp = mapfoldl(offs -> [wh[1+offs, 1] 0 wh[1+offs, 2]; zeros(Float32, 1, 3); wh[2+offs, 1] 0 wh[2+offs, 2]], vcat, scalerange)
+                bexp = mapfoldl(offs -> Float32[bias(layer(m))[1+offs], 0, bias(layer(m))[2+offs]], vcat, scalerange)
+                NaiveNASlib.Δsize!(m, _nins(m), inds; inszero...)
+                assertrecurrent(layer(m), Wiexp, Whexp, bexp)
             end
 
             #Sanity check that the layer still seems to work after mutation
