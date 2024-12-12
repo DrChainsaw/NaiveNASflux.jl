@@ -386,11 +386,6 @@ end
             return testgraph_vfun(vfun, nin1, nin2)
         end
 
-        function testgraph(layerfun::Type{LSTM}, nin1, nin2)
-            vfun = (v, s) -> invariantvertex(first, fluxvertex(layerfun(nout(v) => s), v))
-            return testgraph_vfun(vfun, nin1, nin2)
-        end
-
         function testgraph_vfun(vertexfun, nin1::Integer, nin2::Integer)
             in1 = inputvertex("in1", nin1)
             in2 = inputvertex("in2", nin2)
