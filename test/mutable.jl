@@ -392,7 +392,7 @@
             #Sanity check that the layer still seems to work after mutation
             output = m(reshape(collect(Float32, 1:2*10), 2,10))
             @test size(output) == (3, 10)
-            @test map(o -> isnan.(o) ,output) == map(o -> falses(size(o)), output)
+            @test isnan.(output) == falses(size(output))
         end
 
         @testset "GRU MutableLayer" begin
