@@ -173,6 +173,8 @@ struct Ewma{R<:Real, M}
 end
 Ewma(α) = Ewma(α, neuronutilitytaylor)
 
+Functors.@leaf Ewma
+
 (m::Ewma)(currval, act, grad) = agg(m, currval, m.method(currval, act, grad))
 
 function agg(m::Ewma, x, y) 
@@ -196,6 +198,8 @@ mutable struct NeuronUtilityEvery{N,T}
     NeuronUtilityEvery(N::Int, method::T) where T = new{N, T}(0, method)
 end
 NeuronUtilityEvery(n::Int) = NeuronUtilityEvery(n, Ewma(0.05))
+
+Functors.@leaf NeuronUtilityEvery # Or else bad things will happen (see inner constructor)!
 
 function (m::NeuronUtilityEvery{N})(currval, act, grad) where N
     ret = m.cnt % N == 0 ? m.method(currval, act, grad) : currval
